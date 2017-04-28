@@ -1,20 +1,21 @@
 ;
 ;   Test store, move, scan, and compare string data
+;   %1 b,w,d
+;   %2 0,1,2
 ;   DS:ESI test buffer 1
 ;   ES:EDI test buffer 2
-;   ECX: buffer size in dwords
-;	this function is a macro because it needs to be compiled in 16-bit and 32-bit modes
+;   ECX: buffer size in byte/words/dwords
 ;
-%macro testStringOps 0
+%macro testStringOps 2
 	mov    ebp, ecx   ; EBP <- buffers dword size (can't use stack to save)
 	mov    ebx, ecx
-	shl    ebx, 2     ; EBX <- buffers byte size
+	shl    ebx, %2     ; EBX <- buffers byte size
 
 	mov    eax, 0x12345678
 	cld
 
 	; STORE buffers with pattern in EAX
-	rep stosd           ; store ECX dwords at ES:EDI from EAX
+	rep stos%1           ; store ECX dwords at ES:EDI from EAX
 	cmp    ecx, 0
 	jnz    error        ; ECX must be 0
 	sub    edi, ebx     ; rewind EDI
@@ -27,12 +28,12 @@
 	xchg   edi, esi
 	; store again ES:EDI with pattern in EAX
 	mov    ecx, ebp     ; reset ECX
-	rep stosd
+	rep stos%1
 	sub    edi, ebx     ; rewind EDI
 
 	; COMPARE two buffers
 	mov    ecx, ebp     ; reset ECX
-	repe cmpsd          ; find nonmatching dwords in ES:EDI and DS:ESI
+	repe cmps%1          ; find nonmatching dwords in ES:EDI and DS:ESI
 	cmp    ecx, 0
 	jnz    error        ; ECX must be 0
 	sub    edi, ebx     ; rewind EDI
@@ -40,7 +41,7 @@
 
 	; SCAN buffer for pattern
 	mov    ecx, ebp     ; reset ECX
-	repe scasd          ; SCAN first dword not equal to EAX
+	repe scas%1          ; SCAN first dword not equal to EAX
 	cmp    ecx, 0
 	jne    error        ; ECX must be 0
 	sub    edi, ebx     ; rewind EDI
@@ -49,13 +50,13 @@
 	; first zero-fill ES:EDI so that we can compare the moved data later
 	mov    eax, 0
 	mov    ecx, ebp     ; reset ECX
-	rep stosd           ; zero fill ES:EDI
+	rep stos%1           ; zero fill ES:EDI
 	sub    edi, ebx     ; rewind EDI
 	mov    ecx, ebp     ; reset ECX
-	rep movsd           ; MOVE data from DS:ESI to ES:EDI
+	rep movs%1           ; MOVE data from DS:ESI to ES:EDI
 	sub    edi, ebx     ; rewind EDI
 	sub    esi, ebx     ; rewind ESI
-	repe cmpsd          ; COMPARE moved data in ES:EDI with DS:ESI
+	repe cmps%1          ; COMPARE moved data in ES:EDI with DS:ESI
 	cmp    ecx, 0
 	jne    error        ; ECX must be 0
 %endmacro

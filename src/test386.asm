@@ -6,18 +6,18 @@
 ;   This file is a derivative work of PCjs
 ;   http://pcjs.org/tests/pcx86/80386/test386.asm
 ;
-;   test386 is free software: you can redistribute it and/or modify it under
+;   test386.asm is free software: you can redistribute it and/or modify it under
 ;   the terms of the GNU General Public License as published by the Free
 ;   Software Foundation, either version 3 of the License, or (at your option)
 ;   any later version.
 ;
-;   test386 is distributed in the hope that it will be useful, but WITHOUT ANY
+;   test386.asm is distributed in the hope that it will be useful, but WITHOUT ANY
 ;   WARRANTY without even the implied warranty of MERCHANTABILITY or FITNESS
 ;   FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 ;   details.
 ;
 ;   You should have received a copy of the GNU General Public License along with
-;   test386.  If not see <http://www.gnu.org/licenses/gpl.html>.
+;   test386.asm.  If not see <http://www.gnu.org/licenses/gpl.html>.
 ;
 ;   This program was originally developed for IBMulator
 ;   http://barotto.github.io/IBMulator
@@ -38,12 +38,12 @@
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017 Marco Bortolin      '
 %define RELEASE   '27/04/17'
 
-	cpu	386
+	cpu 386
 	section .text
 
-	%include "x86.inc"
+	%include "x86_e.asm"
 
-	bits	16
+	bits 16
 
 PAGING    equ 1
 POST_PORT equ 0x190
@@ -76,8 +76,6 @@ OFF_INTPAGEFAULT equ 0xa400
 	out dx, al
 %endmacro
 
-%include "protected.inc"
-%include "string.inc"
 
 header:
 	db COPYRIGHT
@@ -144,18 +142,30 @@ start:
 ;
 ;   Test store, move, scan, and compare string data in 16-bit real mode
 ;
+%include "tests/string_m.asm"
+
 	POST 3
 	xor    dx, dx
-	mov    ecx, 0x1000  ; ECX <- 4K double words
 	mov    ds, dx
-	mov    esi, 0       ; DS:ESI <- 0000h:0000h
 	mov    es, dx
-	mov    edi, 0x8000  ; ES:EDI <- 0000h:8000h
-	testStringOps
+	mov    ecx, 0x1000
+	mov    esi, 0
+	mov    edi, 0x1000
+	testStringOps b,0
+	mov    ecx, 0x1000
+	mov    esi, 0
+	mov    edi, 0x2000
+	testStringOps w,1
+	mov    ecx, 0x1000
+	mov    esi, 0
+	mov    edi, 0x4000
+	testStringOps d,2
 
 	jmp initPages
 
 	times  32768 nop ; lots of NOPs to test generation of 16-bit conditional jumps
+
+%include "protected_m.asm"
 
 addrGDT:
 	dw myGDTEnd - myGDT - 1 ; 16-bit limit of myGDT
@@ -427,7 +437,7 @@ toProt32:
 ;
 ;   Test 16-bit addressing modes
 ;
-%include "lea.inc"
+%include "tests/lea_m.asm"
 
 	POST D
 	mov ax, 0x0001
@@ -436,21 +446,21 @@ toProt32:
 	mov dx, 0x0008
 	mov si, 0x0010
 	mov di, 0x0020
-	TEST_LEA16 [0x4000],0x4000
-	TEST_LEA16 [bx], 0x0002
-	TEST_LEA16 [si], 0x0010
-	TEST_LEA16 [di], 0x0020
-	TEST_LEA16 [bx + 0x40], 0x0042
-	TEST_LEA16 [si + 0x40], 0x0050
-	TEST_LEA16 [di + 0x40], 0x0060
-	TEST_LEA16 [bx + 0x4000], 0x4002
-	TEST_LEA16 [si + 0x4000], 0x4010
-	TEST_LEA16 [bx + si], 0x0012
-	TEST_LEA16 [bx + di], 0x0022
-	TEST_LEA16 [bx + 0x40 + si], 0x0052
-	TEST_LEA16 [bx + 0x40 + di], 0x0062
-	TEST_LEA16 [bx + 0x4000 + si], 0x4012
-	TEST_LEA16 [bx + 0x4000 + di], 0x4022
+	testLEA16 [0x4000],0x4000
+	testLEA16 [bx], 0x0002
+	testLEA16 [si], 0x0010
+	testLEA16 [di], 0x0020
+	testLEA16 [bx + 0x40], 0x0042
+	testLEA16 [si + 0x40], 0x0050
+	testLEA16 [di + 0x40], 0x0060
+	testLEA16 [bx + 0x4000], 0x4002
+	testLEA16 [si + 0x4000], 0x4010
+	testLEA16 [bx + si], 0x0012
+	testLEA16 [bx + di], 0x0022
+	testLEA16 [bx + 0x40 + si], 0x0052
+	testLEA16 [bx + 0x40 + di], 0x0062
+	testLEA16 [bx + 0x4000 + si], 0x4012
+	testLEA16 [bx + 0x4000 + di], 0x4022
 
 ;
 ;   Test 32-bit addressing modes
@@ -462,48 +472,48 @@ toProt32:
 	mov edx, 0x0008
 	mov esi, 0x0010
 	mov edi, 0x0020
-	TEST_LEA32 [0x4000], 0x00004000
-	TEST_LEA32 [eax], 0x00000001
-	TEST_LEA32 [ebx], 0x00000002
-	TEST_LEA32 [ecx], 0x00000004
-	TEST_LEA32 [edx], 0x00000008
-	TEST_LEA32 [esi], 0x00000010
-	TEST_LEA32 [edi], 0x00000020
-	TEST_LEA32 [eax + 0x40], 0x00000041
-	TEST_LEA32 [ebx + 0x40], 0x00000042
-	TEST_LEA32 [ecx + 0x40], 0x00000044
-	TEST_LEA32 [edx + 0x40], 0x00000048
-	TEST_LEA32 [esi + 0x40], 0x00000050
-	TEST_LEA32 [edi + 0x40], 0x00000060
-	TEST_LEA32 [eax + 0x4000], 0x00004001
-	TEST_LEA32 [ebx + 0x4000], 0x00004002
-	TEST_LEA32 [ecx + 0x4000], 0x00004004
-	TEST_LEA32 [edx + 0x4000], 0x00004008
-	TEST_LEA32 [esi + 0x4000], 0x00004010
-	TEST_LEA32 [edi + 0x4000], 0x00004020
-	TEST_LEA32 [eax + ecx], 0x00000005
-	TEST_LEA32 [ebx + edx], 0x0000000a
-	TEST_LEA32 [ecx + ecx], 0x00000008
-	TEST_LEA32 [edx + ecx], 0x0000000c
-	TEST_LEA32 [esi + ecx], 0x00000014
-	TEST_LEA32 [edi + ecx], 0x00000024
-	TEST_LEA32 [eax + ecx + 0x40], 0x00000045
-	TEST_LEA32 [ebx + edx + 0x4000], 0x0000400a
-	TEST_LEA32 [ecx + ecx * 2], 0x0000000c
-	TEST_LEA32 [edx + ecx * 4], 0x00000018
-	TEST_LEA32 [esi + ecx * 8], 0x00000030
-	TEST_LEA32 [eax * 2], 0x00000002
-	TEST_LEA32 [ebx * 4], 0x00000008
-	TEST_LEA32 [ecx * 8], 0x00000020
-	TEST_LEA32 [0x40 + eax * 2], 0x00000042
-	TEST_LEA32 [0x40 + ebx * 4], 0x00000048
-	TEST_LEA32 [0x40 + ecx * 8], 0x00000060
-	TEST_LEA32 [ecx - 10 + ecx * 2], 0x00000002
-	TEST_LEA32 [edx - 10 + ecx * 4], 0x0000000e
-	TEST_LEA32 [esi - 10 + ecx * 8], 0x00000026
-	TEST_LEA32 [ecx + 0x4000 + ecx * 2], 0x0000400c
-	TEST_LEA32 [edx + 0x4000 + ecx * 4], 0x00004018
-	TEST_LEA32 [esi + 0x4000 + ecx * 8], 0x00004030
+	testLEA32 [0x4000], 0x00004000
+	testLEA32 [eax], 0x00000001
+	testLEA32 [ebx], 0x00000002
+	testLEA32 [ecx], 0x00000004
+	testLEA32 [edx], 0x00000008
+	testLEA32 [esi], 0x00000010
+	testLEA32 [edi], 0x00000020
+	testLEA32 [eax + 0x40], 0x00000041
+	testLEA32 [ebx + 0x40], 0x00000042
+	testLEA32 [ecx + 0x40], 0x00000044
+	testLEA32 [edx + 0x40], 0x00000048
+	testLEA32 [esi + 0x40], 0x00000050
+	testLEA32 [edi + 0x40], 0x00000060
+	testLEA32 [eax + 0x4000], 0x00004001
+	testLEA32 [ebx + 0x4000], 0x00004002
+	testLEA32 [ecx + 0x4000], 0x00004004
+	testLEA32 [edx + 0x4000], 0x00004008
+	testLEA32 [esi + 0x4000], 0x00004010
+	testLEA32 [edi + 0x4000], 0x00004020
+	testLEA32 [eax + ecx], 0x00000005
+	testLEA32 [ebx + edx], 0x0000000a
+	testLEA32 [ecx + ecx], 0x00000008
+	testLEA32 [edx + ecx], 0x0000000c
+	testLEA32 [esi + ecx], 0x00000014
+	testLEA32 [edi + ecx], 0x00000024
+	testLEA32 [eax + ecx + 0x40], 0x00000045
+	testLEA32 [ebx + edx + 0x4000], 0x0000400a
+	testLEA32 [ecx + ecx * 2], 0x0000000c
+	testLEA32 [edx + ecx * 4], 0x00000018
+	testLEA32 [esi + ecx * 8], 0x00000030
+	testLEA32 [eax * 2], 0x00000002
+	testLEA32 [ebx * 4], 0x00000008
+	testLEA32 [ecx * 8], 0x00000020
+	testLEA32 [0x40 + eax * 2], 0x00000042
+	testLEA32 [0x40 + ebx * 4], 0x00000048
+	testLEA32 [0x40 + ecx * 8], 0x00000060
+	testLEA32 [ecx - 10 + ecx * 2], 0x00000002
+	testLEA32 [edx - 10 + ecx * 4], 0x0000000e
+	testLEA32 [esi - 10 + ecx * 8], 0x00000026
+	testLEA32 [ecx + 0x4000 + ecx * 2], 0x0000400c
+	testLEA32 [edx + 0x4000 + ecx * 4], 0x00004018
+	testLEA32 [esi + 0x4000 + ecx * 8], 0x00004030
 
 ;
 ;   Access memory using various addressing modes
@@ -553,11 +563,18 @@ toProt32:
 	POST 10
 	pushad
 	pushfd
-	xor    dx, dx
-	mov    ecx, 0x800   ; ECX <- 2K double words
+	mov    ecx, 0x2000
 	mov    esi, 0x13000
 	mov    edi, 0x15000
-	testStringOps
+	testStringOps b,0
+	mov    ecx, 0x1000
+	mov    esi, 0x13000
+	mov    edi, 0x15000
+	testStringOps w,1
+	mov    ecx, 0x800
+	mov    esi, 0x13000
+	mov    edi, 0x15000
+	testStringOps d,2
 	popfd
 	popad
 
@@ -572,27 +589,27 @@ toProt32:
 ;
 ;   Verify Bit Scan operations
 ;
-%include "bit.inc"
+%include "tests/bit_m.asm"
 
 	POST 12
-	bitscan bsf
-	bitscan bsr
+	testBitscan bsf
+	testBitscan bsr
 
 ;
 ;   Verify Bit Test operations
 ;
 	POST 13
-	bittest bt
+	testBittest bt
 
-	bittest btc
+	testBittest btc
 	cmp edx, 0x55555555
 	jne error
 
-	bittest btr
+	testBittest btr
 	cmp edx, 0
 	jne error
 
-	bittest bts
+	testBittest bts
 	cmp edx, 0xffffffff
 	jne error
 
@@ -688,176 +705,7 @@ testSrc:
 testDone:
 	jmp testsDone
 
-;
-;   printOp(ESI -> instruction sequence)
-;
-;   Rewinds ESI to the start of the mnemonic preceding the instruction sequence and prints the mnemonic
-;
-;   Uses: None
-;
-printOp:
-	pushfd
-	pushad
-.findSize:
-	dec    esi
-	mov    al, [cs:esi-1]
-	cmp    al, 32
-	jae    .findSize
-	call   printStr
-	movzx  eax, al
-	mov    al, [cs:achSize+eax]
-	call   printChar
-	mov    al, ' '
-	call   printChar
-	popad
-	popfd
-	ret
-
-;
-;   printEAX()
-;
-;   Uses: None
-;
-printEAX:
-	pushfd
-	pushad
-	mov     esi, strEAX
-	call    printStr
-	mov     cl, 8
-	call    printVal
-	popad
-	popfd
-	ret
-
-;
-;   printEDX()
-;
-;   Uses: None
-;
-printEDX:
-	pushfd
-	pushad
-	mov    esi, strEDX
-	call   printStr
-	mov    cl, 8
-	mov    eax, edx
-	call   printVal
-	popad
-	popfd
-	ret
-
-;
-;   printPS(ESI -> instruction sequence)
-;
-;   Uses: None
-;
-printPS:
-	pushfd
-	pushad
-	pushfd
-	pop    edx
-.findType:
-	dec    esi
-	mov    al, [cs:esi-1]
-	cmp    al, 32
-	jae    .findType
-	movzx  eax, byte [cs:esi-2]
-	and    edx, [cs:typeMasks+eax*4]
-	mov    esi, strPS
-	call   printStr
-	mov    cl, 4
-	mov    eax, edx
-	call   printVal
-	popad
-	popfd
-	ret
-
-;
-;   printEOL()
-;
-;   Uses: None
-;
-printEOL:
-	push    eax
-;	mov     al,0x0d
-;	call    printChar
-	mov     al,0x0a
-	call    printChar
-	pop     eax
-	ret
-
-;
-;   printChar(AL)
-;
-;   Uses: None
-;
-printChar:
-	pushfd
-	push   edx
-	%if COM_PORT
-	push   eax
-	mov    dx, [cs:COMLSRports+(COM_PORT-1)*2]   ; EDX == COM LSR (Line Status Register)
-.loop:
-	in     al, dx
-	test   al, 0x20    ; THR (Transmitter Holding Register) empty?
-	jz     .loop       ; no
-	pop    eax
-	mov    dx, [cs:COMTHRports+(COM_PORT-1)*2]   ; EDX -> COM2 THR (Transmitter Holding Register)
-	out    dx, al
-	jmp    $+2
-	%endif
-	%if LPT_PORT
-	mov    dx, [cs:LPTports+(LPT_PORT-1)*2]
-	out    dx, al
-	jmp    $+2
-	%endif
-	pop    edx
-	popfd
-	ret
-
-;
-;   printStr(ESI -> zero-terminated string)
-;
-;   Uses: ESI, Flags
-;
-printStr:
-	push    eax
-.loop:
-	cs lodsb
-	test    al, al
-	jz      .done
-	call    printChar
-	jmp     .loop
-.done:
-	pop     eax
-	ret
-
-;
-;   printVal(EAX == value, CL == number of hex digits)
-;
-;   Uses: EAX, ECX, Flags
-;
-printVal:
-	shl    cl, 2  ; CL == number of bits (4 times the number of hex digits)
-	jz     .done
-.loop:
-	sub    cl, 4
-	push   eax
-	shr    eax, cl
-	and    al, 0x0f
-	add    al, '0'
-	cmp    al, '9'
-	jbe    .digit
-	add    al, 'A'-'0'-10
-.digit:
-	call   printChar
-	pop    eax
-	test   cl, cl
-	jnz    .loop
-.done:
-	mov    al, ' '
-	call   printChar
-	ret
+%include "print_p.asm"
 
 TYPE_ARITH    equ  0
 TYPE_ARITH1   equ  1

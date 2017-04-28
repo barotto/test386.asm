@@ -1,4 +1,4 @@
-%macro	bitscan	1
+%macro testBitscan 1
 	mov edx, 1
 	shl edx, 31
 	mov ecx, 31
@@ -15,7 +15,7 @@
 %endmacro
 
 
-%macro bittest 1
+%macro testBittest 1
 	mov edx, 0xaaaaaaaa
 	mov ecx, 31
 .%1loop:

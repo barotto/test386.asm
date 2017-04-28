@@ -4,7 +4,7 @@
 ;   %2 value to compare
 ;   Uses: flags.
 ;
-%macro TEST_LEA16 2
+%macro testLEA16 2
 	push ax
 	a16 lea ax, %1
 	cmp ax, %2
@@ -18,7 +18,7 @@
 ;   %2 value to compare
 ;   Uses: flags.
 ;
-%macro TEST_LEA32 2
+%macro testLEA32 2
 	push eax
 	a32 lea eax, %1
 	cmp eax, %2

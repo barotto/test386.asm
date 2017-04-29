@@ -107,15 +107,16 @@ cpuTest:
 	jne    error
 
 ;
-;   Test of moving a segment register to a 32-bit register
+;   Test of moving segment registers to 16/32-bit registers
 ;
-	POST 2
-	xor    edx, edx   ; dx <- 0
-	mov    ds, dx     ; DS <- 0x0000
-	mov    eax, ds
-	test   eax, eax
-	jnz    error
+%include "tests/mov_m.asm"
 
+	POST 2
+	testMovSegR ss
+	testMovSegR ds
+	testMovSegR es
+	testMovSegR fs
+	testMovSegR gs
 ;
 ;   Test store, move, scan, and compare string data in 16-bit real mode
 ;
@@ -123,8 +124,8 @@ cpuTest:
 
 	POST 3
 	xor    dx, dx
-	mov    ds, dx
-	mov    es, dx
+	mov    ds, dx ; DS <- 0
+	mov    es, dx ; ES <- 0
 	mov    ecx, 0x1000
 	mov    esi, 0
 	mov    edi, 0x1000

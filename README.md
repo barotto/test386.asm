@@ -40,6 +40,7 @@ POST 11 Page faults
 POST 12 Bit Scan operations  
 POST 13 Bit Test operations  
 POST 14 Double precision shifts  
+POST 15 Byte set on condition  
 POST EE Series of unverified tests for arithmetical and logical opcodes  
 POST FE Testing finished, back to real mode  
 POST FF Testing successful

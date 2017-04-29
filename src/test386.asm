@@ -614,6 +614,15 @@ toProt32:
 	jne error
 
 ;
+;   SETcc - Byte set on condition
+;
+%include "tests/setcc_m.asm"
+
+	POST 15
+	testSetcc bl
+	testSetcc byte [0x40000]
+
+;
 ;   Now run a series of unverified tests for arithmetical and logical opcodes
 ;   Manually verify by comparing the tests output with a reference file
 ;

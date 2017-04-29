@@ -19,7 +19,7 @@
 ; 7B    0F8B     JNP      PF=0
 ; 7C    0F8C     JL       SF!=OF
 ; 7D    0F8D     JNL      SF=OF
-; 7E    0F8E     JLE      ZF=1 && SF!=OF
+; 7E    0F8E     JLE      ZF=1 || SF!=OF
 ; 7F    0F8F     JNLE     ZF=0 && SF=OF
 ; E3             JCXZ     CX=0
 ; E3             JECXZ    ECX=0
@@ -65,21 +65,21 @@
 	hlt
 %%jnl:
 	mov   al, 1000000b
-	shl   al, 1    ; OF = high-order bit of AL <> (CF)
+	shl   al, 1    ; OF = high-order bit of AL <> (CF), ZF=0,SF=1,OF=1
 	jl    %%err    ; 7C / 0F8C   JL   SF!=OF
 	jnl   %%jnlok  ; 7D / 0F8D   JNL  SF=OF
 	hlt
 %%jnle:
-	jle   %%err    ; 7E / 0F8E   JLE  ZF=1 && SF!=OF
+	jle   %%err    ; 7E / 0F8E   JLE  ZF=1 || SF!=OF
 	jnle  %%jnleok ; 7F / 0F8F   JNLE ZF=0 && SF=OF
 	hlt
 %%jl:
 	mov ah, PS_ZF
-	sahf
+	sahf           ; ZF=1,SF=0,OF=1
 	jl    %%jlok   ; 7C / 0F8C   JL   SF!=OF
 	hlt
 %%jle:
-	jle   %%jleok  ; 7E / 0F8E   JLE  ZF=1 && SF!=OF
+	jle   %%jleok  ; 7E / 0F8E   JLE  ZF=1 || SF!=OF
 	hlt
 %%jcxz:
 	%if %1==8

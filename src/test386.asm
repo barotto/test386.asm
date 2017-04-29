@@ -81,39 +81,16 @@ header:
 	db COPYRIGHT
 
 cpuTest:
-;
-;   Basic 16-bit flags, jumps, and shifts tests
-;
 	cli
-	mov    ax, 0D58Dh     ; AH bits 7,6,4,2,0=1
-	sahf                  ; Store AH into FLAGS: AH bits 7,6,4,2,0->SF,ZF,AF,PF,CF
-	jnb    cpuTestError   ; if not below (CF=0)
-	jnz    cpuTestError   ; if not zero (ZF=0)
-	jnp    cpuTestError   ; if not parity (PF=0)
-	jns    cpuTestError   ; if not sign (SF=0)
-	lahf                  ; Load AH from Flags: SF,ZF,AF,PF,CF->AH bits 7,6,4,2,0
-	mov    cl, 5          ; CL <- 5
-	shr    ah, cl         ; Unsigned divide AH by 2, CL (5) times: AH=00000110. CF = low-order bit of AH
-	jnb    cpuTestError   ; if not below (CF=0)
-	mov    al, 1000000b
-	shl    al, 1          ; OF = high-order bit of AL <> (CF);
-	jno    cpuTestError   ; if not overflow (OF=0)
-	xor    ah, ah         ; AH = 0
-	sahf
-	jbe    cpuTestError   ; if below or equal (CF=1 or ZF=1)
-	js     cpuTestError   ; if sign (SF=1)
-	jp     cpuTestError   ; if parity (PF=1)
-	lahf                  ; AH = 0
-	shr    ah, cl         ; shift AH right CL times, CF = low-order bit of AH
-	jb     cpuTestError   ; if below (CF=1)
-	shl    ah, 1          ; OF = high-order bit of AH <> (CF)
-	jo     cpuTestError   ; if overflow (OF=1)
-	jz     start          ; if 0 (ZF=1)
-cpuTestError:
-	hlt
-	jmp cpuTestError
 
-start:
+%include "tests/jcc_m.asm"
+;
+;   Conditional jumps
+;
+	testJcc 8
+	testJcc 16
+	testJcc 32
+
 ;
 ;   Quick tests of unsigned 32-bit multiplication and division
 ;   Thorough arithmetical and logical tests are done later
@@ -162,8 +139,6 @@ start:
 	testStringOps d,2
 
 	jmp initPages
-
-	times  32768 nop ; lots of NOPs to test generation of 16-bit conditional jumps
 
 %include "protected_m.asm"
 

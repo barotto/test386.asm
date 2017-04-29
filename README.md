@@ -23,23 +23,23 @@ All memory accesses will remain within the first 1MB.
 In case of error the POST code will tell you the test that caused the problem.
 Use the following list for reference:
 
-POST 0 Basic 16-bit flags, jumps, and shifts tests  
-POST 1 Quick tests of unsigned 32-bit multiplication and division  
-POST 2 Test of moving a segment register to a 32-bit register  
-POST 3 Test store, move, scan, and compare string data in real mode  
-POST 4 Page directory and a page table setup  
-POST 5 Protected mode enable  
-POST A Test the stack  
-POST B Test moving a segment register to a 32-bit memory location  
-POST C Test zero and sign-extension  
-POST D Test 16-bit addressing  
-POST E Test 32-bit addressing  
-POST F Access memory using various addressing modes  
-POST 10 Verify string operations  
-POST 11 Verify Page faults  
-POST 12 Verify Bit Scan operations  
-POST 13 Verify Bit Test operations  
-POST 14 Test double precision shifts  
+POST 00 Conditional jumps and loops  
+POST 01 Quick tests of unsigned 32-bit multiplication and division  
+POST 02 Move segment registers to 16/32-bit registers  
+POST 03 Store, move, scan, and compare string data in real mode  
+POST 04 Page directory and a page table setup  
+POST 05 Protected mode enable  
+POST 0A Stack functionality  
+POST 0B Moving a segment register to a 32-bit memory location  
+POST 0C Zero and sign-extension  
+POST 0D 16-bit addressing  
+POST 0E 32-bit addressing  
+POST 0F Access memory using various addressing modes  
+POST 10 Store, move, scan, and compare string data in protected mode  
+POST 11 Page faults  
+POST 12 Bit Scan operations  
+POST 13 Bit Test operations  
+POST 14 Double precision shifts  
 POST EE Series of unverified tests for arithmetical and logical opcodes  
 POST FE Testing finished, back to real mode  
 POST FF Testing successful

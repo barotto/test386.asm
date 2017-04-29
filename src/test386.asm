@@ -83,13 +83,21 @@ header:
 cpuTest:
 	cli
 
-%include "tests/jcc_m.asm"
 ;
 ;   Conditional jumps
 ;
+%include "tests/jcc_m.asm"
 	testJcc 8
 	testJcc 16
 	testJcc 32
+
+;
+;   Loops
+;
+%include "tests/loop_m.asm"
+	testLoop
+	testLoopZ
+	testLoopNZ
 
 ;
 ;   Quick tests of unsigned 32-bit multiplication and division

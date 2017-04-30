@@ -83,6 +83,11 @@ header:
 cpuTest:
 	cli
 
+
+; ==============================================================================
+;	Real mode tests
+; ==============================================================================
+
 ;
 ;   Conditional jumps
 ;
@@ -147,6 +152,26 @@ cpuTest:
 	mov    edi, 0x4000
 	testStringOps d,2
 
+;
+;   Call real mode
+;
+%include "tests/call_m.asm"
+
+	POST 4
+	; initialize the stack
+	mov ax, 0
+	mov ss, ax
+	mov sp, 0x8000
+	mov si, 0
+	testCallNear
+	testCallFar CSEG_REAL
+
+
+
+; ==============================================================================
+;	Protected mode tests
+; ==============================================================================
+
 	jmp initPages
 
 %include "protected_m.asm"
@@ -195,12 +220,12 @@ addrIDTReal:
 initPages:
 ;
 ;   ESI (PDBR) = 1000h
-;   0000-1000    1000 (4K)  free
-;   1000-3000    1000 (4K)  page directory
-;   2000-3000    1000 (4K)  page table
-;   3000-11000   e000 (56K) stack tests
-;   12000-13000  1000 (4K)  non present page (PTE 12h)
-;   13000-a0000 8d000       free
+;   00000-00FFF   1000 (4K)  free
+;   01000-01FFF   1000 (4K)  page directory
+;   02000-02FFF   1000 (4K)  page table
+;   03000-10FFF   e000 (56K) stack tests
+;   12000-12FFF   1000 (4K)  non present page (PTE 12h)
+;   13000-9FFFF  8d000       free
 ;
 
 PAGE_DIR_ADDR equ 0x1000
@@ -213,7 +238,7 @@ PF_HANDLER_SIG equ 0x50465046
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
 ;   corresponding to physical address 0x1000.
 ;
-	POST 4
+	POST 9
 	mov   esi, PAGE_DIR_ADDR
 	mov	  eax, esi
 	shr   eax, 4
@@ -247,12 +272,9 @@ initPT:
 	add   edi, PAGE_DIR_ADDR ; edi <- PAGE_DIR_ADDR + (NOT_PRESENT_PTE * 4)
 	mov   eax, NOT_PRESENT_LIN | PTE_USER | PTE_READWRITE
 	stosd
-
-goProt:
 ;
 ;   Enable protected mode
 ;
-	POST 5
 	cli ; make sure interrupts are off now, since we've not initialized the IDT yet
 	o32 lidt [cs:addrIDT]
 	o32 lgdt [cs:addrGDT]
@@ -696,7 +718,7 @@ testSrc:
 	jmp  testOps
 
 testDone:
-	jmp testsDone
+	jmp finish
 
 %include "print_p.asm"
 
@@ -967,9 +989,10 @@ toReal:
 	mov    ss, ax
 	mov    sp, 0xfffe
 
+finish:
 	POST FF
-finish:	hlt
-	jmp finish
+	cli
+	hlt
 ;
 ;   Fill the remaining space with NOPs until we get to target offset 0xFFF0.
 ;

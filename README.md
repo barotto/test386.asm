@@ -27,8 +27,8 @@ POST 00 Conditional jumps and loops
 POST 01 Quick tests of unsigned 32-bit multiplication and division  
 POST 02 Move segment registers to 16/32-bit registers  
 POST 03 Store, move, scan, and compare string data in real mode  
-POST 04 Page directory and a page table setup  
-POST 05 Protected mode enable  
+POST 04 Call in real mode
+POST 09 Page directory and page table setup, enable protected mode  
 POST 0A Stack functionality  
 POST 0B Moving a segment register to a 32-bit memory location  
 POST 0C Zero and sign-extension  
@@ -42,8 +42,7 @@ POST 13 Bit Test operations
 POST 14 Double precision shifts  
 POST 15 Byte set on condition  
 POST EE Series of unverified tests for arithmetical and logical opcodes  
-POST FE Testing finished, back to real mode  
-POST FF Testing successful
+POST FF Testing completed
 
 Note: test 0xEE always completes successfully. It will print its computational 
 results on the parallel and/or serial ports. You'll need to manually compare
@@ -52,8 +51,10 @@ those results with the reference file test386-EE-reference.txt
 **WARNING**: this program is designed to test emulators and was never tested on
 real hardware. Use at your own risk.
 
-test386.asm is a derivative work of [PCjs](http://pcjs.org) and originally
-developed for [IBMulator](http://barotto.github.io/IBMulator)
+test386.asm was originally developed for
+[IBMulator](http://barotto.github.io/IBMulator)
+starting as a derivative work of
+[PCjs](http://pcjs.org).
 
 Distributed under the GNU General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any 

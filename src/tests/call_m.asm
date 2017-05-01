@@ -56,7 +56,7 @@
 	mov ax, sp
 
 	clc
-	o16 call %1:%%farfn16
+	o16 call word %1:%%farfn16
 	jnc error
 	jmp %%o32
 %%farfn16:

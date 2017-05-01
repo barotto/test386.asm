@@ -41,6 +41,7 @@ POST 12 Bit Scan operations
 POST 13 Bit Test operations  
 POST 14 Double precision shifts  
 POST 15 Byte set on condition  
+POST 16 Call in protected mode
 POST EE Series of unverified tests for arithmetical and logical opcodes  
 POST FF Testing completed
 

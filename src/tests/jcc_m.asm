@@ -25,45 +25,65 @@
 ; E3             JECXZ    ECX=0
 ;
 %macro testJcc 1
-	mov    ah, PS_SF|PS_ZF|PS_AF|PS_PF|PS_CF
-	sahf
+	mov    ah, PS_CF
+	sahf         ; don't use the stack (pushf/popf)
 	jnc   %%err  ; 73 / 0F83   JNC  CF=0
 	jc    %%jcok ; 72 / 0F82   JC   CF=1
 	hlt
 %%jz:
+	mov    ah, PS_ZF
+	sahf
 	jnz   %%err  ; 75 / 0F85   JNZ  ZF=0
 	jz    %%jzok ; 74 / 0F84   JZ   ZF=1
 	hlt
 %%jp:
+	mov    ah, PS_PF
+	sahf
 	jnp   %%err  ; 7B / 0F8B   JNP  PF=0
 	jp    %%jpok ; 7A / 0F8A   JP   PF=1
 	hlt
 %%js:
+	mov    ah, PS_SF
+	sahf
 	jns   %%err  ; 79 / 0F89   JNS  SF=0
 	js    %%jsok ; 78 / 0F88   JS   SF=1
 	hlt
 %%jna:
+	mov    ah, PS_ZF|PS_CF
+	sahf
 	ja    %%err   ; 77 / 0F87   JA   CF=0 && ZF=0
 	jna   %%jnaok ; 76 / 0F86   JBE  CF=1 || ZF=1
 	hlt
 %%jnc:
+	mov    ah, PS_SF|PS_ZF|PS_AF|PS_PF
+	sahf
 	mov    ax, 0
 	sahf
 	jnc   %%jncok ; 73 / 0F83   JNC  CF=0
 	hlt
 %%jnz:
+	mov    ah, PS_SF|PS_AF|PS_PF|PS_CF
+	sahf
 	jnz   %%jnzok ; 75 / 0F85   JNZ  ZF=0
 	hlt
 %%jnp:
+	mov    ah, PS_SF|PS_ZF|PS_AF|PS_CF
+	sahf
 	jnp   %%jnpok ; 7B / 0F8B   JNP  PF=0
 	hlt
 %%jns:
+	mov    ah, PS_ZF|PS_AF|PS_PF|PS_CF
+	sahf
 	jns   %%jnsok ; 79 /  0F89  JNS  SF=0
 	hlt
 %%ja:
+	mov    ah, PS_SF|PS_AF|PS_PF
+	sahf
 	ja    %%jaok  ; 77 / 0F87   JA   CF=0 && ZF=0
 	hlt
 %%jnl:
+	mov    ah, 0
+	sahf
 	mov   al, 1000000b
 	shl   al, 1    ; OF = high-order bit of AL <> (CF), ZF=0,SF=1,OF=1
 	jl    %%err    ; 7C / 0F8C   JL   SF!=OF

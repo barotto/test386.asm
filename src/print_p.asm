@@ -85,7 +85,7 @@ printVal:
 	call   printChar
 	ret
 
-	;
+;
 ;   printOp(ESI -> instruction sequence)
 ;
 ;   Rewinds ESI to the start of the mnemonic preceding the instruction sequence and prints the mnemonic
@@ -165,6 +165,27 @@ printPS:
 	mov    cl, 4
 	mov    eax, edx
 	call   printVal
+	popad
+	popfd
+	ret
+
+;
+;	printPS2
+;	EAX -> mask
+;
+;	Uses: None
+;
+printPS2:
+	pushfd
+	pushad
+	pushfd
+	pop edx
+	and edx, eax
+	mov esi, strPS
+	call printStr
+	mov  cl, 4
+	mov  eax, edx
+	call printVal
 	popad
 	popfd
 	ret

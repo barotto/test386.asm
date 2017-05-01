@@ -35,12 +35,6 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
-strEAX: db  "EAX=",0
-strEDX: db  "EDX=",0
-strPS:  db  "PS=",0
-strDE:  db  "#DE ",0 ; when this is displayed, it indicates a Divide Error exception
-achSize db  "BWD"
-
 ALLOPS equ 1
 
 tableOps:

@@ -58,14 +58,14 @@ DSEG_PROT16 equ 0x0018
 DSEG_PROT32 equ 0x0020
 SSEG_PROT32 equ 0x0028
 
-OFF_ERROR   equ 0xa000
+OFF_ERROR   equ 0xc000
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
 ;
 OFF_INTDEFAULT   equ OFF_ERROR
-OFF_INTDIVERR    equ 0xa200
-OFF_INTPAGEFAULT equ 0xa400
+OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
+OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 
 ;
 ;   Output a byte to the POST port, destroys al and dx
@@ -652,13 +652,11 @@ toProt32:
 	testCallNear
 	testCallFar CSEG_PROT32
 
-
 ;
 ;   Now run a series of unverified tests for arithmetical and logical opcodes
 ;   Manually verify by comparing the tests output with a reference file
 ;
 	POST EE
-
 	%if LPT_PORT && IBM_PS1
 	; Enable output to the configured LPT port
 	mov    ax, 0xff7f  ; bit 7 = 0  setup functions
@@ -670,7 +668,63 @@ toProt32:
 	mov    al, ah
 	out    94h, al     ; bit 7 = 1  enable functions
 	%endif
+	jmp bcdTests
 
+strEAX: db  "EAX=",0
+strEDX: db  "EDX=",0
+strPS:  db  "PS=",0
+strDE:  db  "#DE ",0 ; when this is displayed, it indicates a Divide Error exception
+achSize db  "BWD"
+%include "print_p.asm"
+
+bcdTests:
+%include "tests/bcd_m.asm"
+    testBCD   daa, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   daa, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   das, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+    testBCD   aaa, 0x12340205, PS_AF,         PS_CF | PS_AF
+    testBCD   aaa, 0x12340306, PS_AF,         PS_CF | PS_AF
+    testBCD   aaa, 0x1234040a, PS_AF,         PS_CF | PS_AF
+    testBCD   aaa, 0x123405fa, PS_AF,         PS_CF | PS_AF
+    testBCD   aaa, 0x12340205, 0,             PS_CF | PS_AF
+    testBCD   aaa, 0x12340306, 0,             PS_CF | PS_AF
+    testBCD   aaa, 0x1234040a, 0,             PS_CF | PS_AF
+    testBCD   aaa, 0x123405fa, 0,             PS_CF | PS_AF
+    testBCD   aas, 0x12340205, PS_AF,         PS_CF | PS_AF
+    testBCD   aas, 0x12340306, PS_AF,         PS_CF | PS_AF
+    testBCD   aas, 0x1234040a, PS_AF,         PS_CF | PS_AF
+    testBCD   aas, 0x123405fa, PS_AF,         PS_CF | PS_AF
+    testBCD   aas, 0x12340205, 0,             PS_CF | PS_AF
+    testBCD   aas, 0x12340306, 0,             PS_CF | PS_AF
+    testBCD   aas, 0x1234040a, 0,             PS_CF | PS_AF
+    testBCD   aas, 0x123405fa, 0,             PS_CF | PS_AF
+    testBCD   aam, 0x12340547, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
+    testBCD   aad, 0x12340407, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
+
+arithlogicTests:
 	cld
 	mov    esi, tableOps   ; ESI -> tableOps entry
 
@@ -729,7 +783,6 @@ testSrc:
 testDone:
 	jmp testsDone
 
-%include "print_p.asm"
 %include "tests/arith-logic_d.asm"
 
 	times	OFF_ERROR-($-$$) nop

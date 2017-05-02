@@ -646,11 +646,38 @@ toProt32:
 
 
 ;
-;	Call far protected mode
+;	Call far protected mode, same privilege
 ;
 	POST 16
 	testCallNear
 	testCallFar CSEG_PROT32
+
+;
+;	ARPL
+;
+	POST 17
+	; test on register destination
+	xor ax, ax       ; ZF = 0
+	mov ax, 0xfff0
+	mov bx, 0x0002
+	arpl ax, bx      ; RPL ax < RPL bx
+	jnz error        ; must be ZF = 1
+	cmp ax, 0xfff2
+	jne error
+	; test on memory destination
+	xor ax, ax       ; ZF = 0
+	mov word [0x40000], 0xfff0
+	arpl [0x40000], bx
+	jnz error
+	cmp word [0x40000], 0xfff2
+	jne error
+	; test with RPL dest > RPL src
+	xor ax, ax       ; ZF = 0
+	mov ax, 0xfff3
+	arpl ax, bx
+	jz error
+	cmp ax, 0xfff3
+	jne error
 
 ;
 ;   Now run a series of unverified tests for arithmetical and logical opcodes

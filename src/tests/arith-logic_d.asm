@@ -22,7 +22,7 @@ SIZE_LONG     equ  2
 	%endif
 	db	%%end-%%beg,%6,size
 %%name:
-	db	%1,0
+	db	%1,' ',0
 %%beg:
 	%ifidni %4,none
 	%2	%3
@@ -35,9 +35,30 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
+%macro defOp0 4
+	%ifidni %3,b
+	%assign size SIZE_BYTE
+	%elifidni %3,w
+	%assign size SIZE_SHORT
+	%else
+	%assign size SIZE_LONG
+	%endif
+	db %%end-%%beg,%4,size
+%%name:
+	db %1,' ',0
+%%beg:
+	%2
+	ret
+%%end:
+%endmacro
+
 ALLOPS equ 1
 
 tableOps:
+	defOp0   "CBW",cbw,b,TYPE_ARITH1
+	defOp0   "CWDE",cwde,w,TYPE_ARITH1
+	defOp0   "CWD",cwd,w,TYPE_ARITH1
+	defOp0   "CDQ",cdq,d,TYPE_ARITH1
 	defOp    "ADD",add,al,dl,none,TYPE_ARITH
 	defOp    "ADD",add,ax,dx,none,TYPE_ARITH
 	defOp    "ADD",add,eax,edx,none,TYPE_ARITH

@@ -42,6 +42,8 @@ POST 13 Bit Test operations
 POST 14 Double precision shifts  
 POST 15 Byte set on condition  
 POST 16 Call in protected mode
+POST 17 Adjust RPL Field of Selector (ARPL)
+POST 18 Check Array Index Against Bounds (BOUND)
 POST EE Series of unverified tests for arithmetical and logical opcodes  
 POST FF Testing completed
 

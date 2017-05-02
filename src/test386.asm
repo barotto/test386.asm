@@ -744,50 +744,50 @@ achSize db  "BWD"
 
 bcdTests:
 %include "tests/bcd_m.asm"
-    testBCD   daa, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   daa, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   das, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
-    testBCD   aaa, 0x12340205, PS_AF,         PS_CF | PS_AF
-    testBCD   aaa, 0x12340306, PS_AF,         PS_CF | PS_AF
-    testBCD   aaa, 0x1234040a, PS_AF,         PS_CF | PS_AF
-    testBCD   aaa, 0x123405fa, PS_AF,         PS_CF | PS_AF
-    testBCD   aaa, 0x12340205, 0,             PS_CF | PS_AF
-    testBCD   aaa, 0x12340306, 0,             PS_CF | PS_AF
-    testBCD   aaa, 0x1234040a, 0,             PS_CF | PS_AF
-    testBCD   aaa, 0x123405fa, 0,             PS_CF | PS_AF
-    testBCD   aas, 0x12340205, PS_AF,         PS_CF | PS_AF
-    testBCD   aas, 0x12340306, PS_AF,         PS_CF | PS_AF
-    testBCD   aas, 0x1234040a, PS_AF,         PS_CF | PS_AF
-    testBCD   aas, 0x123405fa, PS_AF,         PS_CF | PS_AF
-    testBCD   aas, 0x12340205, 0,             PS_CF | PS_AF
-    testBCD   aas, 0x12340306, 0,             PS_CF | PS_AF
-    testBCD   aas, 0x1234040a, 0,             PS_CF | PS_AF
-    testBCD   aas, 0x123405fa, 0,             PS_CF | PS_AF
-    testBCD   aam, 0x12340547, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
-    testBCD   aad, 0x12340407, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
+	testBCD   daa, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   daa, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340559, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340560, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x1234059f, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x123405a0, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340503, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340506, 0,             PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340503, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340506, PS_CF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340503, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   das, 0x12340506, PS_CF | PS_AF, PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
+	testBCD   aaa, 0x12340205, PS_AF,         PS_CF | PS_AF
+	testBCD   aaa, 0x12340306, PS_AF,         PS_CF | PS_AF
+	testBCD   aaa, 0x1234040a, PS_AF,         PS_CF | PS_AF
+	testBCD   aaa, 0x123405fa, PS_AF,         PS_CF | PS_AF
+	testBCD   aaa, 0x12340205, 0,             PS_CF | PS_AF
+	testBCD   aaa, 0x12340306, 0,             PS_CF | PS_AF
+	testBCD   aaa, 0x1234040a, 0,             PS_CF | PS_AF
+	testBCD   aaa, 0x123405fa, 0,             PS_CF | PS_AF
+	testBCD   aas, 0x12340205, PS_AF,         PS_CF | PS_AF
+	testBCD   aas, 0x12340306, PS_AF,         PS_CF | PS_AF
+	testBCD   aas, 0x1234040a, PS_AF,         PS_CF | PS_AF
+	testBCD   aas, 0x123405fa, PS_AF,         PS_CF | PS_AF
+	testBCD   aas, 0x12340205, 0,             PS_CF | PS_AF
+	testBCD   aas, 0x12340306, 0,             PS_CF | PS_AF
+	testBCD   aas, 0x1234040a, 0,             PS_CF | PS_AF
+	testBCD   aas, 0x123405fa, 0,             PS_CF | PS_AF
+	testBCD   aam, 0x12340547, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
+	testBCD   aad, 0x12340407, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
 
 arithlogicTests:
 	cld

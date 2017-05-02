@@ -66,6 +66,7 @@ OFF_ERROR   equ 0xc000
 OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
+OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
 
 ;
 ;   Output a byte to the POST port, destroys al and dx
@@ -199,7 +200,7 @@ myIDT:
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
+	defGate CSEG_PROT32, OFF_INTBOUND
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
@@ -233,6 +234,7 @@ PAGE_TBL_ADDR equ 0x2000
 NOT_PRESENT_PTE equ 0x12
 NOT_PRESENT_LIN equ 0x12000
 PF_HANDLER_SIG equ 0x50465046
+BOUND_HANDLER_SIG equ 0x626f756e
 
 ;   Now we want to build a page directory and a page table. We need two pages of
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
@@ -605,19 +607,29 @@ toProt32:
 ;   Verify Bit Test operations
 ;
 	POST 13
-	testBittest bt
-
-	testBittest btc
-	cmp edx, 0x55555555
+	testBittest16 bt
+	testBittest16 btc
+	cmp edx, 0x00005555
 	jne error
-
-	testBittest btr
+	testBittest16 btr
 	cmp edx, 0
 	jne error
+	testBittest16 bts
+	cmp edx, 0x0000ffff
+	jne error
 
-	testBittest bts
+	testBittest32 bt
+	testBittest32 btc
+	cmp edx, 0x55555555
+	jne error
+	testBittest32 btr
+	cmp edx, 0
+	jne error
+	testBittest32 bts
 	cmp edx, 0xffffffff
 	jne error
+
+
 
 ;
 ;   Test double precision shifts
@@ -677,6 +689,32 @@ toProt32:
 	arpl ax, bx
 	jz error
 	cmp ax, 0xfff3
+	jne error
+
+;
+;	BOUND
+;
+	POST 18
+	xor eax, eax
+	mov ebx, 0x10100
+	mov word [0x40000], 0x0010
+	mov word [0x40002], 0x0102
+	o16 bound bx, [0x40000]
+	cmp eax, BOUND_HANDLER_SIG
+	je error
+	mov word [0x40002], 0x00FF
+	o16 bound bx, [0x40000]
+	cmp eax, BOUND_HANDLER_SIG
+	jne error
+	xor eax, eax
+	mov dword [0x40004], 0x10010
+	mov dword [0x40008], 0x10102
+	o32 bound ebx, [0x40004]
+	cmp eax, BOUND_HANDLER_SIG
+	je error
+	mov dword [0x40008], 0x100FF
+	o32 bound ebx, [0x40004]
+	cmp eax, BOUND_HANDLER_SIG
 	jne error
 
 ;
@@ -865,6 +903,15 @@ intPageFault:
 	mov   ds, bx ; restore DS
 	xor   eax, eax
 	iretd
+
+	times OFF_INTBOUND-($-$$) nop
+
+intBound:
+	mov word [0x40002], 0x0100
+	mov dword [0x40008], 0x10100
+	mov eax, BOUND_HANDLER_SIG
+	iretd
+
 
 LPTports:
 	dw   0x3BC

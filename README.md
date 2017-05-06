@@ -1,11 +1,6 @@
-test386.asm is a CPU tester for the 80386 or later processor. It runs as a BIOS
-replacement and does not depend on any OS or external library.
-
-If your emulator is having problems booting and loading an OS, this ROM could be
-the only way to do automatic tests on the emulated CPU.
-
-test386.asm is written in assembly for the [NASM](http://www.nasm.us/)
-assembler.
+test386.asm is a 80386 or later CPU tester, written for the 
+[NASM](http://www.nasm.us/) assembler. It runs as a BIOS replacement and does
+not depend on any OS or external library.
 
 test386.asm communicates with the external world through the POST I/O port and
 the parallel and/or serial ports. You'll need to configure the addresses of
@@ -41,15 +36,17 @@ POST 12 Bit Scan operations
 POST 13 Bit Test operations  
 POST 14 Double precision shifts  
 POST 15 Byte set on condition  
-POST 16 Call in protected mode
-POST 17 Adjust RPL Field of Selector (ARPL)
-POST 18 Check Array Index Against Bounds (BOUND)
+POST 16 Call in protected mode  
+POST 17 Adjust RPL Field of Selector (ARPL)  
+POST 18 Check Array Index Against Bounds (BOUND)  
 POST EE Series of unverified tests for arithmetical and logical opcodes  
 POST FF Testing completed
 
 Note: test 0xEE always completes successfully. It will print its computational 
 results on the parallel and/or serial ports. You'll need to manually compare
 those results with the reference file test386-EE-reference.txt
+
+For the full list of tested opcodes see intel-opcodes.ods
 
 **WARNING**: this program is designed to test emulators and was never tested on
 real hardware. Use at your own risk.

@@ -55,66 +55,66 @@ SIZE_LONG     equ  2
 ALLOPS equ 1
 
 tableOps:
-	defOp0   "CBW",cbw,b,TYPE_ARITH1
-	defOp0   "CWDE",cwde,w,TYPE_ARITH1
-	defOp0   "CWD",cwd,w,TYPE_ARITH1
-	defOp0   "CDQ",cdq,d,TYPE_ARITH1
-	defOp    "ADD",add,al,dl,none,TYPE_ARITH
-	defOp    "ADD",add,ax,dx,none,TYPE_ARITH
-	defOp    "ADD",add,eax,edx,none,TYPE_ARITH
-	defOp    "OR",or,al,dl,none,TYPE_LOGIC
-	defOp    "OR",or,ax,dx,none,TYPE_LOGIC
-	defOp    "OR",or,eax,edx,none,TYPE_LOGIC
-	defOp    "ADC",adc,al,dl,none,TYPE_ARITH
-	defOp    "ADC",adc,ax,dx,none,TYPE_ARITH
-	defOp    "ADC",adc,eax,edx,none,TYPE_ARITH
-	defOp    "SBB",sbb,al,dl,none,TYPE_ARITH
-	defOp    "SBB",sbb,ax,dx,none,TYPE_ARITH
-	defOp    "SBB",sbb,eax,edx,none,TYPE_ARITH
-	defOp    "AND",and,al,dl,none,TYPE_LOGIC
-	defOp    "AND",and,ax,dx,none,TYPE_LOGIC
-	defOp    "AND",and,eax,edx,none,TYPE_LOGIC
-	defOp    "SUB",sub,al,dl,none,TYPE_ARITH
-	defOp    "SUB",sub,ax,dx,none,TYPE_ARITH
-	defOp    "SUB",sub,eax,edx,none,TYPE_ARITH
-	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC
-	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC
-	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC
-	defOp    "CMP",cmp,al,dl,none,TYPE_ARITH
-	defOp    "CMP",cmp,ax,dx,none,TYPE_ARITH
-	defOp    "CMP",cmp,eax,edx,none,TYPE_ARITH
-	defOp    "INC",inc,al,none,none,TYPE_ARITH1
-	defOp    "INC",inc,ax,none,none,TYPE_ARITH1
-	defOp    "INC",inc,eax,none,none,TYPE_ARITH1
-	defOp    "DEC",dec,al,none,none,TYPE_ARITH1
-	defOp    "DEC",dec,ax,none,none,TYPE_ARITH1
-	defOp    "DEC",dec,eax,none,none,TYPE_ARITH1
-	defOp    "MULA",mul,dl,none,none,TYPE_MULTIPLY
-	defOp    "MULA",mul,dx,none,none,TYPE_MULTIPLY
-	defOp    "MULA",mul,edx,none,none,TYPE_MULTIPLY
-	defOp    "IMULA",imul,dl,none,none,TYPE_MULTIPLY
-	defOp    "IMULA",imul,dx,none,none,TYPE_MULTIPLY
-	defOp    "IMULA",imul,edx,none,none,TYPE_MULTIPLY
-	defOp    "IMUL",imul,ax,dx,none,TYPE_MULTIPLY
-	defOp    "IMUL",imul,eax,edx,none,TYPE_MULTIPLY
-	defOp    "IMUL8",imul,ax,dx,0x77,TYPE_MULTIPLY
-	defOp    "IMUL8",imul,ax,dx,-0x77,TYPE_MULTIPLY
-	defOp    "IMUL8",imul,eax,edx,0x77,TYPE_MULTIPLY
-	defOp    "IMUL8",imul,eax,edx,-0x77,TYPE_MULTIPLY
-	defOp    "IMUL16",imul,ax,0x777,none,TYPE_MULTIPLY
-	defOp    "IMUL32",imul,eax,0x777777,none,TYPE_MULTIPLY
-	defOp    "DIVDL",div,dl,none,none,TYPE_DIVIDE
-	defOp    "DIVDX",div,dx,none,none,TYPE_DIVIDE
-	defOp    "DIVEDX",div,edx,none,none,TYPE_DIVIDE
-	defOp    "DIVAL",div,al,none,none,TYPE_DIVIDE
-	defOp    "DIVAX",div,ax,none,none,TYPE_DIVIDE
-	defOp    "DIVEAX",div,eax,none,none,TYPE_DIVIDE
-	defOp    "IDIVDL",idiv,dl,none,none,TYPE_DIVIDE
-	defOp    "IDIVDX",idiv,dx,none,none,TYPE_DIVIDE
-	defOp    "IDIVEDX",idiv,edx,none,none,TYPE_DIVIDE
-	defOp    "IDIVAL",idiv,al,none,none,TYPE_DIVIDE
-	defOp    "IDIVAX",idiv,ax,none,none,TYPE_DIVIDE
-	defOp    "IDIVEAX",idiv,eax,none,none,TYPE_DIVIDE
+	defOp0   "CBW",cbw,b,TYPE_ARITH1                       ; 66 98
+	defOp0   "CWDE",cwde,w,TYPE_ARITH1                     ;    98
+	defOp0   "CWD",cwd,w,TYPE_ARITH1                       ; 66 99
+	defOp0   "CDQ",cdq,d,TYPE_ARITH1                       ;    99
+	defOp    "ADD",add,al,dl,none,TYPE_ARITH               ;    00 D0
+	defOp    "ADD",add,ax,dx,none,TYPE_ARITH               ; 66 01 D0
+	defOp    "ADD",add,eax,edx,none,TYPE_ARITH             ;    01 D0
+	defOp    "OR",or,al,dl,none,TYPE_LOGIC                 ;    08 D0
+	defOp    "OR",or,ax,dx,none,TYPE_LOGIC                 ; 66 09 D0
+	defOp    "OR",or,eax,edx,none,TYPE_LOGIC               ;    09 D0
+	defOp    "ADC",adc,al,dl,none,TYPE_ARITH               ;    10 D0
+	defOp    "ADC",adc,ax,dx,none,TYPE_ARITH               ; 66 11 D0
+	defOp    "ADC",adc,eax,edx,none,TYPE_ARITH             ;    11 D0
+	defOp    "SBB",sbb,al,dl,none,TYPE_ARITH               ;    18 D0
+	defOp    "SBB",sbb,ax,dx,none,TYPE_ARITH               ; 66 19 D0
+	defOp    "SBB",sbb,eax,edx,none,TYPE_ARITH             ;    19 D0
+	defOp    "AND",and,al,dl,none,TYPE_LOGIC               ;    20 D0
+	defOp    "AND",and,ax,dx,none,TYPE_LOGIC               ; 66 21 D0
+	defOp    "AND",and,eax,edx,none,TYPE_LOGIC             ;    21 D0
+	defOp    "SUB",sub,al,dl,none,TYPE_ARITH               ;    28 D0
+	defOp    "SUB",sub,ax,dx,none,TYPE_ARITH               ; 66 29 D0
+	defOp    "SUB",sub,eax,edx,none,TYPE_ARITH             ;    29 D0
+	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
+	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
+	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0
+	defOp    "CMP",cmp,al,dl,none,TYPE_ARITH               ;    38 D0
+	defOp    "CMP",cmp,ax,dx,none,TYPE_ARITH               ; 66 39 D0
+	defOp    "CMP",cmp,eax,edx,none,TYPE_ARITH             ;    39 D0
+	defOp    "INC",inc,al,none,none,TYPE_ARITH1            ;    FE C0
+	defOp    "INC",inc,ax,none,none,TYPE_ARITH1            ; 66 40
+	defOp    "INC",inc,eax,none,none,TYPE_ARITH1           ;    40
+	defOp    "DEC",dec,al,none,none,TYPE_ARITH1            ;    FE C8
+	defOp    "DEC",dec,ax,none,none,TYPE_ARITH1            ; 66 48
+	defOp    "DEC",dec,eax,none,none,TYPE_ARITH1           ;    48
+	defOp    "MULA",mul,dl,none,none,TYPE_MULTIPLY         ;    F6 E2
+	defOp    "MULA",mul,dx,none,none,TYPE_MULTIPLY         ; 66 F7 E2
+	defOp    "MULA",mul,edx,none,none,TYPE_MULTIPLY        ;    F7 E2
+	defOp    "IMULA",imul,dl,none,none,TYPE_MULTIPLY       ;    F6 EA
+	defOp    "IMULA",imul,dx,none,none,TYPE_MULTIPLY       ; 66 F7 EA
+	defOp    "IMULA",imul,edx,none,none,TYPE_MULTIPLY      ;    F7 EA
+	defOp    "IMUL",imul,ax,dx,none,TYPE_MULTIPLY          ; 66 0FAF C2
+	defOp    "IMUL",imul,eax,edx,none,TYPE_MULTIPLY        ;    0FAF C2
+	defOp    "IMUL8",imul,ax,dx,0x77,TYPE_MULTIPLY         ; 66 6B C2 77
+	defOp    "IMUL8",imul,ax,dx,-0x77,TYPE_MULTIPLY        ; 66 6B C2 89
+	defOp    "IMUL8",imul,eax,edx,0x77,TYPE_MULTIPLY       ;    6B C2 77
+	defOp    "IMUL8",imul,eax,edx,-0x77,TYPE_MULTIPLY      ;    6B C2 89
+	defOp    "IMUL16",imul,ax,0x777,none,TYPE_MULTIPLY     ; 66 69 C0 7707
+	defOp    "IMUL32",imul,eax,0x777777,none,TYPE_MULTIPLY ;    69 C0 77777700
+	defOp    "DIVDL",div,dl,none,none,TYPE_DIVIDE          ;    F6 F2
+	defOp    "DIVDX",div,dx,none,none,TYPE_DIVIDE          ; 66 F7 F2
+	defOp    "DIVEDX",div,edx,none,none,TYPE_DIVIDE        ;    F7 F2
+	defOp    "DIVAL",div,al,none,none,TYPE_DIVIDE          ;    F6 F0
+	defOp    "DIVAX",div,ax,none,none,TYPE_DIVIDE          ; 66 F7 F0
+	defOp    "DIVEAX",div,eax,none,none,TYPE_DIVIDE        ;    F7 F0
+	defOp    "IDIVDL",idiv,dl,none,none,TYPE_DIVIDE        ;    F6 FA
+	defOp    "IDIVDX",idiv,dx,none,none,TYPE_DIVIDE        ; 66 F7 FA
+	defOp    "IDIVEDX",idiv,edx,none,none,TYPE_DIVIDE      ;    F7 FA
+	defOp    "IDIVAL",idiv,al,none,none,TYPE_DIVIDE        ;    F6 F8
+	defOp    "IDIVAX",idiv,ax,none,none,TYPE_DIVIDE        ; 66 F7 F8
+	defOp    "IDIVEAX",idiv,eax,none,none,TYPE_DIVIDE      ;    F7 F8
 	db 0
 
 	align	4

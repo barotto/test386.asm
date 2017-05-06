@@ -95,7 +95,6 @@ cpuTest:
 %include "tests/jcc_m.asm"
 	testJcc 8
 	testJcc 16
-	testJcc 32
 
 ;
 ;   Loops

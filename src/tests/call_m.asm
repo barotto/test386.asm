@@ -1,10 +1,16 @@
 ;
 ;   Tests Call near by displacement and register indirect
-;   Stack must be initilized
+;   Stack must be initilized.
+;   %1: stack pointer register
 ;   Uses: AX, EBX, Flags
 ;
-%macro testCallNear 0
-	mov ax, sp
+%macro testCallNear 1
+	%ifidni %1,sp
+	%define spcmp ax
+	%else
+	%define spcmp eax
+	%endif
+	mov spcmp, %1
 
 %%rel16:
 	clc
@@ -12,10 +18,10 @@
 	jnc error
 	jmp %%rel32
 %%nearfn16:
-	sub ax, 2
-	cmp sp, ax
+	sub spcmp, 2
+	cmp %1, spcmp
 	jne error
-	add ax, 2
+	add spcmp, 2
 	stc
 	o16 ret
 	jmp error
@@ -26,10 +32,10 @@
 	jnc error
 	jmp %%rm16
 %%nearfn32:
-	sub ax, 4
-	cmp sp, ax
+	sub spcmp, 4
+	cmp %1, spcmp
 	jne error
-	add ax, 4
+	add spcmp, 4
 	stc
 	o32 ret
 	jmp error

@@ -163,7 +163,7 @@ cpuTest:
 	mov ss, ax
 	mov sp, 0x8000
 	mov si, 0
-	testCallNear
+	testCallNear sp
 	testCallFar CSEG_REAL
 
 
@@ -657,10 +657,12 @@ toProt32:
 
 
 ;
-;	Call far protected mode, same privilege
+;	Call protected mode
 ;
 	POST 16
-	testCallNear
+	mov esp, 0x10000
+	mov si, 0xf000
+	testCallNear esp
 	testCallFar CSEG_PROT32
 
 ;

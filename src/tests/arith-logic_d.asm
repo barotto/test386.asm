@@ -3,6 +3,8 @@ TYPE_ARITH1   equ  1
 TYPE_LOGIC    equ  2
 TYPE_MULTIPLY equ  3
 TYPE_DIVIDE   equ  4
+TYPE_SHIFTS_1 equ  5
+TYPE_SHIFTS_R equ  6
 
 SIZE_BYTE     equ  0
 SIZE_SHORT    equ  1
@@ -52,6 +54,30 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
+%macro defOpSh 5
+	%ifidni %3,al
+	%assign size SIZE_BYTE
+	%elifidni %3,ax
+	%assign size SIZE_SHORT
+	%else ; eax
+	%assign size SIZE_LONG
+	%endif
+	db	%%end-%%beg,%5,size
+%%name:
+	db	%1,' ',0
+%%beg:
+	stc
+	%ifidni %4,cl
+	xchg cl,dl
+	%2	%3,cl
+	xchg cl,dl
+	%else
+	%2	%3,%4
+	%endif
+	ret
+%%end:
+%endmacro
+
 ALLOPS equ 1
 
 tableOps:
@@ -89,6 +115,12 @@ tableOps:
 	defOp    "DEC",dec,al,none,none,TYPE_ARITH1            ;    FE C8
 	defOp    "DEC",dec,ax,none,none,TYPE_ARITH1            ; 66 48
 	defOp    "DEC",dec,eax,none,none,TYPE_ARITH1           ;    48
+	defOp    "NEG",neg,al,none,none,TYPE_ARITH1            ;    F6 D8
+	defOp    "NEG",neg,ax,none,none,TYPE_ARITH1            ; 66 F7 D8
+	defOp    "NEG",neg,eax,none,none,TYPE_ARITH1           ;    F7 D8
+	defOp    "NOT",not,al,none,none,TYPE_ARITH1            ;    F6 D0
+	defOp    "NOT",not,ax,none,none,TYPE_ARITH1            ; 66 F7 D0
+	defOp    "NOT",not,eax,none,none,TYPE_ARITH1           ;    F7 D0
 	defOp    "MULA",mul,dl,none,none,TYPE_MULTIPLY         ;    F6 E2
 	defOp    "MULA",mul,dx,none,none,TYPE_MULTIPLY         ; 66 F7 E2
 	defOp    "MULA",mul,edx,none,none,TYPE_MULTIPLY        ;    F7 E2
@@ -115,6 +147,70 @@ tableOps:
 	defOp    "IDIVAL",idiv,al,none,none,TYPE_DIVIDE        ;    F6 F8
 	defOp    "IDIVAX",idiv,ax,none,none,TYPE_DIVIDE        ; 66 F7 F8
 	defOp    "IDIVEAX",idiv,eax,none,none,TYPE_DIVIDE      ;    F7 F8
+	defOpSh  "SAL1",sal,al,1,TYPE_SHIFTS_1    ;    D0 E0
+	defOpSh  "SAL1",sal,ax,1,TYPE_SHIFTS_1    ; 66 D1 E0
+	defOpSh  "SAL1",sal,eax,1,TYPE_SHIFTS_1   ;    D1 E0
+	defOpSh  "SALi",sal,al,7,TYPE_SHIFTS_R    ;    C0 E007
+	defOpSh  "SALi",sal,ax,7,TYPE_SHIFTS_R    ; 66 C1 E007
+	defOpSh  "SALi",sal,eax,7,TYPE_SHIFTS_R   ;    C1 E007
+	defOpSh  "SALr",sal,al,cl,TYPE_SHIFTS_R   ;    D2 E0
+	defOpSh  "SALr",sal,ax,cl,TYPE_SHIFTS_R   ; 66 D3 E0
+	defOpSh  "SALr",sal,eax,cl,TYPE_SHIFTS_R  ;    D3 E0
+	defOpSh  "SAR1",sar,al,1,TYPE_SHIFTS_1    ;    D0 F8
+	defOpSh  "SAR1",sar,ax,1,TYPE_SHIFTS_1    ; 66 D1 F8
+	defOpSh  "SAR1",sar,eax,1,TYPE_SHIFTS_1   ;    D1 F8
+	defOpSh  "SARi",sar,al,7,TYPE_SHIFTS_R    ;    C0 F807
+	defOpSh  "SARi",sar,ax,7,TYPE_SHIFTS_R    ; 66 C1 F807
+	defOpSh  "SARi",sar,eax,7,TYPE_SHIFTS_R   ;    C1 F807
+	defOpSh  "SARr",sar,al,cl,TYPE_SHIFTS_R   ;    D2 F8
+	defOpSh  "SARr",sar,ax,cl,TYPE_SHIFTS_R   ; 66 D3 F8
+	defOpSh  "SARr",sar,eax,cl,TYPE_SHIFTS_R  ;    D3 F8
+	defOpSh  "SHR1",shr,al,1,TYPE_SHIFTS_1    ;    D0 E8
+	defOpSh  "SHR1",shr,ax,1,TYPE_SHIFTS_1    ; 66 D1 E8
+	defOpSh  "SHR1",shr,eax,1,TYPE_SHIFTS_1   ;    D1 E8
+	defOpSh  "SHRi",shr,al,7,TYPE_SHIFTS_R    ;    C0 E807
+	defOpSh  "SHRi",shr,ax,7,TYPE_SHIFTS_R    ; 66 C1 E807
+	defOpSh  "SHRi",shr,eax,7,TYPE_SHIFTS_R   ;    C1 E807
+	defOpSh  "SHRr",shr,al,cl,TYPE_SHIFTS_R   ;    D2 E8
+	defOpSh  "SHRr",shr,ax,cl,TYPE_SHIFTS_R   ; 66 D3 E8
+	defOpSh  "SHRr",shr,eax,cl,TYPE_SHIFTS_R  ;    D3 E8
+	defOpSh  "ROL1",rol,al,1,TYPE_SHIFTS_1    ;    D0 C0
+	defOpSh  "ROL1",rol,ax,1,TYPE_SHIFTS_1    ; 66 D1 C0
+	defOpSh  "ROL1",rol,eax,1,TYPE_SHIFTS_1   ;    D1 C0
+	defOpSh  "ROLi",rol,al,7,TYPE_SHIFTS_1    ;    C0 C007
+	defOpSh  "ROLi",rol,ax,7,TYPE_SHIFTS_1    ; 66 C1 C007
+	defOpSh  "ROLi",rol,eax,7,TYPE_SHIFTS_1   ;    C1 C007
+	defOpSh  "ROLr",rol,al,cl,TYPE_SHIFTS_R   ;    D2 C0
+	defOpSh  "ROLr",rol,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C0
+	defOpSh  "ROLr",rol,eax,cl,TYPE_SHIFTS_R  ;    D3 C0
+	defOpSh  "ROR1",ror,al,1,TYPE_SHIFTS_1    ;    D0 C8
+	defOpSh  "ROR1",ror,ax,1,TYPE_SHIFTS_1    ; 66 D1 C8
+	defOpSh  "ROR1",ror,eax,1,TYPE_SHIFTS_1   ;    D1 C8
+	defOpSh  "RORi",ror,al,7,TYPE_SHIFTS_1    ;    C0 C807
+	defOpSh  "RORi",ror,ax,7,TYPE_SHIFTS_1    ; 66 C1 C807
+	defOpSh  "RORi",ror,eax,7,TYPE_SHIFTS_1   ;    C1 C807
+	defOpSh  "RORr",ror,al,cl,TYPE_SHIFTS_R   ;    D2 C8
+	defOpSh  "RORr",ror,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C8
+	defOpSh  "RORr",ror,eax,cl,TYPE_SHIFTS_R  ;    D3 C8
+	defOpSh  "RCL1",rcl,al,1,TYPE_SHIFTS_1    ;    D0 D0
+	defOpSh  "RCL1",rcl,ax,1,TYPE_SHIFTS_1    ; 66 D1 D0
+	defOpSh  "RCL1",rcl,eax,1,TYPE_SHIFTS_1   ;    D1 D0
+	defOpSh  "RCLi",rcl,al,7,TYPE_SHIFTS_1    ;    C0 D007
+	defOpSh  "RCLi",rcl,ax,7,TYPE_SHIFTS_1    ; 66 C1 D007
+	defOpSh  "RCLi",rcl,eax,7,TYPE_SHIFTS_1   ;    C1 D007
+	defOpSh  "RCLr",rcl,al,cl,TYPE_SHIFTS_R   ;    D2 D0
+	defOpSh  "RCLr",rcl,ax,cl,TYPE_SHIFTS_R   ; 66 D3 D0
+	defOpSh  "RCLr",rcl,eax,cl,TYPE_SHIFTS_R  ;    D3 D0
+	defOpSh  "RCR1",rol,al,1,TYPE_SHIFTS_1    ;    D0 C0
+	defOpSh  "RCR1",rol,ax,1,TYPE_SHIFTS_1    ; 66 D1 C0
+	defOpSh  "RCR1",rol,eax,1,TYPE_SHIFTS_1   ;    D1 C0
+	defOpSh  "RCRi",rol,al,7,TYPE_SHIFTS_1    ;    C0 C007
+	defOpSh  "RCRi",rol,ax,7,TYPE_SHIFTS_1    ; 66 C1 C007
+	defOpSh  "RCRi",rol,eax,7,TYPE_SHIFTS_1   ;    C1 C007
+	defOpSh  "RCRr",rol,al,cl,TYPE_SHIFTS_R   ;    D2 C0
+	defOpSh  "RCRr",rol,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C0
+	defOpSh  "RCRr",rol,eax,cl,TYPE_SHIFTS_R  ;    D3 C0
+
 	db 0
 
 	align	4
@@ -125,6 +221,8 @@ typeMasks:
 	dd PS_LOGIC
 	dd PS_MULTIPLY
 	dd PS_DIVIDE
+	dd PS_SHIFTS_1
+	dd PS_SHIFTS_R
 
 arithValues:
 .bvals:	dd	0x00,0x01,0x02,0x7E,0x7F,0x80,0x81,0xFE,0xFF
@@ -145,6 +243,27 @@ muldivValues:
 
 .dvals:	dd	0x00000000,0x00000001,0x00000002,0x3FFFFFFF,0x40000000,0x40000001,0x7FFFFFFE,0x7FFFFFFF,0x80000000,0x80000001,0xFFFFFFFE,0xFFFFFFFF
 	MULDIV_DWORDS equ ($-.dvals)/4
+
+shiftsValues:
+.bvals:	dd	0x00,0x01,0x02,0x7E,0x7F,0x80,0x81,0xFE,0xFF
+	SHIFTS_BYTES equ ($-.bvals)/4
+
+.wvals:	dd	0x0000,0x0001,0x0181,0x7FFE,0x7FFF,0x8000,0x8001,0xFFFE,0xFFFF
+	SHIFTS_WORDS equ ($-.wvals)/4
+
+.dvals:	dd	0x00000000,0x00000001,0x00018001,0x7FFFFFFE,0x7FFFFFFF,0x80000000,0x80000001,0xFFFFFFFE,0xFFFFFFFF
+	SHIFTS_DWORDS equ ($-.dvals)/4
+
+shiftsValuesR:
+.bvals:	dd	0x00,0x01,0x02,0x08
+	SHIFTS_BYTES_R equ ($-.bvals)/4
+
+.wvals:	dd	0x0000,0x0001,0x0002,0x0010
+	SHIFTS_WORDS_R equ ($-.wvals)/4
+
+.dvals:	dd	0x00000000,0x00000001,0x00000002,0x0000001F,0x00000020
+	SHIFTS_DWORDS_R equ ($-.dvals)/4
+
 
 typeValues:
 	;
@@ -181,4 +300,18 @@ typeValues:
 	dd	MULDIV_BYTES,muldivValues,MULDIV_BYTES,muldivValues
 	dd	MULDIV_BYTES+MULDIV_WORDS,muldivValues,MULDIV_BYTES+MULDIV_WORDS,muldivValues
 	dd	MULDIV_BYTES+MULDIV_WORDS+MULDIV_DWORDS,muldivValues,MULDIV_BYTES+MULDIV_WORDS+MULDIV_DWORDS,muldivValues
+	dd	0,0,0,0
+	;
+	; Values for TYPE_SHIFTS_1
+	;
+	dd	SHIFTS_BYTES,shiftsValues,1,shiftsValues
+	dd	SHIFTS_BYTES+SHIFTS_WORDS,shiftsValues,1,shiftsValues
+	dd	SHIFTS_BYTES+SHIFTS_WORDS+SHIFTS_DWORDS,shiftsValues,1,shiftsValues
+	dd	0,0,0,0
+	;
+	; Values for TYPE_SHIFTS_R
+	;
+	dd	SHIFTS_BYTES,shiftsValues,SHIFTS_BYTES_R,shiftsValuesR
+	dd	SHIFTS_BYTES+SHIFTS_WORDS,shiftsValues,SHIFTS_BYTES_R+SHIFTS_WORDS_R,shiftsValuesR
+	dd	SHIFTS_BYTES+SHIFTS_WORDS+SHIFTS_DWORDS,shiftsValues,SHIFTS_BYTES_R+SHIFTS_WORDS_R+SHIFTS_DWORDS_R,shiftsValuesR
 	dd	0,0,0,0

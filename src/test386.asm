@@ -166,6 +166,17 @@ cpuTest:
 	testCallNear sp
 	testCallFar CSEG_REAL
 
+;
+;   Load full pointer
+;
+%include "tests/load_ptr_m.asm"
+	POST 5
+	mov di, 0
+	testLoadPtr ss
+	testLoadPtr ds
+	testLoadPtr es
+	testLoadPtr fs
+	testLoadPtr gs
 
 
 ; ==============================================================================

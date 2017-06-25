@@ -22,7 +22,8 @@ POST 00 Conditional jumps and loops
 POST 01 Quick tests of unsigned 32-bit multiplication and division  
 POST 02 Move segment registers to 16/32-bit registers  
 POST 03 Store, move, scan, and compare string data in real mode  
-POST 04 Call in real mode
+POST 04 Call in real mode  
+POST 05 Load full pointer in real mode  
 POST 09 Page directory and page table setup, enable protected mode  
 POST 0A Stack functionality  
 POST 0B Moving a segment register to a 32-bit memory location  

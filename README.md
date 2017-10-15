@@ -84,7 +84,9 @@ results on the parallel and/or serial ports. You'll need to manually compare
 those results with the reference file test386-EE-reference.txt using a tool like
 diff.
 
-For the full list of tested opcodes see intel-opcodes.ods
+For the full list of tested opcodes see intel-opcodes.ods.
+Those opcodes that are tested have the relevant diagnostic code in the "test in
+real mode" and/or "test in prot. mode" columns.
 
 ## Copyright
 

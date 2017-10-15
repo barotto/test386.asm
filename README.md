@@ -1,3 +1,5 @@
+# test386.asm
+
 test386.asm is a 80386 or later CPU tester, written for the 
 [NASM](http://www.nasm.us/) assembler. It runs as a BIOS replacement and does
 not depend on any OS or external library.
@@ -10,13 +12,47 @@ Please note that in the current version, test386.asm is still incomplete and is
 not able to test every functionality of the 80386 CPU. It will probably not
 detect that bug that is keeping you up at night, sorry.
 
+**WARNING**: this program is designed for emulators and was never tested on real
+hardware. Use at your own risk.
+
+## How to assemble
+
+First of all open src/test386.asm and configure the EQUs in the CONFIGURATION 
+section with suitable values for your system.
+
+Then grab the NASM assembler from http://www.nasm.us/
+
+If you're in a UNIX environment you can then use:
+```
+$ make all
+```
+
+Otherwise use a command line like this one:
+```
+nasm -i./src/ -f bin src/test386.asm -l test386.lst -o test386.bin
+```
+
+Please note that the "(testBCD:19) unterminated string" warning is normal.
+
+The final product is a binary file named test386.bin of exactly 65.536 bytes.
+
+## How to use
+
 The binary assembled file must be installed at physical address 0xf0000 and
 aliased at physical address 0xffff0000.  The jump at resetVector should align
 with the CPU reset address 0xfffffff0, which will transfer control to f000:0045.
 All memory accesses will remain within the first 1MB.
 
-In case of error the POST code will tell you the test that caused the problem.
-Use the following list for reference:
+Once the system is powered on the testing is started immediately and after a
+while you should get the 0xFF code. In case of error the program will execute an
+HLT instruction and the diagnostic code will tell you the test that caused the
+problem. You should then use the logging facility of your emulator to inspect
+the instruction execution flow.
+
+I suggest to use the intermediate assemply file test386.lst as a guide to
+diagnose any possible error.
+
+Use the following list of codes for reference:
 
 POST 00 Conditional jumps and loops  
 POST 01 Quick tests of unsigned 32-bit multiplication and division  
@@ -45,12 +81,12 @@ POST FF Testing completed
 
 Note: test 0xEE always completes successfully. It will print its computational 
 results on the parallel and/or serial ports. You'll need to manually compare
-those results with the reference file test386-EE-reference.txt
+those results with the reference file test386-EE-reference.txt using a tool like
+diff.
 
 For the full list of tested opcodes see intel-opcodes.ods
 
-**WARNING**: this program is designed to test emulators and was never tested on
-real hardware. Use at your own risk.
+## Copyright
 
 test386.asm was originally developed for
 [IBMulator](http://barotto.github.io/IBMulator)

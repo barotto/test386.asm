@@ -45,12 +45,23 @@
 
 	bits 16
 
-PAGING    equ 1
-POST_PORT equ 0x190
-LPT_PORT  equ 1
-COM_PORT  equ 0
-IBM_PS1   equ 1 ; this equ will enable the LPT port on the IBM PS/1 2011 and 2121
+; ==============================================================================
+;   CONFIGURATION
+;
+;   If your system needs a specific LPT or COM initialization procedure, you can
+;   create one just before POST EE
+;
+; ==============================================================================
+PAGING    equ 1     ; boolean, set to 1 to test paging functionality
+POST_PORT equ 0x190 ; hex, the diagnostic port used to emit the current test procedure
+LPT_PORT  equ 1     ; integer, parallel port to use, 0=LPT disabled, 1=3BCh, 2=378h, 3=278h
+COM_PORT  equ 0     ; integer, serial port to use, 0=COM disabled, 1=3F8h-3FDh, 2=2F8h-2FDh
+IBM_PS1   equ 0     ; boolean, enable LPT port init procedure for the IBM PS/1 2011 and 2121 models
 
+
+;
+;   Code and data segments
+;
 CSEG_REAL   equ 0xf000
 CSEG_PROT16 equ 0x0008
 CSEG_PROT32 equ 0x0010
@@ -58,15 +69,16 @@ DSEG_PROT16 equ 0x0018
 DSEG_PROT32 equ 0x0020
 SSEG_PROT32 equ 0x0028
 
-OFF_ERROR   equ 0xc000
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
 ;
+OFF_ERROR        equ 0xc000
 OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
+
 
 ;
 ;   Output a byte to the POST port, destroys al and dx

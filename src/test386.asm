@@ -36,7 +36,7 @@
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017 Marco Bortolin      '
-%define RELEASE   '27/04/17'
+%define RELEASE   '21/10/17'
 
 	cpu 386
 	section .text
@@ -68,6 +68,7 @@ CSEG_PROT32 equ 0x0010
 DSEG_PROT16 equ 0x0018
 DSEG_PROT32 equ 0x0020
 SSEG_PROT32 equ 0x0028
+DSEG_PROT16RO equ 0x0030
 
 
 ;
@@ -78,6 +79,7 @@ OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
+OFF_INTGP        equ OFF_INTBOUND+0x200
 
 
 ;
@@ -211,6 +213,7 @@ myGDT:
 	defDesc DSEG_PROT16,0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
 	defDesc DSEG_PROT32,0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
 	defDesc SSEG_PROT32,0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
+	defDesc DSEG_PROT16RO,0x00000000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_NONE
 myGDTEnd:
 
 addrIDT:
@@ -231,7 +234,7 @@ myIDT:
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
+	defGate CSEG_PROT32, OFF_INTGP
 	defGate CSEG_PROT32, OFF_INTPAGEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 	defGate CSEG_PROT32, OFF_INTDEFAULT
@@ -256,6 +259,7 @@ PAGE_DIR_ADDR equ 0x1000
 PAGE_TBL_ADDR equ 0x2000
 NOT_PRESENT_PTE equ 0x12
 NOT_PRESENT_LIN equ 0x12000
+GP_HANDLER_SIG equ 0x47504841
 PF_HANDLER_SIG equ 0x50465046
 BOUND_HANDLER_SIG equ 0x626f756e
 
@@ -610,11 +614,17 @@ toProt32:
 	popad
 
 ;
-;	Verify Page faults
+;	Verify page faults and memory access rights
 ;
 	POST 11
 	mov eax, [NOT_PRESENT_LIN] ; generate a page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
+	jne error
+	mov ax, DSEG_PROT16RO
+	mov ds, ax              ; write protect DS
+	xor eax, eax
+	mov byte [0x40000], 0   ; generate #GP
+	cmp eax, GP_HANDLER_SIG ; see if #GP handler was called
 	jne error
 
 ;
@@ -708,6 +718,15 @@ toProt32:
 	jnz error
 	cmp word [0x40000], 0xfff2
 	jne error
+	; test unexpected memory write
+	mov ax, DSEG_PROT16RO   ; make DS read only
+	mov ds, ax
+	xor eax, eax
+	arpl [0x40000], bx      ; value has not changed, arpl should not write to memory
+	cmp eax, GP_HANDLER_SIG ; test if #GP handler was called
+	je error
+	mov ax, DSEG_PROT16     ; make DS writeable again
+	mov ds, ax
 	; test with RPL dest > RPL src
 	xor ax, ax       ; ZF = 0
 	mov ax, 0xfff3
@@ -937,6 +956,17 @@ intBound:
 	mov eax, BOUND_HANDLER_SIG
 	iretd
 
+	times OFF_INTGP-($-$$) nop
+
+intGeneralProtection:
+	pop eax ; pop the error code
+	mov ax, ds
+	cmp ax, DSEG_PROT16RO ; see if this handler was called for a write on RO segment
+	jne error
+	mov ax, DSEG_PROT16
+	mov ds, ax
+	mov eax, GP_HANDLER_SIG
+	iretd
 
 LPTports:
 	dw   0x3BC

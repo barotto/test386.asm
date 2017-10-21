@@ -73,7 +73,7 @@ Use the following list of codes for reference:
 | 0x0E | 32-bit addressing                                               |
 | 0x0F | Access memory using various addressing modes                    |
 | 0x10 | Store, move, scan, and compare string data in protected mode    |
-| 0x11 | Page faults                                                     |
+| 0x11 | Page faults and memory access rights                            |
 | 0x12 | Bit Scan operations                                             |
 | 0x13 | Bit Test operations                                             |
 | 0x14 | Double precision shifts                                         |

@@ -52,7 +52,6 @@
 ;   create one just before POST EE
 ;
 ; ==============================================================================
-PAGING    equ 1     ; boolean, set to 1 to test paging functionality
 POST_PORT equ 0x190 ; hex, the diagnostic port used to emit the current test procedure
 LPT_PORT  equ 1     ; integer, parallel port to use, 0=LPT disabled, 1=3BCh, 2=378h, 3=278h
 COM_PORT  equ 0     ; integer, serial port to use, 0=COM disabled, 1=3F8h-3FDh, 2=2F8h-2FDh
@@ -309,11 +308,7 @@ initPT:
 	o32 lgdt [cs:addrGDT]
 	mov    cr3, esi
 	mov    eax, cr0
-	%if PAGING
 	or     eax, CR0_MSW_PE | CR0_PG
-	%else
-	or     eax, CR0_MSW_PE
-	%endif
 	mov    cr0, eax
 	jmp    CSEG_PROT32:toProt32 ; jump to flush the prefetch queue
 toProt32:

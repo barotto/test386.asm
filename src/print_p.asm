@@ -57,6 +57,9 @@ printChar:
 	out    dx, al
 	jmp    $+2
 	%endif
+	%if OUT_PORT
+	out    OUT_PORT, al
+	%endif
 	pop    edx
 	popfd
 	ret

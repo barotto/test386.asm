@@ -1,3 +1,23 @@
+strEAX:    db  "EAX=",0
+strEDX:    db  "EDX=",0
+strPS:     db  "PS=",0
+strDE:     db  "#DE ",0 ; when this is displayed, it indicates a Divide Error exception
+achSize    db  "BWD"
+strUnkCPU: db  "Unsupported CPU family: ",0
+
+;
+;   printUnkCPU()
+;
+;   Uses: ESI, EAX, CL
+;
+printUnkCPU:
+	mov esi, strUnkCPU
+	call printStr
+	mov eax, CPU_FAMILY
+	mov cl, 1
+	call printVal
+	ret
+
 ;
 ;   printEOL()
 ;

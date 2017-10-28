@@ -36,7 +36,7 @@
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017 Marco Bortolin      '
-%define RELEASE   '21/10/17'
+%define RELEASE   '28/10/17'
 
 	cpu 386
 	section .text
@@ -48,14 +48,16 @@
 ; ==============================================================================
 ;   CONFIGURATION
 ;
-;   If your system needs a specific LPT or COM initialization procedure, you can
-;   create one just before POST EE
+;   If your system needs a specific LPT or COM initialization procedure put it
+;   inside the print_init.asm file.
 ;
 ; ==============================================================================
-POST_PORT equ 0x190 ; hex, the diagnostic port used to emit the current test procedure
-LPT_PORT  equ 1     ; integer, parallel port to use, 0=LPT disabled, 1=3BCh, 2=378h, 3=278h
-COM_PORT  equ 0     ; integer, serial port to use, 0=COM disabled, 1=3F8h-3FDh, 2=2F8h-2FDh
-IBM_PS1   equ 0     ; boolean, enable LPT port init procedure for the IBM PS/1 2011 and 2121 models
+POST_PORT  equ 0x190 ; hex, the diagnostic port used to emit the current test procedure
+LPT_PORT   equ 1     ; integer, parallel port to use, 0=LPT disabled, 1=3BCh, 2=378h, 3=278h
+COM_PORT   equ 0     ; integer, serial port to use, 0=COM disabled, 1=3F8h-3FDh, 2=2F8h-2FDh
+TEST_UNDEF equ 0     ; boolean, enable undefined behaviours tests
+CPU_FAMILY equ 3     ; integer, used to test undefined behaviours, 3=80386
+IBM_PS1    equ 0     ; boolean, enable specific code for the IBM PS/1 2011 and 2121 models
 
 
 ;
@@ -756,33 +758,77 @@ toProt32:
 	cmp eax, BOUND_HANDLER_SIG
 	jne error
 
+
+%include "print_init.asm"
+
+	jmp undefTests
+
+%include "print_p.asm"
+
+;
+;   Undefined behaviours and bugs
+;
+undefTests:
+
+	POST E0
+
+	mov al, 0
+	cmp al, TEST_UNDEF
+	je arithLogicTests
+
+	; test BCD undefined flags
+	%include "tests/bcd_m.asm"
+	mov al, CPU_FAMILY
+	cmp al, 3
+	je bcd386FlagsTest
+	call printUnkCPU
+	jmp error
+
+bcd386FlagsTest:
+	PS_CAO  equ PS_CF|PS_AF|PS_OF
+	PS_PZSO equ PS_PF|PS_ZF|PS_SF|PS_OF
+
+	; aaa (PF,ZF,SF,OF)
+	testBCDflags   aaa, 0x0000, 0,           PS_PF|PS_ZF
+	testBCDflags   aaa, 0x0001, PS_PZSO,     0
+	testBCDflags   aaa, 0x007A, 0,           PS_CF|PS_AF|PS_SF|PS_OF
+	testBCDflags   aaa, 0x007B, PS_AF,       PS_CF|PS_PF|PS_AF|PS_SF|PS_OF
+	; aad (CF,AF,OF)
+	testBCDflags   aad, 0x0001, PS_CAO,      0
+	testBCDflags   aad, 0x0D8E, 0,           PS_CAO
+	testBCDflags   aad, 0x0106, 0,           PS_AF
+	testBCDflags   aad, 0x01F7, 0,           PS_CF|PS_AF
+	; aam (CF,AF,OF)
+	testBCDflags   aam, 0x0000, 0,           PS_ZF|PS_PF
+	testBCDflags   aam, 0x0000, PS_CAO,      PS_ZF|PS_PF
+	; aas (PF,ZF,SF,OF)
+	testBCDflags   aas, 0x0000, PS_SF|PS_OF, PS_PF|PS_ZF
+	testBCDflags   aas, 0x0000, PS_AF,       PS_CF|PS_PF|PS_AF|PS_SF
+	testBCDflags   aas, 0x0001, PS_PZSO,     0
+	testBCDflags   aas, 0x0680, PS_AF,       PS_CF|PS_AF|PS_OF
+	; daa (OF)
+	testBCDflags   daa, 0x001A, PS_AF|PS_OF, PS_AF
+	testBCDflags   daa, 0x001A, PS_CF,       PS_CF|PS_AF|PS_SF|PS_OF
+	; das (OF)
+	testBCDflags   das, 0x0080, PS_OF,       PS_SF
+	testBCDflags   das, 0x0080, PS_AF,       PS_AF|PS_OF
+
+
+	jmp arithLogicTests
+
+
 ;
 ;   Now run a series of unverified tests for arithmetical and logical opcodes
 ;   Manually verify by comparing the tests output with a reference file
 ;
+arithLogicTests:
+
 	POST EE
-	%if LPT_PORT && IBM_PS1
-	; Enable output to the configured LPT port
-	mov    ax, 0xff7f  ; bit 7 = 0  setup functions
-	out    94h, al     ; system board enable/setup register
-	mov    dx, 102h
-	in     al, dx      ; al = p[102h] POS register 2
-	or     al, 0x91    ; enable LPT1 on port 3BCh, normal mode
-	out    dx, al
-	mov    al, ah
-	out    94h, al     ; bit 7 = 1  enable functions
-	%endif
+
 	jmp bcdTests
 
-strEAX: db  "EAX=",0
-strEDX: db  "EDX=",0
-strPS:  db  "PS=",0
-strDE:  db  "#DE ",0 ; when this is displayed, it indicates a Divide Error exception
-achSize db  "BWD"
-%include "print_p.asm"
 
 bcdTests:
-%include "tests/bcd_m.asm"
 	testBCD   daa, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
 	testBCD   daa, 0x12340506, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
 	testBCD   daa, 0x12340507, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
@@ -825,10 +871,9 @@ bcdTests:
 	testBCD   aas, 0x12340306, 0,             PS_CF | PS_AF
 	testBCD   aas, 0x1234040a, 0,             PS_CF | PS_AF
 	testBCD   aas, 0x123405fa, 0,             PS_CF | PS_AF
-	testBCD   aam, 0x12340547, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
-	testBCD   aad, 0x12340407, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_OF | PS_AF
+	testBCD   aam, 0x12340547, PS_AF,         PS_PF | PS_ZF | PS_SF
+	testBCD   aad, 0x12340407, PS_AF,         PS_PF | PS_ZF | PS_SF
 
-arithlogicTests:
 	cld
 	mov    esi, tableOps   ; ESI -> tableOps entry
 

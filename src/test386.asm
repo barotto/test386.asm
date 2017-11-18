@@ -36,7 +36,7 @@
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017 Marco Bortolin      '
-%define RELEASE   '28/10/17'
+%define RELEASE   '18/11/17'
 
 	cpu 386
 	section .text
@@ -768,6 +768,7 @@ toProt32:
 
 ;
 ;   Undefined behaviours and bugs
+;   Results have been validated against 386SX hardware.
 ;
 undefTests:
 
@@ -777,42 +778,93 @@ undefTests:
 	cmp al, TEST_UNDEF
 	je arithLogicTests
 
-	; test BCD undefined flags
-	%include "tests/bcd_m.asm"
 	mov al, CPU_FAMILY
 	cmp al, 3
 	je bcd386FlagsTest
 	call printUnkCPU
 	jmp error
 
+	%include "tests/bcd_m.asm"
+
 bcd386FlagsTest:
 	PS_CAO  equ PS_CF|PS_AF|PS_OF
 	PS_PZSO equ PS_PF|PS_ZF|PS_SF|PS_OF
 
-	; aaa (PF,ZF,SF,OF)
+	; AAA
+	; undefined flags: PF, ZF, SF, OF
 	testBCDflags   aaa, 0x0000, 0,           PS_PF|PS_ZF
 	testBCDflags   aaa, 0x0001, PS_PZSO,     0
 	testBCDflags   aaa, 0x007A, 0,           PS_CF|PS_AF|PS_SF|PS_OF
 	testBCDflags   aaa, 0x007B, PS_AF,       PS_CF|PS_PF|PS_AF|PS_SF|PS_OF
-	; aad (CF,AF,OF)
+	; AAD
+	; undefined flags: CF, AF, OF
 	testBCDflags   aad, 0x0001, PS_CAO,      0
 	testBCDflags   aad, 0x0D8E, 0,           PS_CAO
 	testBCDflags   aad, 0x0106, 0,           PS_AF
 	testBCDflags   aad, 0x01F7, 0,           PS_CF|PS_AF
-	; aam (CF,AF,OF)
+	; AAM
+	; undefined flags: CF, AF, OF
 	testBCDflags   aam, 0x0000, 0,           PS_ZF|PS_PF
 	testBCDflags   aam, 0x0000, PS_CAO,      PS_ZF|PS_PF
-	; aas (PF,ZF,SF,OF)
+	; AAS
+	; undefined flags: PF, ZF, SF, OF
 	testBCDflags   aas, 0x0000, PS_SF|PS_OF, PS_PF|PS_ZF
 	testBCDflags   aas, 0x0000, PS_AF,       PS_CF|PS_PF|PS_AF|PS_SF
 	testBCDflags   aas, 0x0001, PS_PZSO,     0
 	testBCDflags   aas, 0x0680, PS_AF,       PS_CF|PS_AF|PS_OF
-	; daa (OF)
+	; DAA
+	; undefined flags: OF
 	testBCDflags   daa, 0x001A, PS_AF|PS_OF, PS_AF
 	testBCDflags   daa, 0x001A, PS_CF,       PS_CF|PS_AF|PS_SF|PS_OF
-	; das (OF)
+	; DAS
+	; undefined flags: OF
 	testBCDflags   das, 0x0080, PS_OF,       PS_SF
 	testBCDflags   das, 0x0080, PS_AF,       PS_AF|PS_OF
+
+shifts386FlagsTest:
+	%include "tests/shift_m.asm"
+
+	; SHR al,cl - SHR ax,cl
+	; undefined flags:
+	;  CF when cl>7 (byte) or cl>15 (word):
+	;    if byte operand and cl=8 or cl=16 or cl=24 then CF=MSB(operand)
+	;    if word operand and cl=16 then CF=MSB(operand)
+	;  OF when cl>1: set according to result
+	;  AF when cl>0: always 1
+	; shift count is modulo 32 so if cl=32 then result is equal to cl=0
+	testShiftBFlags   shr, 0x81,   1,  0,     PS_CF|PS_AF|PS_OF
+	testShiftBFlags   shr, 0x82,   2,  0,     PS_CF|PS_AF
+	testShiftBFlags   shr, 0x80,   8,  0,     PS_CF|PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x00,   8,  PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x80,   16, 0,     PS_CF|PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x00,   16, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x80,   24, 0,     PS_CF|PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x00,   24, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shr, 0x80,   32, 0,     0
+	testShiftWFlags   shr, 0x8000, 16, 0,     PS_CF|PS_PF|PS_AF|PS_ZF
+	testShiftWFlags   shr, 0x0000, 16, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftWFlags   shr, 0x8000, 32, 0,     0
+
+	; SHL al,cl - SHL ax,cl
+	; undefined flags:
+	;  CF when cl>7 (byte) or cl>15 (word):
+	;    if byte operand and cl=8 or cl=16 or cl=24 then CF=LSB(operand)
+	;    if word operand and cl=16 then CF=LSB(operand)
+	;  OF when cl>1: set according to result
+	;  AF when cl>0: always 1
+	; shift count is modulo 32 so if cl=32 then result is equal to cl=0
+	testShiftBFlags   shl, 0x81, 1,  0,     PS_CF|PS_AF|PS_OF
+	testShiftBFlags   shl, 0x41, 2,  0,     PS_CF|PS_AF|PS_OF
+	testShiftBFlags   shl, 0x01, 8,  0,     PS_CF|PS_PF|PS_AF|PS_ZF|PS_OF
+	testShiftBFlags   shl, 0x00, 8,  PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shl, 0x01, 16, 0,     PS_CF|PS_PF|PS_AF|PS_ZF|PS_OF
+	testShiftBFlags   shl, 0x00, 16, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shl, 0x01, 24, 0,     PS_CF|PS_PF|PS_AF|PS_ZF|PS_OF
+	testShiftBFlags   shl, 0x00, 24, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftBFlags   shl, 0x01, 32, 0,     0
+	testShiftWFlags   shl, 0x01, 16, 0,     PS_CF|PS_PF|PS_AF|PS_ZF|PS_OF
+	testShiftWFlags   shl, 0x00, 16, PS_CF, PS_PF|PS_AF|PS_ZF
+	testShiftWFlags   shl, 0x01, 32, 0,     0
 
 
 	jmp arithLogicTests

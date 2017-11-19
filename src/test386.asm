@@ -56,7 +56,7 @@ POST_PORT  equ 0x190 ; hex, the diagnostic port used to emit the current test pr
 LPT_PORT   equ 1     ; integer, parallel port to use, 0=LPT disabled, 1=3BCh, 2=378h, 3=278h
 COM_PORT   equ 0     ; integer, serial port to use, 0=COM disabled, 1=3F8h-3FDh, 2=2F8h-2FDh
 OUT_PORT   equ 0x0   ; hex, additional port for direct ASCII output, 0=disabled
-TEST_UNDEF equ 0     ; boolean, enable undefined behaviours tests
+TEST_UNDEF equ 1     ; boolean, enable undefined behaviours tests
 CPU_FAMILY equ 3     ; integer, used to test undefined behaviours, 3=80386
 IBM_PS1    equ 0     ; boolean, enable specific code for the IBM PS/1 2011 and 2121 models
 
@@ -866,6 +866,18 @@ shifts386FlagsTest:
 	testShiftWFlags   shl, 0x00, 16, PS_CF, PS_PF|PS_AF|PS_ZF
 	testShiftWFlags   shl, 0x01, 32, 0,     0
 
+bt386FlagsTest:
+	; bt, btc, btr, bts
+	; undefined flags:
+	;  OF: same as RCR with CF=0
+	testBittestFlags   0x01, 0, 0,     PS_CF
+	testBittestFlags   0x01, 0, PS_CF, PS_CF
+	testBittestFlags   0x01, 1, 0,     PS_OF
+	testBittestFlags   0x01, 1, PS_CF, PS_OF
+	testBittestFlags   0x01, 2, 0,     PS_OF
+	testBittestFlags   0x01, 2, PS_CF, PS_OF
+	testBittestFlags   0x01, 3, 0,     0
+	testBittestFlags   0x01, 3, PS_CF, 0
 
 	jmp arithLogicTests
 

@@ -68,3 +68,79 @@
 	dec ecx
 	jns %%loop
 %endmacro
+
+;
+;   Executes a bit test operation and checks the resulting flags.
+;
+;   %1 ax: word operand
+;   %2 imm8: bit index
+;   %3 flags: value of flags before op execution
+;   %4 flags: expected value of flags after op execution (cmp with PS_ARITH mask)
+;
+;   Uses: EAX, ECX, Flags
+;
+%macro testBittestFlags 4
+	testBittestWFlags bt,  %1, %2, %3, %4
+	testBittestWFlags btc, %1, %2, %3, %4
+	testBittestWFlags btr, %1, %2, %3, %4
+	testBittestWFlags bts, %1, %2, %3, %4
+
+	testBittestDFlags bt,  %1, %2, %3, %4
+	testBittestDFlags btc, %1, %2, %3, %4
+	testBittestDFlags btr, %1, %2, %3, %4
+	testBittestDFlags bts, %1, %2, %3, %4
+%endmacro
+
+%macro testBittestWFlags 5
+	; bt ax, imm8
+	mov ax, %4
+	push ax
+	popf
+	mov ax, %2
+	o16 %1 ax, %3
+	pushf
+	pop ax
+	and ax, PS_ARITH
+	cmp ax, %5
+	jne error
+
+	; bt ax, cx
+	mov ax, %4
+	push ax
+	popf
+	mov ax, %2
+	mov cx, %3
+	o16 %1 ax, cx
+	pushf
+	pop ax
+	and ax, PS_ARITH
+	cmp ax, %5
+	jne error
+%endmacro
+
+%macro testBittestDFlags 5
+	; bt eax, imm8
+	mov ax, %4
+	push ax
+	popf
+	mov eax, %2
+	o32 %1 eax, %3
+	pushf
+	pop ax
+	and ax, PS_ARITH
+	cmp ax, %5
+	jne error
+
+	; bt eax, ecx
+	mov ax, %4
+	push ax
+	popf
+	mov eax, %2
+	mov ecx, %3
+	o32 %1 eax, ecx
+	pushf
+	pop ax
+	and ax, PS_ARITH
+	cmp ax, %5
+	jne error
+%endmacro

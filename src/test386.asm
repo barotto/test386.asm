@@ -1,7 +1,7 @@
 ;
 ;   test386.asm
 ;   Copyright (C) 2012-2015 Jeff Parsons <Jeff@pcjs.org>
-;   Copyright (C) 2017 Marco Bortolin <barotto@gmail.com>
+;   Copyright (C) 2017-2018 Marco Bortolin <barotto@gmail.com>
 ;
 ;   This file is a derivative work of PCjs
 ;   http://pcjs.org/tests/pcx86/80386/test386.asm
@@ -35,8 +35,8 @@
 ;   address 0xfffffff0, which will transfer control to f000:0045.  From that
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
-%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017 Marco Bortolin      '
-%define RELEASE   '19/11/17'
+%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2018 Marco Bortolin '
+%define RELEASE   '??/??/18'
 
 	cpu 386
 	section .text
@@ -252,7 +252,7 @@ initPages:
 ;   00000-00FFF   1000 (4K)  free
 ;   01000-01FFF   1000 (4K)  page directory
 ;   02000-02FFF   1000 (4K)  page table
-;   03000-10FFF   e000 (56K) stack tests
+;   03000-11FFF   f000 (60K) free
 ;   12000-12FFF   1000 (4K)  non present page (PTE 12h)
 ;   13000-9FFFF  8d000       free
 ;
@@ -320,48 +320,41 @@ toProt32:
 ;
 ;   Test the stack
 ;
+%include "tests/stack_m.asm"
+
 	POST A
+;
+;   For the next tests, with a 16-bit data segment in SS, we
+;   expect all pushes/pops will occur at SP rather than ESP.
+;
 	mov    ax, DSEG_PROT16
 	mov    ds, ax
 	mov    es, ax
-;
-;   We'll set the top of our stack to ESI+0x2000+0xe000. This guarantees an ESP greater
-;   than 0xffff, and so for the next few tests, with a 16-bit data segment in SS, we
-;   expect all pushes/pops will occur at SP rather than ESP.
-;
-	add    esi, 0x2000       ; ESI <- PDBR + 0x2000, bottom of scratch memory
-	mov    ss,  ax           ; SS <- DSEG_PROT16 (0x00000000 - 0x000fffff)
-	lea    esp, [esi+0xe000] ; set ESP to bottom of scratch + 56K
-	lea    ebp, [esp-4]
-	and    ebp, 0xffff       ; EBP now mirrors SP instead of ESP
-	mov    ebx, [ebp]        ; save dword about to be trashed by pushes
-	mov    eax, 0x11223344
-	push   eax
-	cmp    [ebp], eax        ; did the push use SP instead of ESP?
-	jne    error             ; no, error
+	mov    ss, ax
 
-	pop    eax
-	push   ax
-	cmp    [ebp+2], ax
-	jne    error
-
-	pop    ax
-	mov    [ebp], ebx      ; restore dword trashed by the above pushes
+	testPushPopR ax,16
+	testPushPopR bx,16
+	testPushPopR cx,16
+	testPushPopR dx,16
+	testPushPopR sp,16
+	testPushPopR bp,16
+	testPushPopR si,16
+	testPushPopR di,16
+;
+;   Now use a 32-bit stack address size.
+;   All pushes/pops will occur at ESP rather than SP.
+;
 	mov    ax,  DSEG_PROT32
 	mov    ss,  ax
-	lea    esp, [esi+0xe000] ; SS:ESP should now be a valid 32-bit pointer
-	lea    ebp, [esp-4]
-	mov    edx, [ebp]
-	mov    eax, 0x11223344
-	push   eax
-	cmp    [ebp], eax  ; did the push use ESP instead of SP?
-	jne    error       ; no, error
 
-	pop    eax
-	push   ax
-	cmp    [ebp+2], ax
-	jne    error
-	pop    ax
+	testPushPopR ax,32
+	testPushPopR bx,32
+	testPushPopR cx,32
+	testPushPopR dx,32
+	testPushPopR bp,32
+	testPushPopR sp,32
+	testPushPopR si,32
+	testPushPopR di,32
 
 ;
 ;   Test moving a segment register to a 32-bit memory location

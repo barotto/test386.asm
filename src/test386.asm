@@ -59,6 +59,10 @@ OUT_PORT   equ 0x0   ; hex, additional port for direct ASCII output, 0=disabled
 TEST_UNDEF equ 0     ; boolean, enable undefined behaviours tests
 CPU_FAMILY equ 3     ; integer, used to test undefined behaviours, 3=80386
 IBM_PS1    equ 0     ; boolean, enable specific code for the IBM PS/1 2011 and 2121 models
+BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emulator
+;
+; == END OF CONFIGURATION ======================================================
+;
 
 
 ;
@@ -709,7 +713,14 @@ toProt32:
 	jnz error
 	cmp word [0x40000], 0xfff2
 	jne error
+	%if BOCHS = 0
 	; test unexpected memory write
+	;
+	; This test fails with Bochs, which does not write to memory (correctly),
+	; but throws a #GP fault before that, during the reading of the memory
+	; operand. Bochs checks that the destination segment is writeable before the
+	; execution of ARPL.
+	;
 	mov ax, DSEG_PROT16RO   ; make DS read only
 	mov ds, ax
 	xor eax, eax
@@ -718,6 +729,7 @@ toProt32:
 	je error
 	mov ax, DSEG_PROT16     ; make DS writeable again
 	mov ds, ax
+	%endif
 	; test with RPL dest > RPL src
 	xor ax, ax       ; ZF = 0
 	mov ax, 0xfff3

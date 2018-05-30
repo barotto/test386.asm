@@ -71,3 +71,85 @@
 	%endif
 %endmacro
 
+%macro testPushPopSR 2
+	%if %2 = 16
+		%define push16esp 0x2fffe
+		%define push32esp 0x2fffc
+		%if %1 = cs
+			%define TEST_SEG CSEG_PROT32
+		%else
+			%define TEST_SEG DSEG_PROT16
+		%endif
+	%else
+		%define push16esp 0x1fffe
+		%define push32esp 0x1fffc
+		%if %1 = ss
+			%define TEST_SEG DSEG_PROT32
+		%elif %1 = cs
+			%define TEST_SEG CSEG_PROT32
+		%else
+			%define TEST_SEG DSEG_PROT16
+		%endif
+	%endif
+
+	mov dx, TEST_SEG
+	mov    esp, 0x20000
+	lea    ebp, [esp-4]
+	%if %2 = 16
+	and    ebp, 0xffff
+	%endif
+
+	mov    [ebp], dword 0xdeadbeef ; put control dword on stack
+	o32 push %1 ; 32-bit PUSH
+	cmp    [ebp], word TEST_SEG ; was the least significant word correctly written?
+	jne    error ; no, error
+	%if TEST_UNDEF
+	; 80386, 80486 perform a 16-bit move, leaving the upper portion of the stack
+	; location unmodified (tested on real hardware). Probably all 32-bit Intel
+	; CPUs behave in this way, but this behaviour is not specified in the docs
+	; for older CPUs and is cited in the most recent docs like this:
+	; "If the source operand is a segment register (16 bits) and the operand
+	; size is 32-bits, either a zero-extended value is pushed on the stack or
+	; the segment selector is written on the stack using a 16-bit move. For the
+	; last case, all recent Core and Atom processors perform a 16-bit move,
+	; leaving the upper portion of the stack location unmodified."
+	cmp    [ebp+2], word 0xdead ; has the most significant word been overwritten?
+	jne    error ; yes, error
+	%endif
+	cmp    esp, push32esp    ; did the push update the correct stack pointer reg?
+	jne    error           ; no, error
+
+	%if %1 <> cs
+	mov [ebp], dword DSEG_PROT16B ; write test segment on stack
+	o32 pop %1 ; 32-bit POP
+	mov ax, %1
+	cmp ax, DSEG_PROT16B ; is the popped segment the one on the stack?
+	jne error ; no, error
+	cmp    esp, 0x20000    ; did the pop update the correct stack pointer reg?
+	jne    error           ; no, error
+	mov %1, dx ; restore segment
+	%else
+	mov esp, 0x20000
+	%endif
+
+	mov    [ebp], dword 0xdeadbeef
+	o16 push %1                   ; 16-bit PUSH
+	cmp    [ebp+2], word TEST_SEG ; was the push 16-bit and did it use the correct stack pointer reg?
+	jne    error                 ; no, error
+	cmp    esp, push16esp    ; did the push update the correct stack pointer reg?
+	jne    error           ; no, error
+
+	%if %1 <> cs
+	mov [ebp+2], word DSEG_PROT16B ; write test segment on stack
+	o16 pop %1 ; 16-bit POP
+	mov ax, %1
+	cmp ax, DSEG_PROT16B ; is the popped segment the one on the stack?
+	jne error ; no, error
+	cmp    esp, 0x20000    ; did the pop update the correct stack pointer reg?
+	jne    error           ; no, error
+	mov %1, dx ; restore segment
+	%else
+	mov esp, 0x20000
+	%endif
+
+%endmacro

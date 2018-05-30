@@ -214,11 +214,13 @@ addrGDT:
 
 myGDT:
 	defDesc NULL ; the first descriptor in any descriptor table is always a dud (it corresponds to the null selector)
-	defDesc CSEG_PROT16,0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_NONE
-	defDesc CSEG_PROT32,0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_BIG
-	defDesc DSEG_PROT16,0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
-	defDesc DSEG_PROT32,0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
-	defDesc SSEG_PROT32,0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
+	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_NONE
+	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_BIG
+	defDesc DSEG_PROT16,  0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
+	defDesc DSEG_PROT16B, 0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
+	defDesc DSEG_PROT32,  0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
+	defDesc DSEG_PROT32B, 0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
+	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
 	defDesc DSEG_PROT16RO,0x00000000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_NONE
 myGDTEnd:
 
@@ -333,9 +335,14 @@ toProt32:
 ;
 	mov    ax, DSEG_PROT16
 	mov    ds, ax
-	mov    es, ax
 	mov    ss, ax
+	mov    es, ax
+	mov    fs, ax
+	mov    gs, ax
 
+	;
+	; general purpose registers
+	;
 	testPushPopR ax,16
 	testPushPopR bx,16
 	testPushPopR cx,16
@@ -344,6 +351,17 @@ toProt32:
 	testPushPopR bp,16
 	testPushPopR si,16
 	testPushPopR di,16
+
+	;
+	; segment registers
+	;
+	testPushPopSR cs,16
+	testPushPopSR ds,16
+	testPushPopSR ss,16
+	testPushPopSR es,16
+	testPushPopSR fs,16
+	testPushPopSR gs,16
+
 ;
 ;   Now use a 32-bit stack address size.
 ;   All pushes/pops will occur at ESP rather than SP.
@@ -359,6 +377,13 @@ toProt32:
 	testPushPopR sp,32
 	testPushPopR si,32
 	testPushPopR di,32
+
+	testPushPopSR cs,32
+	testPushPopSR ds,32
+	testPushPopSR ss,32
+	testPushPopSR es,32
+	testPushPopSR fs,32
+	testPushPopSR gs,32
 
 ;
 ;   Test moving a segment register to a 32-bit memory location

@@ -159,3 +159,60 @@
 	%endif
 
 %endmacro
+
+;
+; Tests 16-bit and 32-bit PUSH/POP with memory operand.
+; FF /6 PUSH r/m16
+; FF /6 PUSH r/m32
+; 8F /6 POP r/m16
+; 8F /6 POP r/m32
+;
+; %1: stack address size: 16 or 32
+;
+%macro testPushPopM 1
+
+	%if %1 = 16
+		%define push16esp 0x2fffe
+		%define push32esp 0x2fffc
+	%else
+		%define push16esp 0x1fffe
+		%define push32esp 0x1fffc
+	%endif
+
+	mov    esp, 0x20000
+	lea    ebp, [esp-4]
+	%if %1 = 16
+	and    ebp, 0xffff             ; EBP now mirrors SP instead of ESP
+	%endif
+
+	lea    esi, [esp-8]            ; init pointer to dword operand in memory
+	mov    [esi], dword 0x11223344 ; put test dword in memory
+
+	mov    [ebp], dword 0xdeadbeef ; put control dword on stack
+	push   dword [esi]             ; 32-bit PUSH
+	cmp    [ebp], dword 0x11223344 ; was it a 32-bit push? did it use the correct pointer?
+	jne    error                   ; no, error
+	cmp    esp, push32esp          ; did the push update the correct stack pointer reg?
+	jne    error                   ; no, error
+
+	mov    [esi], dword 0xdeadbeef ; put control dword in memory
+	pop    dword [esi]             ; 32-bit POP
+	cmp    [esi], dword 0x11223344 ; was it a 32-bit pop? did it use the correct pointer?
+	jne    error                   ; no, error
+	cmp    esp, 0x20000            ; did the pop update the correct eSP?
+	jne    error                   ; no, error
+
+	mov    [ebp], dword 0xdeadbeef ; put control dword on stack
+	push   word [esi]              ; 16-bit PUSH
+	cmp    [ebp], dword 0x3344beef ; was it a 16-bit push? did it use the correct pointer?
+	jne    error                   ; no, error
+	cmp    esp, push16esp          ; did the push update the correct pointer?
+	jne    error                   ; no, error
+
+	mov    [esi], dword 0xdeadbeef ; put control dword in memory
+	pop    word [esi]              ; 16-bit POP
+	cmp    [esi], dword 0xdead3344 ; was it a 16-bit pop? did it use the correct pointer?
+	jne    error                   ; no, error
+	cmp    esp, 0x20000            ; did the pop update the correct pointer?
+	jne    error                   ; no, error
+%endmacro

@@ -355,7 +355,6 @@ toProt32:
 	testPushPopAll16 16
 	testPushPopAll32 16
 
-
 	;
 	; segment registers
 	;
@@ -370,6 +369,7 @@ toProt32:
 	; memory
 	;
 	testPushPopM 16
+	testPushImm 16
 
 ;
 ;   Now use a 32-bit stack address size.
@@ -398,7 +398,7 @@ toProt32:
 	testPushPopSR gs,32
 
 	testPushPopM 32
-
+	testPushImm 32
 
 ;
 ;   Test moving a segment register to a 32-bit memory location

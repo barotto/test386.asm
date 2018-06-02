@@ -421,3 +421,76 @@
 
 %endmacro
 
+
+;
+; Tests for PUSH immediate value
+;
+
+; 6A ib PUSH imm8
+;
+; %1: operand size
+; %2: byte test value
+; %3: memory expected value
+; %4: esp expected value
+%macro testBytePush 4
+	mov    esp, 0x20000
+	mov    [ebp], dword 0xdeadbeef
+	%1 push byte %2 ; sign extended byte push
+	cmp    [ebp], dword %3
+	jne    error
+	cmp    esp, %4
+	jne    error
+%endmacro
+
+; 68 iw PUSH imm16
+; 68 id PUSH imm32
+;
+; %1: stack address size: 16 or 32
+%macro testPushImm 1
+
+	mov    esp, 0x20000
+	lea    ebp, [esp-4]
+	%if %1 = 16
+	and    ebp, 0xffff ; EBP now mirrors SP instead of ESP
+	%endif
+
+	mov    [ebp], dword 0xdeadbeef
+
+	push   dword 0x11223344 ; 32-bit push
+
+	cmp    [ebp], dword 0x11223344
+	jne    error
+	%if %1 = 16
+	cmp    esp, 0x2fffc
+	%else
+	cmp    esp, 0x1fffc
+	%endif
+	jne    error
+
+	mov    esp, 0x20000
+	mov    [ebp], dword 0xdeadbeef
+
+	push   word 0x1122 ; 16-bit push
+
+	cmp    [ebp], dword 0x1122beef
+	jne    error
+	%if %1 = 16
+	cmp    esp, 0x2fffe
+	%else
+	cmp    esp, 0x1fffe
+	%endif
+	jne error
+
+	%if %1 = 16
+		%define push16esp 0x2fffe
+		%define push32esp 0x2fffc
+	%else
+		%define push16esp 0x1fffe
+		%define push32esp 0x1fffc
+	%endif
+	testBytePush o16, 0x11, 0x0011beef, push16esp
+	testBytePush o32, 0x11, 0x00000011, push32esp
+	testBytePush o16, 0x81, 0xff81beef, push16esp
+	testBytePush o32, 0x81, 0xffffff81, push32esp
+
+%endmacro

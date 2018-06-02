@@ -352,6 +352,10 @@ toProt32:
 	testPushPopR si,16
 	testPushPopR di,16
 
+	testPushPopAll16 16
+	testPushPopAll32 16
+
+
 	;
 	; segment registers
 	;
@@ -382,6 +386,9 @@ toProt32:
 	testPushPopR sp,32
 	testPushPopR si,32
 	testPushPopR di,32
+
+	testPushPopAll16 32
+	testPushPopAll32 32
 
 	testPushPopSR cs,32
 	testPushPopSR ds,32

@@ -216,3 +216,208 @@
 	cmp    esp, 0x20000            ; did the pop update the correct pointer?
 	jne    error                   ; no, error
 %endmacro
+
+;
+; Tests 16-bit PUSHA/POPA
+; 60 PUSHA
+; 61 POPA
+;
+; %1: stack address size: 16 or 32
+;
+%macro testPushPopAll16 1
+
+	%if %1 = 16
+		%define push16esp 0x2fff0
+	%else
+		%define push16esp 0x1fff0
+	%endif
+
+	mov    esp, 0x20000
+	lea    ebp, [esp-2]
+	%if %1 = 16
+	and    ebp, 0xffff ; EBP now mirrors SP instead of ESP
+	%endif
+
+	; reset stack memory
+	mov    ecx, 8
+	mov    edi, ebp
+%%initstack:
+	mov    [edi], word 0xbeef
+	sub    edi, 2
+	loop   %%initstack
+
+	; init general registers
+	mov    eax, 0x11111111
+	mov    ecx, 0x22222222
+	mov    edx, 0x33333333
+	mov    ebx, 0x44444444
+	; esp 0x20000
+	; ebp 0x0ffff or 0x1ffff
+	mov    esi, 0x77777777
+	mov    edi, 0x88888888
+
+	o16 pusha ; 16-bit PUSHA
+
+	; verify result
+	; order: AX, CX, DX, BX, SP (original value), BP, SI, and DI
+	cmp    [ebp], ax
+	jne    error
+	cmp    [ebp-2], cx
+	jne    error
+	cmp    [ebp-4], dx
+	jne    error
+	cmp    [ebp-6], bx
+	jne    error
+	cmp    [ebp-8], word 0x0000
+	jne    error
+	cmp    [ebp-10], bp
+	jne    error
+	cmp    [ebp-12], si
+	jne    error
+	cmp    [ebp-14], di
+	jne    error
+
+	cmp    esp, push16esp
+	jne    error
+
+	; put bogus value for SP in the stack so that we can detect if it'll be popped
+	mov    [ebp-8], word 0xbeef
+
+	; reset general registers
+	mov    eax, 0xdeadbeef
+	mov    ecx, 0xdeadbeef
+	mov    edx, 0xdeadbeef
+	mov    ebx, 0xdeadbeef
+	; esp
+	mov    ebp, 0xdeadbeef
+	mov    esi, 0xdeadbeef
+	mov    edi, 0xdeadbeef
+
+	o16 popa ; 16-bit POPA
+
+	; verify result
+	; order: AX, CX, DX, BX, SP (original value), BP, SI, and DI
+	cmp    eax, 0xdead1111
+	jne    error
+	cmp    ecx, 0xdead2222
+	jne    error
+	cmp    edx, 0xdead3333
+	jne    error
+	cmp    ebx, 0xdead4444
+	jne    error
+	cmp    esp, 0x20000
+	jne    error
+	mov    eax, 0xdead0000
+	sub    ax, 2
+	cmp    ebp, eax
+	jne    error
+	cmp    esi, 0xdead7777
+	jne    error
+	cmp    edi, 0xdead8888
+	jne    error
+
+%endmacro
+
+;
+; Tests 32-bit PUSHA/POPA
+; 60 PUSHAD
+; 61 POPAD
+;
+; %1: stack address size: 16 or 32
+;
+%macro testPushPopAll32 1
+
+	%if %1 = 16
+		%define push32esp 0x2ffe0
+	%else
+		%define push32esp 0x1ffe0
+	%endif
+
+	mov    esp, 0x20000
+	lea    ebp, [esp-4]
+	%if %1 = 16
+	and    ebp, 0xffff ; EBP now mirrors SP instead of ESP
+	%endif
+
+	; reset stack memory
+	mov    ecx, 8
+	mov    edi, ebp
+%%initstack:
+	mov    [edi], dword 0xdeadbeef
+	sub    edi, 4
+	loop   %%initstack
+
+	; init general registers
+	mov    eax, 0x11111111
+	mov    ecx, 0x22222222
+	mov    edx, 0x33333333
+	mov    ebx, 0x44444444
+	; esp 0x20000
+	; ebp 0x0ffff or 0x1ffff
+	mov    esi, 0x77777777
+	mov    edi, 0x88888888
+
+	o32 pusha ; 32-bit PUSHA
+
+	; verify result
+	; order: EAX, ECX, EDX, EBX, ESP (original value), EBP, ESI, and EDI
+	cmp    [ebp], eax
+	jne    error
+	cmp    [ebp-4], ecx
+	jne    error
+	cmp    [ebp-8], edx
+	jne    error
+	cmp    [ebp-12], ebx
+	jne    error
+	cmp    [ebp-16], dword 0x20000
+	jne    error
+	cmp    [ebp-20], ebp
+	jne    error
+	cmp    [ebp-24], esi
+	jne    error
+	cmp    [ebp-28], edi
+	jne    error
+
+	cmp    esp, push32esp
+	jne    error
+
+	; put bogus value for eSP in the stack so that we can detect if it'll be popped
+	mov    [ebp-16], dword 0xdeadbeef
+
+	; reset general registers
+	mov    eax, 0xdeadbeef
+	mov    ecx, 0xdeadbeef
+	mov    edx, 0xdeadbeef
+	mov    ebx, 0xdeadbeef
+	; esp
+	mov    ebp, 0xdeadbeef
+	mov    esi, 0xdeadbeef
+	mov    edi, 0xdeadbeef
+
+	o32 popa ; 32-bit POPA
+
+	; verify result
+	; order: EAX, ECX, EDX, EBX, ESP (original value), EBP, ESI, and EDI
+	cmp    eax, 0x11111111
+	jne    error
+	cmp    ecx, 0x22222222
+	jne    error
+	cmp    edx, 0x33333333
+	jne    error
+	cmp    ebx, 0x44444444
+	jne    error
+	cmp    esp, 0x20000
+	jne    error
+	lea    eax, [esp-4]
+	%if %1 = 16
+	and    eax, 0xffff
+	%endif
+	cmp    ebp, eax
+	jne    error
+	cmp    esi, 0x77777777
+	jne    error
+	cmp    edi, 0x88888888
+	jne    error
+
+%endmacro
+

@@ -164,8 +164,8 @@
 ; Tests 16-bit and 32-bit PUSH/POP with memory operand.
 ; FF /6 PUSH r/m16
 ; FF /6 PUSH r/m32
-; 8F /6 POP r/m16
-; 8F /6 POP r/m32
+; 8F /0 POP r/m16
+; 8F /0 POP r/m32
 ;
 ; %1: stack address size: 16 or 32
 ;

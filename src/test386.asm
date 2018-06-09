@@ -371,6 +371,11 @@ toProt32:
 	testPushPopM 16
 	testPushImm 16
 
+	;
+	; flags
+	;
+	testPushPopF 16
+
 ;
 ;   Now use a 32-bit stack address size.
 ;   All pushes/pops will occur at ESP rather than SP.
@@ -399,6 +404,8 @@ toProt32:
 
 	testPushPopM 32
 	testPushImm 32
+
+	testPushPopF 32
 
 ;
 ;   Test moving a segment register to a 32-bit memory location

@@ -494,3 +494,82 @@
 	testBytePush o32, 0x81, 0xffffff81, push32esp
 
 %endmacro
+
+
+;
+; Tests for PUSHF(D)/POPF(D)
+;
+; NOTE: these macros do not test protection or flags behaviour, only if the
+; stack is propery used.
+;
+
+; 9D POPF
+;
+; %1: operand size: 16 or 32
+%macro testPopF 1
+	push   dword 0
+	popfd
+	%if %1 = 16
+	mov    [ebp+2], word 0x08D7    ; OF,SF,ZF,AF,PF,CF
+	%else
+	mov    [ebp], dword 0x000008D7 ; OF,SF,ZF,AF,PF,CF
+	%endif
+	mov    esp, push%1esp
+	o%1 popf
+	jno    error           ; OF
+	lahf
+	cmp    ah, 0xD7        ; SF:ZF:0:AF:0:PF:1:CF
+	jne    error
+	cmp    esp, 0x20000
+	jne    error
+%endmacro
+
+; 9C PUSHF
+;
+; %1: operand size: 16 or 32
+%macro testPushF 1
+	push dword 0
+	popfd        ; put all flags to 0
+	jo error
+	jc error
+	jz error
+	js error
+	jpe error
+	; AF unverified?
+	mov    esp, 0x20000
+	mov    [ebp], dword 0xdeadbeef
+	stc
+	std
+	sti
+	o%1 pushf
+	%if %1 = 16
+	cmp    [ebp], dword 0x0603beef
+	%else
+	cmp    [ebp], dword 0x00000603
+	%endif
+	jne    error
+	cmp    esp, push%1esp
+	jne    error
+%endmacro
+
+; %1: stack size: 16 or 32
+%macro testPushPopF 1
+	%if %1 = 16
+		%define push16esp 0x2fffe
+		%define push32esp 0x2fffc
+	%else
+		%define push16esp 0x1fffe
+		%define push32esp 0x1fffc
+	%endif
+
+	mov    esp, 0x20000
+	lea    ebp, [esp-4]
+	%if %1 = 16
+	and    ebp, 0xffff ; EBP now mirrors SP instead of ESP
+	%endif
+
+	testPushF 16
+	testPushF 32
+	testPopF 16
+	testPopF 32
+%endmacro

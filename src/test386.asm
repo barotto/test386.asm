@@ -109,6 +109,8 @@ cpuTest:
 ;	Real mode tests
 ; ==============================================================================
 
+%include "real_m.asm"
+
 	POST 0
 ;
 ;   Conditional jumps
@@ -141,16 +143,18 @@ cpuTest:
 	jne    error
 
 ;
-;   Test of moving segment registers to 16/32-bit registers
+;   Test of moving segment registers
 ;
 %include "tests/mov_m.asm"
 
 	POST 2
-	testMovSegR ss
-	testMovSegR ds
-	testMovSegR es
-	testMovSegR fs
-	testMovSegR gs
+	testMovSegR_real ss
+	testMovSegR_real ds
+	testMovSegR_real es
+	testMovSegR_real fs
+	testMovSegR_real gs
+	testMovSegR_real cs
+
 ;
 ;   Test store, move, scan, and compare string data in 16-bit real mode
 ;

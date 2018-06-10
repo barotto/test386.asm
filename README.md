@@ -61,7 +61,7 @@ This is the list of tests with their diagnostic code:
 | ---- | ---------------------------------------------------------------    |
 | 0x00 | Conditional jumps and loops                                        |
 | 0x01 | Quick tests of unsigned 32-bit multiplication and division         |
-| 0x02 | Move segment registers to 16/32-bit registers                      |
+| 0x02 | Move segment registers in real mode                                |
 | 0x03 | Store, move, scan, and compare string data in real mode            |
 | 0x04 | Call in real mode                                                  |
 | 0x05 | Load full pointer in real mode                                     |

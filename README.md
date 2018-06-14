@@ -59,12 +59,13 @@ This is the list of tests with their diagnostic code:
 
 | POST | Description                                                        |
 | ---- | ---------------------------------------------------------------    |
-| 0x00 | Conditional jumps and loops                                        |
-| 0x01 | Quick tests of unsigned 32-bit multiplication and division         |
-| 0x02 | Move segment registers in real mode                                |
-| 0x03 | Store, move, scan, and compare string data in real mode            |
-| 0x04 | Call in real mode                                                  |
-| 0x05 | Load full pointer in real mode                                     |
+| 0x00 | Real mode initialisation                                           |
+| 0x01 | Conditional jumps and loops                                        |
+| 0x02 | Quick tests of unsigned 32-bit multiplication and division         |
+| 0x03 | Move segment registers in real mode                                |
+| 0x04 | Store, move, scan, and compare string data in real mode            |
+| 0x05 | Call in real mode                                                  |
+| 0x06 | Load full pointer in real mode                                     |
 | 0x09 | Page directory and page table setup, enable protected mode         |
 | 0x0A | Stack functionality                                                |
 | 0x0B | Moving a segment register to a 32-bit memory location              |

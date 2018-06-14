@@ -69,13 +69,14 @@ BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emula
 ;   Code and data segments
 ;
 CSEG_REAL   equ 0xf000
+SSEG_REAL   equ 0x1000
+SP_REAL     equ 0xffff
 CSEG_PROT16 equ 0x0008
 CSEG_PROT32 equ 0x0010
 DSEG_PROT16 equ 0x0018
 DSEG_PROT32 equ 0x0020
 SSEG_PROT32 equ 0x0028
 DSEG_PROT16RO equ 0x0030
-
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
@@ -112,6 +113,13 @@ cpuTest:
 %include "real_m.asm"
 
 	POST 0
+
+	initRealModeIDT
+	mov ax, SSEG_REAL
+	mov ss, ax
+	mov sp, SP_REAL
+
+	POST 1
 ;
 ;   Conditional jumps
 ;
@@ -131,7 +139,7 @@ cpuTest:
 ;   Quick tests of unsigned 32-bit multiplication and division
 ;   Thorough arithmetical and logical tests are done later
 ;
-	POST 1
+	POST 2
 	mov    eax, 0x80000001
 	imul   eax
 	mov    eax, 0x44332211
@@ -147,7 +155,7 @@ cpuTest:
 ;
 %include "tests/mov_m.asm"
 
-	POST 2
+	POST 3
 	testMovSegR_real ss
 	testMovSegR_real ds
 	testMovSegR_real es
@@ -160,7 +168,7 @@ cpuTest:
 ;
 %include "tests/string_m.asm"
 
-	POST 3
+	POST 4
 	xor    dx, dx
 	mov    ds, dx ; DS <- 0
 	mov    es, dx ; ES <- 0
@@ -182,11 +190,7 @@ cpuTest:
 ;
 %include "tests/call_m.asm"
 
-	POST 4
-	; initialize the stack
-	mov ax, 0
-	mov ss, ax
-	mov sp, 0x8000
+	POST 5
 	mov si, 0
 	testCallNear sp
 	testCallFar CSEG_REAL
@@ -195,7 +199,7 @@ cpuTest:
 ;   Load full pointer
 ;
 %include "tests/load_ptr_m.asm"
-	POST 5
+	POST 6
 	mov di, 0
 	testLoadPtr ss
 	testLoadPtr ds

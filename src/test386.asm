@@ -64,19 +64,24 @@ BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emula
 ; == END OF CONFIGURATION ======================================================
 ;
 
+;
+; memory map:
+;  00000-003FF real mode IDT
+;  00400-004FF protected mode IDT
+;  01000-01FFF page directory
+;  02000-02FFF page table
+;  10000-1FFFF stack
+;  20000-3FFFF unused
+;  40000-9FFFF tests
+;
 
 ;
-;   Code and data segments
+;   Real mode segments
 ;
 CSEG_REAL   equ 0xf000
 SSEG_REAL   equ 0x1000
-SP_REAL     equ 0xffff
-CSEG_PROT16 equ 0x0008
-CSEG_PROT32 equ 0x0010
-DSEG_PROT16 equ 0x0018
-DSEG_PROT32 equ 0x0020
-SSEG_PROT32 equ 0x0028
-DSEG_PROT16RO equ 0x0030
+ESP_REAL    equ 0xffff
+DSEG_REAL   equ 0x4000
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
@@ -117,7 +122,7 @@ cpuTest:
 	initRealModeIDT
 	mov ax, SSEG_REAL
 	mov ss, ax
-	mov sp, SP_REAL
+	mov sp, ESP_REAL
 
 	POST 1
 ;
@@ -169,9 +174,9 @@ cpuTest:
 %include "tests/string_m.asm"
 
 	POST 4
-	xor    dx, dx
-	mov    ds, dx ; DS <- 0
-	mov    es, dx ; ES <- 0
+	mov    dx, DSEG_REAL
+	mov    ds, dx
+	mov    es, dx
 	mov    ecx, 0x1000
 	mov    esi, 0
 	mov    edi, 0x1000
@@ -191,7 +196,9 @@ cpuTest:
 %include "tests/call_m.asm"
 
 	POST 5
-	mov si, 0
+	mov    dx, DSEG_REAL
+	mov    ds, dx
+	mov    si, 0
 	testCallNear sp
 	testCallFar CSEG_REAL
 
@@ -200,7 +207,9 @@ cpuTest:
 ;
 %include "tests/load_ptr_m.asm"
 	POST 6
-	mov di, 0
+	mov    dx, DSEG_REAL
+	mov    es, dx
+	mov    di, 0
 	testLoadPtr ss
 	testLoadPtr ds
 	testLoadPtr es
@@ -216,25 +225,34 @@ cpuTest:
 
 %include "protected_m.asm"
 
-addrGDT:
+ESP_PROT equ 0x0000ffff
+
+myGDT:
+	; the first descriptor in any descriptor table is always a dud (the null selector)
+	defDesc NULL
+	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_16BIT
+	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_32BIT
+	defDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
+	defDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
+	defDesc DSEG_PROT16,  0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
+	defDesc DSEG_PROT16B, 0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
+	defDesc DSEG_PROT32,  0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
+	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
+	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_16BIT
+	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
+myGDTEnd:
+
+myGDTaddr:
 	dw myGDTEnd - myGDT - 1 ; 16-bit limit of myGDT
 	dw myGDT, 0x000f        ; 32-bit base address of myGDT
 
-myGDT:
-	defDesc NULL ; the first descriptor in any descriptor table is always a dud (it corresponds to the null selector)
-	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_NONE
-	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_BIG
-	defDesc DSEG_PROT16,  0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
-	defDesc DSEG_PROT16B, 0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_NONE
-	defDesc DSEG_PROT32,  0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
-	defDesc DSEG_PROT32B, 0x00000000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
-	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_BIG
-	defDesc DSEG_PROT16RO,0x00000000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_NONE
-myGDTEnd:
+memIDTptr:
+	dd 0
+	dw IDTSEG_PROT
+memSSptr:
+	dd ESP_PROT
+	dw SSEG_PROT32
 
-addrIDT:
-	dw myIDTEnd - myIDT - 1  ; 16-bit limit of myIDT
-	dw myIDT, 0x000f         ; 32-bit base address of myIDT
 
 myIDT:
 	defGate CSEG_PROT32, OFF_INTDIVERR
@@ -256,27 +274,35 @@ myIDT:
 	defGate CSEG_PROT32, OFF_INTDEFAULT
 myIDTEnd:
 
+myIDTaddr:
+	dw myIDTEnd - myIDT - 1  ; 16-bit limit of myIDT
+	dw myIDT, 0x000f         ; 32-bit base address of myIDT
+
 addrIDTReal:
 	dw 0x3FF      ; 16-bit limit of real-mode IDT
 	dd 0x00000000 ; 32-bit base address of real-mode IDT
 
 initPages:
 ;
-;   ESI (PDBR) = 1000h
-;   00000-00FFF   1000 (4K)  free
-;   01000-01FFF   1000 (4K)  page directory
-;   02000-02FFF   1000 (4K)  page table
-;   03000-11FFF   f000 (60K) free
-;   12000-12FFF   1000 (4K)  non present page (PTE 12h)
-;   13000-9FFFF  8d000       free
+; pages:
+;  00000-00FFF   1  1000   4K IDTs
+;  01000-01FFF   1  1000   4K page directory
+;  02000-02FFF   1  1000   4K page table
+;  03000-0FFFF  13  d000  52K free
+;  10000-1FFFF  16 10000  64K stack
+;  20000-5FFFF  64 40000 256K
+;  60000-60FFF   1  1000   4K non present page (PTE 60h)
+;  61000-9FFFF 159 9f000 636K
 ;
 
 PAGE_DIR_ADDR equ 0x1000
-PAGE_TBL_ADDR equ 0x2000
-NOT_PRESENT_PTE equ 0x12
-NOT_PRESENT_LIN equ 0x12000
-GP_HANDLER_SIG equ 0x47504841
-PF_HANDLER_SIG equ 0x50465046
+PAGE_DIR_SIZE equ 0x1000
+PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
+NOT_PRESENT_PTE equ 0x60    ; page table entry
+NOT_PRESENT_LIN equ 0x60000 ; linear address
+NOT_PRESENT_OFF equ 0x20000 ; DSEG offset
+GP_HANDLER_SIG    equ 0x47504841
+PF_HANDLER_SIG    equ 0x50465046
 BOUND_HANDLER_SIG equ 0x626f756e
 
 ;   Now we want to build a page directory and a page table. We need two pages of
@@ -312,17 +338,17 @@ initPT:
 	mov   ecx, 1024-256 ; ECX == number of (remaining) PTEs to write
 	xor   eax, eax
 	rep   stosd
-	mov   edi, NOT_PRESENT_PTE ; mark PTE 12h (page at phy 12000h) as not present
+	mov   edi, NOT_PRESENT_PTE ; mark PTE as not present
 	shl   edi, 2
-	add   edi, PAGE_DIR_ADDR ; edi <- PAGE_DIR_ADDR + (NOT_PRESENT_PTE * 4)
+	add   edi, PAGE_DIR_SIZE ; edi <- PAGE_DIR_SIZE + (NOT_PRESENT_PTE * 4)
 	mov   eax, NOT_PRESENT_LIN | PTE_USER | PTE_READWRITE
 	stosd
 ;
 ;   Enable protected mode
 ;
 	cli ; make sure interrupts are off now, since we've not initialized the IDT yet
-	o32 lidt [cs:addrIDT]
-	o32 lgdt [cs:addrGDT]
+	o32 lidt [cs:myIDTaddr]
+	o32 lgdt [cs:myGDTaddr]
 	mov    cr3, esi
 	mov    eax, cr0
 	or     eax, CR0_MSW_PE | CR0_PG
@@ -415,24 +441,28 @@ toProt32:
 
 	testPushPopF 32
 
+
+	; the stack works
+	; initialize it for the next tests
+	lss    esp, [cs:memSSptr]
+
 ;
 ;   Test moving a segment register to a 32-bit memory location
 ;
 	POST B
-	mov    ebx, [0x0000] ; save the DWORD at 0x0000:0x0000 in EBX
+
 	or     eax, -1
-	mov    [0x0000], eax
-	mov    [0x0000], ds
+	mov    [0x40000], eax
+	mov    [0x40000], ds
 	mov    ax, ds
-	cmp    eax, [0x0000]
+	cmp    eax, [0x40000]
 	jne    error
 
 	mov    eax, ds
 	xor    eax, 0xffff0000
-	cmp    eax, [0x0000]
+	cmp    eax, [0x40000]
 	jne    error
 
-	mov    [0x0000], ebx ; restore the DWORD at 0x0000:0x0000 from EBX
 
 ;
 ;   Zero and sign-extension tests
@@ -454,10 +484,6 @@ toProt32:
 	cmp    eax, 0x00008080
 	jne    error
 
-	mov    esp, 0x40000
-	mov    edx, [esp]
-	push   edx      ; save word at scratch address 0x40000
-	add    esp, 4
 	push   byte -128       ; NASM will not use opcode 0x6A ("PUSH imm8") unless we specify "byte"
 	pop    ebx             ; verify EBX == 0xFFFFFF80
 	cmp    ebx, 0xFFFFFF80
@@ -604,8 +630,6 @@ toProt32:
 ;   Access memory using various addressing modes
 ;
 	POST F
-	mov    ax, SSEG_PROT32  ; we want SS != DS for the next tests
-	mov    ss, ax
 
 	; store a known word at the scratch address
 	mov    ebx, 0x11223344
@@ -636,11 +660,9 @@ toProt32:
 	jne    error
 
 	mov    ebp, ecx
-	cmp    [ebp+ecx*2+0x10000], ebx
+	cmp    [ebp+ecx*2+0x10000], ebx ; EBP is used so the default segment is SS
 	je     error ; since SS != DS, this better be a mismatch
 
-	pop    edx
-	mov    [0x40000], edx ; restore word at scratch address 0x40000
 
 ;
 ;   Verify string operations
@@ -649,16 +671,16 @@ toProt32:
 	pushad
 	pushfd
 	mov    ecx, 0x2000
-	mov    esi, 0x13000
-	mov    edi, 0x15000
+	mov    esi, 0x40000
+	mov    edi, 0x42000
 	testStringOps b,0
 	mov    ecx, 0x1000
-	mov    esi, 0x13000
-	mov    edi, 0x15000
+	mov    esi, 0x40000
+	mov    edi, 0x42000
 	testStringOps w,1
 	mov    ecx, 0x800
-	mov    esi, 0x13000
-	mov    edi, 0x15000
+	mov    esi, 0x40000
+	mov    edi, 0x42000
 	testStringOps d,2
 	popfd
 	popad
@@ -667,7 +689,7 @@ toProt32:
 ;	Verify page faults and memory access rights
 ;
 	POST 11
-	mov eax, [NOT_PRESENT_LIN] ; generate a page fault
+	mov eax, [NOT_PRESENT_OFF] ; generate a page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
 	jne error
 	mov ax, DSEG_PROT16RO
@@ -744,8 +766,7 @@ toProt32:
 ;	Call protected mode
 ;
 	POST 16
-	mov esp, 0x10000
-	mov si, 0xf000
+	mov si, 0
 	testCallNear esp
 	testCallFar CSEG_PROT32
 
@@ -1118,20 +1139,19 @@ intPageFault:
 	jne   error
 	; mark the PTE as present
 	mov   bx, ds ; save DS
-	mov   ax, DSEG_PROT16
+	mov   ax, PTBLSEG_PROT
 	mov   ds, ax
 	mov   eax, NOT_PRESENT_PTE ; mark PTE as present
-	shl   eax, 2
-	add   eax, PAGE_TBL_ADDR ; eax <- PAGE_DIR_ADDR + (NOT_PRESENT_PTE * 4)
+	shl   eax, 2 ; eax <- (NOT_PRESENT_PTE * 4)
 	mov   edx, [eax]
 	or    edx, PTE_PRESENT
 	mov   [eax], edx
 	mov   eax, PAGE_DIR_ADDR
 	mov   cr3, eax ; flush the page translation cache
 	; mark the memory location at NOT_PRESENT_LIN with the handler signature
-	mov   eax, PF_HANDLER_SIG
-	mov   [NOT_PRESENT_LIN], eax
 	mov   ds, bx ; restore DS
+	mov   eax, PF_HANDLER_SIG
+	mov   [NOT_PRESENT_OFF], eax
 	xor   eax, eax
 	iretd
 

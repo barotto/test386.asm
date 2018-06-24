@@ -28,7 +28,9 @@ ACC_TYPE_DATA_READABLE equ 0x1000
 ACC_TYPE_DATA_WRITABLE equ 0x1200
 
 EXT_NONE  equ 0x0000
-EXT_BIG   equ 0x0040
+EXT_16BIT equ EXT_NONE
+EXT_32BIT equ 0x0040 ; size bit
+EXT_PAGE  equ 0x0080 ; granularity bit
 
 PTE_FRAME     equ 0xfffff000
 PTE_DIRTY     equ 0x00000040 ; page has been modified

@@ -82,6 +82,7 @@ CSEG_REAL   equ 0xf000
 SSEG_REAL   equ 0x1000
 ESP_REAL    equ 0xffff
 DSEG_REAL   equ 0x4000
+IDTSEG_REAL equ 0x0040
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
@@ -227,7 +228,7 @@ cpuTest:
 
 ESP_PROT equ 0x0000ffff
 
-myGDT:
+romGDT:
 	; the first descriptor in any descriptor table is always a dud (the null selector)
 	defDesc NULL
 	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_16BIT
@@ -240,47 +241,29 @@ myGDT:
 	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
 	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_16BIT
 	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
-myGDTEnd:
+romGDTEnd:
 
-myGDTaddr:
-	dw myGDTEnd - myGDT - 1 ; 16-bit limit of myGDT
-	dw myGDT, 0x000f        ; 32-bit base address of myGDT
-
-memIDTptr:
+romGDTaddr:
+	dw romGDTEnd - romGDT - 1 ; 16-bit limit
+	dw romGDT, 0x000f         ; 32-bit base address
+memIDTptrReal:
+	dd 0
+	dw IDTSEG_REAL
+memIDTptrProt:
 	dd 0
 	dw IDTSEG_PROT
-memSSptr:
+memIDTaddrProt:
+	dw 0xFF             ; 16-bit limit
+	dd IDTSEG_REAL << 4 ; 32-bit base address
+memSSptrProt:
 	dd ESP_PROT
 	dw SSEG_PROT32
-
-
-myIDT:
-	defGate CSEG_PROT32, OFF_INTDIVERR
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTBOUND
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTGP
-	defGate CSEG_PROT32, OFF_INTPAGEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-	defGate CSEG_PROT32, OFF_INTDEFAULT
-myIDTEnd:
-
-myIDTaddr:
-	dw myIDTEnd - myIDT - 1  ; 16-bit limit of myIDT
-	dw myIDT, 0x000f         ; 32-bit base address of myIDT
 
 addrIDTReal:
 	dw 0x3FF      ; 16-bit limit of real-mode IDT
 	dd 0x00000000 ; 32-bit base address of real-mode IDT
+
+%include "protected_p.asm"
 
 initPages:
 ;
@@ -311,7 +294,7 @@ BOUND_HANDLER_SIG equ 0x626f756e
 ;
 	POST 9
 	mov   esi, PAGE_DIR_ADDR
-	mov	  eax, esi
+	mov   eax, esi
 	shr   eax, 4
 	mov   es,  eax
 ;
@@ -346,9 +329,11 @@ initPT:
 ;
 ;   Enable protected mode
 ;
+	initProtModeIDT
+
 	cli ; make sure interrupts are off now, since we've not initialized the IDT yet
-	o32 lidt [cs:myIDTaddr]
-	o32 lgdt [cs:myGDTaddr]
+	o32 lidt [cs:memIDTaddrProt]
+	o32 lgdt [cs:romGDTaddr]
 	mov    cr3, esi
 	mov    eax, cr0
 	or     eax, CR0_MSW_PE | CR0_PG
@@ -444,7 +429,7 @@ toProt32:
 
 	; the stack works
 	; initialize it for the next tests
-	lss    esp, [cs:memSSptr]
+	lss    esp, [cs:memSSptrProt]
 
 ;
 ;   Test moving a segment register to a 32-bit memory location

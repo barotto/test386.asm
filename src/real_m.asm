@@ -26,9 +26,6 @@
 	mov    ds, ax
 	mov    [%1*4], word %2
 	mov    [%1*4+2], word CSEG_REAL
-	mov    ax, SSEG_REAL
-	mov    ss, ax
-	mov    sp, SP_REAL
 %endmacro
 
 ; Checks exc result and restores the default handler
@@ -36,10 +33,10 @@
 ; %2: expected pushed value of IP
 ; Trashes AX,DS
 %macro realModeExcCheck 2
-	cmp    sp, SP_REAL-6
+	cmp    sp, ESP_REAL-6
 	jne    error
-	cmp    [ss:SP_REAL-4], word CSEG_REAL
-	cmp    [ss:SP_REAL-6], word %2
+	cmp    [ss:ESP_REAL-4], word CSEG_REAL
+	cmp    [ss:ESP_REAL-6], word %2
 	jne    error
 	mov    ax, 0
 	mov    ds, ax
@@ -53,6 +50,9 @@
 ; %2: instruction to execute that causes a fault
 %macro realModeFaultTest 2+
 	realModeExcInit %1, %%continue
+	mov    ax, SSEG_REAL
+	mov    ss, ax
+	mov    sp, ESP_REAL
 %%test:
 	%2
 	jmp    error

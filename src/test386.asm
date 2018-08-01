@@ -42,6 +42,7 @@
 	section .text
 
 	%include "x86_e.asm"
+	%include "macros_m.asm"
 
 	bits 16
 
@@ -93,16 +94,6 @@ OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
 OFF_INTGP        equ OFF_INTBOUND+0x200
-
-
-;
-;   Output a byte to the POST port, destroys al and dx
-;
-%macro POST 1
-	mov al, 0x%1
-	mov dx, POST_PORT
-	out dx, al
-%endmacro
 
 
 header:
@@ -231,16 +222,20 @@ ESP_PROT equ 0x0000ffff
 romGDT:
 	; the first descriptor in any descriptor table is always a dud (the null selector)
 	defDesc NULL
-	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_16BIT
-	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_READABLE,EXT_32BIT
-	defDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
-	defDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
-	defDesc DSEG_PROT16,  0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
-	defDesc DSEG_PROT16B, 0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_16BIT
-	defDesc DSEG_PROT32,  0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
-	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
-	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_READABLE,EXT_16BIT
-	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_WRITABLE,EXT_32BIT
+	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_16BIT
+	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defDesc DSEG_PROT16,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defDesc DSEG_PROT16B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defDesc DSEG_PROT32,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT,EXT_16BIT
+	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defDesc DUMMYSEG_PROT,0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defDesc DPL1SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
+	defDesc NPSEG_PROT,   0x000fffff,0x000fffff,ACC_TYPE_DATA_W
+	defDesc SYSSEG_PROT,  0x000fffff,0x000fffff,ACC_PRESENT
 romGDTEnd:
 
 romGDTaddr:
@@ -263,7 +258,11 @@ addrIDTReal:
 	dw 0x3FF      ; 16-bit limit of real-mode IDT
 	dd 0x00000000 ; 32-bit base address of real-mode IDT
 
-%include "protected_p.asm"
+;
+; Initializes an interrupt gate in system memory in real mode
+;
+initIntGateMemReal:
+	initIntGateMem_body
 
 initPages:
 ;
@@ -341,6 +340,11 @@ initPT:
 	jmp    CSEG_PROT32:toProt32 ; jump to flush the prefetch queue
 toProt32:
 	bits 32
+
+	jmp    protTests
+%include "protected_p.asm"
+
+protTests:
 
 ;
 ;   Test the stack
@@ -429,25 +433,26 @@ toProt32:
 
 	; the stack works
 	; initialize it for the next tests
-	lss    esp, [cs:memSSptrProt]
+	loadProtModeStack
 
 ;
-;   Test moving a segment register to a 32-bit memory location
+;   Test of moving segment registers in protected mode
 ;
 	POST B
 
-	or     eax, -1
-	mov    [0x40000], eax
-	mov    [0x40000], ds
-	mov    ax, ds
-	cmp    eax, [0x40000]
-	jne    error
+	testMovSegR_prot ds
+	testMovSegR_prot es
+	testMovSegR_prot fs
+	testMovSegR_prot gs
+	testMovSegR_prot cs
+	testMovSegR_prot ss
 
-	mov    eax, ds
-	xor    eax, 0xffff0000
-	cmp    eax, [0x40000]
-	jne    error
-
+	loadProtModeStack
+	mov    ax, DSEG_PROT32
+	mov    ds, ax
+	mov    es, ax
+	mov    fs, ax
+	mov    gs, ax
 
 ;
 ;   Zero and sign-extension tests
@@ -674,6 +679,8 @@ toProt32:
 ;	Verify page faults and memory access rights
 ;
 	POST 11
+	setProtModeIntGate 13, OFF_INTGP
+	setProtModeIntGate 14, OFF_INTPAGEFAULT
 	mov eax, [NOT_PRESENT_OFF] ; generate a page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
 	jne error
@@ -683,6 +690,8 @@ toProt32:
 	mov byte [0x40000], 0   ; generate #GP
 	cmp eax, GP_HANDLER_SIG ; see if #GP handler was called
 	jne error
+	setProtModeIntGate 13, OFF_INTDEFAULT
+	setProtModeIntGate 14, OFF_INTDEFAULT
 
 ;
 ;   Verify Bit Scan operations
@@ -803,6 +812,7 @@ toProt32:
 ;	BOUND
 ;
 	POST 18
+	setProtModeIntGate 5, OFF_INTBOUND
 	xor eax, eax
 	mov ebx, 0x10100
 	mov word [0x40000], 0x0010
@@ -824,6 +834,7 @@ toProt32:
 	o32 bound ebx, [0x40004]
 	cmp eax, BOUND_HANDLER_SIG
 	jne error
+	setProtModeIntGate 5, OFF_INTDEFAULT
 
 
 %include "print_init.asm"
@@ -1027,6 +1038,7 @@ bcdTests:
 	testBCD   aam, 0x12340547, PS_AF,         PS_PF | PS_ZF | PS_SF
 	testBCD   aad, 0x12340407, PS_AF,         PS_PF | PS_ZF | PS_SF
 
+	setProtModeIntGate 0, OFF_INTDIVERR
 	cld
 	mov    esi, tableOps   ; ESI -> tableOps entry
 

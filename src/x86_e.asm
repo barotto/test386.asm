@@ -17,15 +17,17 @@ PS_SHIFTS_R equ (PS_CF | PS_SF | PS_ZF | PS_PF)
 CR0_MSW_PE  equ 0x0001
 CR0_PG      equ 0x80000000	; set if paging enabled
 
-ACC_TYPE_GATE386_INT   equ 0x0E00
-ACC_TYPE_SEG           equ 0x1000
-ACC_PRESENT            equ 0x8000
-ACC_TYPE_CODE          equ 0x0800
-ACC_TYPE_READABLE      equ 0x0200
-ACC_TYPE_WRITABLE      equ 0x0200
-ACC_TYPE_CODE_READABLE equ 0x1a00
-ACC_TYPE_DATA_READABLE equ 0x1000
-ACC_TYPE_DATA_WRITABLE equ 0x1200
+ACC_TYPE_GATE386_INT equ 0x0E00
+ACC_TYPE_SEG         equ 0x1000
+ACC_PRESENT          equ 0x8000
+ACC_TYPE_CODE_R      equ 0x1a00
+ACC_TYPE_DATA_R      equ 0x1000
+ACC_TYPE_DATA_W      equ 0x1200
+
+ACC_DPL_0 equ 0x0000
+ACC_DPL_1 equ 0x2000
+ACC_DPL_2 equ 0x4000
+ACC_DPL_3 equ 0x6000
 
 EXT_NONE  equ 0x0000
 EXT_16BIT equ EXT_NONE
@@ -38,3 +40,20 @@ PTE_ACCESSED  equ 0x00000020 ; page has been accessed
 PTE_USER      equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
 PTE_READWRITE equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
 PTE_PRESENT   equ 0x00000001 ; set for present page, clear for not-present page
+
+EX_DE equ 0
+EX_DB equ 1
+EX_BP equ 3
+EX_OF equ 4
+EX_BR equ 5
+EX_UD equ 6
+EX_NM equ 7
+EX_DF equ 8
+EX_MP equ 9
+EX_TS equ 10
+EX_NP equ 11
+EX_SS equ 12
+EX_GP equ 13
+EX_PF equ 14
+EX_MF equ 15
+

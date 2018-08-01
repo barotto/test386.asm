@@ -20,7 +20,7 @@
 	%if selDesc = 0
 	dw ((%2 & 0x00ff0000) >> 16) | %4 | (0 << 13)
 	%else
-	dw ((%2 & 0x00ff0000) >> 16) | %4 | (0 << 13) | ACC_PRESENT
+	dw ((%2 & 0x00ff0000) >> 16) | %4 | (0 << 13)
 	%endif
 	dw ((%3 & 0x000f0000) >> 16) | %5 | ((%2 & 0xff000000) >> 16)
 	%assign selDesc selDesc+8
@@ -28,14 +28,37 @@
 
 ;
 ; Initializes an interrupt gate in system memory
+;
 ; %1 vector
 ; %2 offset
-; DS:EBX pointer to IDT
 ;
-%macro protModeExcInit 2
+; Uses EAX, ECX
+;
+%macro protModeExcInitReal 2
+; executes in real mode
 	mov    eax, %1
 	mov    ecx, %2
-	call   initIntGateMem
+	call   initIntGateMemReal
+%endmacro
+%macro protModeExcInitProt 2
+; executes in protected mode
+	mov    eax, %1
+	mov    ecx, %2
+	call   initIntGateMemProt
+%endmacro
+
+;
+; Loads DS:EBX with a pointer to the prot mode IDT
+;
+%macro loadProtModeIDTptr 0
+	lds    ebx, [cs:memIDTptrProt]
+%endmacro
+
+;
+; Loads SS:ESP with a pointer to the prot mode stack
+;
+%macro loadProtModeStack 0
+	lss    esp, [cs:memSSptrProt]
 %endmacro
 
 ;
@@ -46,21 +69,80 @@
 %macro initProtModeIDT 0
 	lds    ebx, [cs:memIDTptrReal]
 
-	protModeExcInit  0, OFF_INTDIVERR
-	protModeExcInit  1, OFF_INTDEFAULT
-	protModeExcInit  2, OFF_INTDEFAULT
-	protModeExcInit  3, OFF_INTDEFAULT
-	protModeExcInit  4, OFF_INTDEFAULT
-	protModeExcInit  5, OFF_INTBOUND
-	protModeExcInit  6, OFF_INTDEFAULT
-	protModeExcInit  7, OFF_INTDEFAULT
-	protModeExcInit  8, OFF_INTDEFAULT
-	protModeExcInit  9, OFF_INTDEFAULT
-	protModeExcInit 10, OFF_INTDEFAULT
-	protModeExcInit 11, OFF_INTDEFAULT
-	protModeExcInit 12, OFF_INTDEFAULT
-	protModeExcInit 13, OFF_INTGP
-	protModeExcInit 14, OFF_INTPAGEFAULT
-	protModeExcInit 15, OFF_INTDEFAULT
-	protModeExcInit 16, OFF_INTDEFAULT
+	protModeExcInitReal  0, OFF_INTDEFAULT
+	protModeExcInitReal  1, OFF_INTDEFAULT
+	protModeExcInitReal  2, OFF_INTDEFAULT
+	protModeExcInitReal  3, OFF_INTDEFAULT
+	protModeExcInitReal  4, OFF_INTDEFAULT
+	protModeExcInitReal  5, OFF_INTDEFAULT
+	protModeExcInitReal  6, OFF_INTDEFAULT
+	protModeExcInitReal  7, OFF_INTDEFAULT
+	protModeExcInitReal  8, OFF_INTDEFAULT
+	protModeExcInitReal  9, OFF_INTDEFAULT
+	protModeExcInitReal 10, OFF_INTDEFAULT
+	protModeExcInitReal 11, OFF_INTDEFAULT
+	protModeExcInitReal 12, OFF_INTDEFAULT
+	protModeExcInitReal 13, OFF_INTDEFAULT
+	protModeExcInitReal 14, OFF_INTDEFAULT
+	protModeExcInitReal 15, OFF_INTDEFAULT
+	protModeExcInitReal 16, OFF_INTDEFAULT
+%endmacro
+
+;
+; Set a int gate on the IDT in protected mode
+;
+; %1: vector
+; %2: offset
+;
+; Uses EAX, ECX, DS, EBX
+; the stack must be initialized
+;
+%macro setProtModeIntGate 2
+	pushad
+	mov dx, ds  ; save ds
+	loadProtModeIDTptr
+	protModeExcInitProt %1, %2
+	mov ds, dx  ; restore ds
+	popad
+%endmacro
+
+;
+; Tests a fault
+;
+; %1: vector
+; %2: expected error code
+; %3: fault causing instruction
+;
+; the stack must be initialized
+;
+%macro protModeFaultTest 3+
+	setProtModeIntGate %1, %%continue
+%%test:
+	%3
+	jmp    error
+%%continue:
+	protModeExcCheck %1, %2, %%test
+	setProtModeIntGate %1, OFF_INTDEFAULT
+%endmacro
+
+;
+; Checks exception result and restores the previous handler
+;
+; %1: vector
+; %2: expected error code
+; %3: expected pushed value of EIP
+;
+%macro protModeExcCheck 3
+	%if %1 == 8 || (%1 > 10 && %1 < 14)
+	%assign exc_errcode 4
+	cmp    [ss:esp], dword %2
+	jne    error
+	%else
+	%assign exc_errcode 0
+	%endif
+	cmp    [ss:esp+exc_errcode+4], dword CSEG_PROT32
+	jne    error
+	cmp    [ss:esp+exc_errcode], dword %3
+	jne    error
+	add    esp, 12+exc_errcode
 %endmacro

@@ -12,7 +12,7 @@
 
 	; MOV reg to Sreg
 	%if %1 = cs
-	realModeFaultTest 6, mov %1,dx ; test for #UD
+	realModeFaultTest EX_UD, mov %1,dx ; test for #UD
 	%else
 	mov    %1, dx
 	%endif
@@ -42,7 +42,7 @@
 
 	; MOV word mem to Sreg
 	%if %1 = cs
-	realModeFaultTest 6, mov %1,[0] ; test for #UD
+	realModeFaultTest EX_UD, mov %1,[0] ; test for #UD
 	%else
 	mov    cx, ds ; save current DS in CX
 	xor    ax, ax
@@ -59,5 +59,101 @@
 	%endif
 
 	mov    [0], bx ; restore data
+
+%endmacro
+
+
+%macro testMovSegR_prot 1
+	mov    edx, -1
+	%if %1 = cs
+	mov    dx, CSEG_PROT32
+	%else
+	mov    dx, DSEG_PROT32
+	%endif
+
+	; MOV reg to Sreg
+	%if %1 = cs
+	loadProtModeStack
+	protModeFaultTest EX_UD, 0, mov %1,dx ; #UD: attempt is made to load the CS register.
+	%else
+	mov    %1, dx
+	%endif
+
+	; MOV Sreg to 16 bit reg
+	xor    ax, ax
+	mov    ax, %1
+	cmp    ax, dx
+	jne    error
+
+	; MOV Sreg to 32 bit reg
+	mov    eax, -1
+	mov    eax, %1
+	; bits 31:16 are undefined for Pentium and earlier processors.
+	; TODO: verify on real hw and check TEST_UNDEF
+	cmp    ax, dx
+	jne    error
+
+	; use ds:[0] as scratch mem, value of ds doesn't matter
+	mov    ebx, [0] ; save data
+
+	; MOV Sreg to word mem
+	mov    [0], dword -1
+	mov    [0], %1
+	cmp    [0], edx
+	jne    error
+
+	; MOV word mem to Sreg
+	%if %1 = cs
+	protModeFaultTest EX_UD, 0, mov %1,[0] ; test for #UD
+	%else
+	mov    cx, ds ; save current DS in CX
+	mov    ax, DUMMYSEG_PROT
+	mov    %1, ax
+	%if %1 = ds
+	mov    es, cx
+	mov    %1, [es:0]
+	%else
+	mov    %1, [0]
+	%endif
+	mov    ax, %1
+	cmp    ax, dx
+	jne    error
+	%endif
+
+	mov    [0], ebx ; restore data
+
+	loadProtModeStack
+	%if %1 = ss
+	; #GP(0) If attempt is made to load SS register with NULL segment selector.
+	mov ax, NULL
+	protModeFaultTest EX_GP, 0, mov %1,ax
+	; #GP(selector) If the SS register is being loaded and the segment selector's RPL and the segment descriptor’s DPL are not equal to the CPL.
+	mov ax, DPL1SEG_PROT|1
+	protModeFaultTest EX_GP, DPL1SEG_PROT, mov %1,ax
+	; #GP(selector) If the SS register is being loaded and the segment pointed to is a non-writable data segment.
+	mov ax, DSEG_PROT16RO
+	protModeFaultTest EX_GP, DSEG_PROT16RO, mov %1,ax
+	; #SS(selector) If the SS register is being loaded and the segment pointed to is marked not present.
+	mov ax, NPSEG_PROT
+	protModeFaultTest EX_SS, NPSEG_PROT, mov %1,ax
+	%endif
+	%if %1 != cs
+	; #GP(selector) If segment selector index is outside descriptor table limits.
+	mov ax, 0xFFF8
+	protModeFaultTest EX_GP, 0xfff8, mov %1,ax
+	%if %1 != ss
+	; #NP(selector) If the DS, ES, FS, or GS register is being loaded and the segment pointed to is marked not present.
+	mov ax, NPSEG_PROT
+	protModeFaultTest EX_NP, NPSEG_PROT, mov %1,ax
+	; #GP(selector) If the DS, ES, FS, or GS register is being loaded and the segment pointed to is not a data or readable code segment.
+	mov ax, SYSSEG_PROT
+	protModeFaultTest EX_GP, SYSSEG_PROT, mov %1,ax
+	; TODO
+	; #GP(selector)
+	; If the DS, ES, FS, or GS register is being loaded and the segment pointed to is a data or nonconforming code segment, but both the RPL and the CPL are greater than the DPL.
+	; need to change CPL to >0 to test (must use iretd)
+
+	%endif
+	%endif
 
 %endmacro

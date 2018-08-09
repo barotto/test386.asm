@@ -83,6 +83,7 @@ CSEG_REAL   equ 0xf000
 SSEG_REAL   equ 0x1000
 ESP_REAL    equ 0xffff
 DSEG_REAL   equ 0x4000
+DSEG2_REAL  equ 0x8000
 IDTSEG_REAL equ 0x0040
 
 ;
@@ -161,29 +162,30 @@ cpuTest:
 	testMovSegR_real cs
 
 ;
-;   Test store, move, scan, and compare string data in 16-bit real mode
+;   Test store, move, scan, and compare string data
 ;
 %include "tests/string_m.asm"
 
 	POST 4
 	mov    dx, DSEG_REAL
 	mov    ds, dx
+	mov    dx, DSEG2_REAL
 	mov    es, dx
-	mov    ecx, 0x1000
-	mov    esi, 0
-	mov    edi, 0x1000
-	testStringOps b,0
-	mov    ecx, 0x1000
-	mov    esi, 0
-	mov    edi, 0x2000
-	testStringOps w,1
-	mov    ecx, 0x1000
-	mov    esi, 0
-	mov    edi, 0x4000
-	testStringOps d,2
+	testStringOps b,0,a16
+	testStringOps w,0,a16
+	testStringOps d,0,a16
+	testStringOps b,1,a16
+	testStringOps w,1,a16
+	testStringOps d,1,a16
+	testStringReps b,0,a16
+	testStringReps w,0,a16
+	testStringReps d,0,a16
+	testStringReps b,1,a16
+	testStringReps w,1,a16
+	testStringReps d,1,a16
 
 ;
-;   Call real mode
+;   Calls
 ;
 %include "tests/call_m.asm"
 
@@ -229,6 +231,7 @@ romGDT:
 	defDesc DSEG_PROT16,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
 	defDesc DSEG_PROT16B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
 	defDesc DSEG_PROT32,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defDesc DSEG2_PROT32, 0x00080000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT,EXT_16BIT
 	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
@@ -660,20 +663,26 @@ protTests:
 	POST 10
 	pushad
 	pushfd
-	mov    ecx, 0x2000
-	mov    esi, 0x40000
-	mov    edi, 0x42000
-	testStringOps b,0
-	mov    ecx, 0x1000
-	mov    esi, 0x40000
-	mov    edi, 0x42000
-	testStringOps w,1
-	mov    ecx, 0x800
-	mov    esi, 0x40000
-	mov    edi, 0x42000
-	testStringOps d,2
+	mov    ax, DSEG_PROT32
+	mov    ds, ax
+	mov    ax, DSEG2_PROT32
+	mov    es, ax
+	testStringOps b,0,a32
+	testStringOps w,0,a32
+	testStringOps d,0,a32
+	testStringOps b,1,a32
+	testStringOps w,1,a32
+	testStringOps d,1,a32
+	testStringReps b,0,a32
+	testStringReps w,0,a32
+	testStringReps d,0,a32
+	testStringReps b,1,a32
+	testStringReps w,1,a32
+	testStringReps d,1,a32
 	popfd
 	popad
+	mov    ax, DSEG_PROT32
+	mov    es, ax
 
 ;
 ;	Verify page faults and memory access rights

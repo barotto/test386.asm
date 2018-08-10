@@ -1,10 +1,11 @@
-TYPE_ARITH    equ  0
-TYPE_ARITH1   equ  1
-TYPE_LOGIC    equ  2
-TYPE_MULTIPLY equ  3
-TYPE_DIVIDE   equ  4
-TYPE_SHIFTS_1 equ  5
-TYPE_SHIFTS_R equ  6
+TYPE_ARITH    equ  0 ; multiple values for eAX and eDX
+TYPE_ARITH1   equ  1 ; multiple values for eAX, 1 value for eDX
+TYPE_ARITH1D  equ  2 ; 1 value for eAX, multiple values for eDX
+TYPE_LOGIC    equ  3
+TYPE_MULTIPLY equ  4
+TYPE_DIVIDE   equ  5
+TYPE_SHIFTS_1 equ  6
+TYPE_SHIFTS_R equ  7
 
 SIZE_BYTE     equ  0
 SIZE_SHORT    equ  1
@@ -13,14 +14,17 @@ SIZE_LONG     equ  2
 %macro	defOp	6
 	%ifidni %3,al
 	%assign size SIZE_BYTE
+	%define msrc dl
 	%elifidni %3,dl
 	%assign size SIZE_BYTE
 	%elifidni %3,ax
 	%assign size SIZE_SHORT
+	%define msrc dx
 	%elifidni %3,dx
 	%assign size SIZE_SHORT
 	%else
 	%assign size SIZE_LONG
+	%define msrc edx
 	%endif
 	db	%%end-%%beg,%6,size
 %%name:
@@ -28,6 +32,9 @@ SIZE_LONG     equ  2
 %%beg:
 	%ifidni %4,none
 	%2	%3
+	%elifidni %4,mem
+	mov [0], msrc
+	%2	%3,[0]
 	%elifidni %5,none
 	%2	%3,%4
 	%else
@@ -94,6 +101,17 @@ tableOps:
 	defOp    "ADC",adc,al,dl,none,TYPE_ARITH               ;    10 D0
 	defOp    "ADC",adc,ax,dx,none,TYPE_ARITH               ; 66 11 D0
 	defOp    "ADC",adc,eax,edx,none,TYPE_ARITH             ;    11 D0
+	defOp    "ADC",adc,al,0xFF,none,TYPE_ARITH1            ;    14 FF
+	defOp    "ADC",adc,ax,0x8002,none,TYPE_ARITH1          ; 66 15 0280
+	defOp    "ADC",adc,eax,0x80000002,none,TYPE_ARITH1     ;    15 02000080
+	defOp    "ADC",adc,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D0 FF
+	defOp    "ADC",adc,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D0 FF
+	defOp    "ADC",adc,dl,0xFF,none,TYPE_ARITH1D           ;    80 D2 FF
+	defOp    "ADC",adc,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 D2 0280
+	defOp    "ADC",adc,edx,0x80000002,none,TYPE_ARITH1D    ;    81 D2 02000080
+	defOp    "ADC",adc,al,mem,none,TYPE_ARITH              ;    12 05 00000000
+	defOp    "ADC",adc,ax,mem,none,TYPE_ARITH              ; 66 13 05 00000000
+	defOp    "ADC",adc,eax,mem,none,TYPE_ARITH             ;    13 05 00000000
 	defOp    "SBB",sbb,al,dl,none,TYPE_ARITH               ;    18 D0
 	defOp    "SBB",sbb,ax,dx,none,TYPE_ARITH               ; 66 19 D0
 	defOp    "SBB",sbb,eax,edx,none,TYPE_ARITH             ;    19 D0
@@ -218,6 +236,7 @@ tableOps:
 typeMasks:
 	dd PS_ARITH
 	dd PS_ARITH
+	dd PS_ARITH
 	dd PS_LOGIC
 	dd PS_MULTIPLY
 	dd PS_DIVIDE
@@ -279,6 +298,13 @@ typeValues:
 	dd	ARITH_BYTES,arithValues,1,arithValues
 	dd	ARITH_BYTES+ARITH_WORDS,arithValues,1,arithValues
 	dd	ARITH_BYTES+ARITH_WORDS+ARITH_DWORDS,arithValues,1,arithValues
+	dd	0,0,0,0
+	;
+	; Values for TYPE_ARITH1D
+	;
+	dd	1,arithValues,ARITH_BYTES,arithValues
+	dd	1,arithValues,ARITH_BYTES+ARITH_WORDS,arithValues
+	dd	1,arithValues,ARITH_BYTES+ARITH_WORDS+ARITH_DWORDS,arithValues
 	dd	0,0,0,0
 	;
 	; Values for TYPE_LOGIC (using ARITH values for now)

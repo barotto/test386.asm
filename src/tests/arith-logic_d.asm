@@ -95,6 +95,17 @@ tableOps:
 	defOp    "ADD",add,al,dl,none,TYPE_ARITH               ;    00 D0
 	defOp    "ADD",add,ax,dx,none,TYPE_ARITH               ; 66 01 D0
 	defOp    "ADD",add,eax,edx,none,TYPE_ARITH             ;    01 D0
+	defOp    "ADD",add,al,0xFF,none,TYPE_ARITH1            ;    04 FF
+	defOp    "ADD",add,ax,0x8002,none,TYPE_ARITH1          ; 66 05 0280
+	defOp    "ADD",add,eax,0x80000002,none,TYPE_ARITH1     ;    05 02000080
+	defOp    "ADD",add,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 C0 FF
+	defOp    "ADD",add,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 C0 FF
+	defOp    "ADD",add,dl,0xFF,none,TYPE_ARITH1D           ;    80 C2 FF
+	defOp    "ADD",add,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 C2 0280
+	defOp    "ADD",add,edx,0x80000002,none,TYPE_ARITH1D    ;    81 C2 02000080
+	defOp    "ADD",add,al,mem,none,TYPE_ARITH              ;    02 05 00000000
+	defOp    "ADD",add,ax,mem,none,TYPE_ARITH              ; 66 03 05 00000000
+	defOp    "ADD",add,eax,mem,none,TYPE_ARITH             ;    03 05 00000000
 	defOp    "OR",or,al,dl,none,TYPE_LOGIC                 ;    08 D0
 	defOp    "OR",or,ax,dx,none,TYPE_LOGIC                 ; 66 09 D0
 	defOp    "OR",or,eax,edx,none,TYPE_LOGIC               ;    09 D0

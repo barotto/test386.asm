@@ -111,6 +111,17 @@ tableOps:
 	defOp    "OR",or,al,dl,none,TYPE_LOGIC                 ;    08 D0
 	defOp    "OR",or,ax,dx,none,TYPE_LOGIC                 ; 66 09 D0
 	defOp    "OR",or,eax,edx,none,TYPE_LOGIC               ;    09 D0
+	defOp    "OR",or,al,0xAA,none,TYPE_LOGIC1              ;    0C AA
+	defOp    "OR",or,ax,0xAAAA,none,TYPE_LOGIC1            ; 66 0D AAAA
+	defOp    "OR",or,eax,0xAAAAAAAA,none,TYPE_LOGIC1       ;    0D AAAAAAAA
+	defOp    "OR",or,ax,byte 0xAA,none,TYPE_LOGIC1         ; 66 83 C8 AA
+	defOp    "OR",or,eax,byte 0xAA,none,TYPE_LOGIC1        ;    83 C8 AA
+	defOp    "OR",or,dl,0xAA,none,TYPE_LOGIC1D             ;    80 CA AA
+	defOp    "OR",or,dx,0xAAAA,none,TYPE_LOGIC1D           ; 66 81 CA AAAA
+	defOp    "OR",or,edx,0xAAAAAAAA,none,TYPE_LOGIC1D      ;    81 CA AAAAAAAA
+	defOp    "OR",or,al,mem,none,TYPE_LOGIC                ;    0A 05 00000000
+	defOp    "OR",or,ax,mem,none,TYPE_LOGIC                ; 66 0B 05 00000000
+	defOp    "OR",or,eax,mem,none,TYPE_LOGIC               ;    0B 05 00000000
 	defOp    "ADC",adc,al,dl,none,TYPE_ARITH               ;    10 D0
 	defOp    "ADC",adc,ax,dx,none,TYPE_ARITH               ; 66 11 D0
 	defOp    "ADC",adc,eax,edx,none,TYPE_ARITH             ;    11 D0

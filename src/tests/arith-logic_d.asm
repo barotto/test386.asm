@@ -148,9 +148,20 @@ tableOps:
 	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
 	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
 	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0
-	defOp    "CMP",cmp,al,dl,none,TYPE_ARITH               ;    38 D0
-	defOp    "CMP",cmp,ax,dx,none,TYPE_ARITH               ; 66 39 D0
-	defOp    "CMP",cmp,eax,edx,none,TYPE_ARITH             ;    39 D0
+	defOp    "CMP",cmp,al,dl,none,TYPE_LOGIC               ;    38 D0
+	defOp    "CMP",cmp,ax,dx,none,TYPE_LOGIC               ; 66 39 D0
+	defOp    "CMP",cmp,eax,edx,none,TYPE_LOGIC             ;    39 D0
+	defOp    "CMP",cmp,al,0xAA,none,TYPE_LOGIC1            ;    3C AA
+	defOp    "CMP",cmp,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 3D AAAA
+	defOp    "CMP",cmp,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    3D AAAAAAAA
+	defOp    "CMP",cmp,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F8 AA
+	defOp    "CMP",cmp,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F8 AA
+	defOp    "CMP",cmp,dl,0xAA,none,TYPE_LOGIC1D           ;    80 FA AA
+	defOp    "CMP",cmp,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 FA AAAA
+	defOp    "CMP",cmp,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 FA AAAAAAAA
+	defOp    "CMP",cmp,al,mem,none,TYPE_LOGIC              ;    3A 05 00000000
+	defOp    "CMP",cmp,ax,mem,none,TYPE_LOGIC              ; 66 3B 05 00000000
+	defOp    "CMP",cmp,eax,mem,none,TYPE_LOGIC             ;    3B 05 00000000
 	defOp    "INC",inc,al,none,none,TYPE_ARITH1            ;    FE C0
 	defOp    "INC",inc,ax,none,none,TYPE_ARITH1            ; 66 40
 	defOp    "INC",inc,eax,none,none,TYPE_ARITH1           ;    40

@@ -36,7 +36,7 @@ nasm -i./src/ -f bin src/test386.asm -l test386.lst -o test386.bin
 Please note that the <tt>(testBCD:19) unterminated string</tt> warning is
 expected and can be ignored.
 
-The final product is a binary file named <tt>test386.bin</tt> of exactly
+The final product is a binary file named **<tt>test386.bin</tt>** of exactly
 65,536 bytes.
 
 ## How to use
@@ -52,8 +52,8 @@ an HLT instruction and the diagnostic code will tell you the test that caused
 the problem. You should then use the logging facility of your emulator to
 inspect the instruction execution flow.
 
-I suggest to use the intermediate source-listing file <tt>test386.lst</tt> as a
-guide to diagnose any possible error.
+I suggest to use the intermediate source-listing file **<tt>test386.lst</tt>**
+as a guide to diagnose any possible error.
 
 This is the list of tests with their diagnostic code:
 
@@ -68,10 +68,10 @@ This is the list of tests with their diagnostic code:
 | 0x06 | Load full pointer in real mode                                     |
 | 0x09 | Page directory and page table setup, enable protected mode         |
 | 0x0A | Stack functionality                                                |
-| 0x0B | Moving a segment register to a 32-bit memory location              |
+| 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
-| 0x0D | 16-bit addressing                                                  |
-| 0x0E | 32-bit addressing                                                  |
+| 0x0D | 16-bit addressing modes                                            |
+| 0x0E | 32-bit addressing modes                                            |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
 | 0x11 | Page faults and memory access rights                               |

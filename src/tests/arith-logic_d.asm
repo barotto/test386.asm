@@ -139,6 +139,17 @@ tableOps:
 	defOp    "SBB",sbb,al,dl,none,TYPE_ARITH               ;    18 D0
 	defOp    "SBB",sbb,ax,dx,none,TYPE_ARITH               ; 66 19 D0
 	defOp    "SBB",sbb,eax,edx,none,TYPE_ARITH             ;    19 D0
+	defOp    "SBB",sbb,al,0xFF,none,TYPE_ARITH1            ;    1C FF
+	defOp    "SBB",sbb,ax,0x8000,none,TYPE_ARITH1          ; 66 1D 0080
+	defOp    "SBB",sbb,eax,0x80000000,none,TYPE_ARITH1     ;    1D 00000080
+	defOp    "SBB",sbb,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D8 FF
+	defOp    "SBB",sbb,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D8 FF
+	defOp    "SBB",sbb,dl,0xFF,none,TYPE_ARITH1D           ;    80 DA FF
+	defOp    "SBB",sbb,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 DA 0080
+	defOp    "SBB",sbb,edx,0x80000000,none,TYPE_ARITH1D    ;    81 DA 00000080
+	defOp    "SBB",sbb,al,mem,none,TYPE_ARITH              ;    1A 05 00000000
+	defOp    "SBB",sbb,ax,mem,none,TYPE_ARITH              ; 66 1B 05 00000000
+	defOp    "SBB",sbb,eax,mem,none,TYPE_ARITH             ;    1B 05 00000000
 	defOp    "AND",and,al,dl,none,TYPE_LOGIC               ;    20 D0
 	defOp    "AND",and,ax,dx,none,TYPE_LOGIC               ; 66 21 D0
 	defOp    "AND",and,eax,edx,none,TYPE_LOGIC             ;    21 D0

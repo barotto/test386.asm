@@ -1,11 +1,13 @@
 TYPE_ARITH    equ  0 ; multiple values for eAX and eDX
 TYPE_ARITH1   equ  1 ; multiple values for eAX, 1 value for eDX
 TYPE_ARITH1D  equ  2 ; 1 value for eAX, multiple values for eDX
-TYPE_LOGIC    equ  3
-TYPE_MULTIPLY equ  4
-TYPE_DIVIDE   equ  5
-TYPE_SHIFTS_1 equ  6
-TYPE_SHIFTS_R equ  7
+TYPE_LOGIC    equ  3 ; multiple values for eAX and eDX
+TYPE_LOGIC1   equ  4 ; multiple values for eAX, 1 value for eDX
+TYPE_LOGIC1D  equ  5 ; 1 value for eAX, multiple values for eDX
+TYPE_MULTIPLY equ  6
+TYPE_DIVIDE   equ  7
+TYPE_SHIFTS_1 equ  8
+TYPE_SHIFTS_R equ  9
 
 SIZE_BYTE     equ  0
 SIZE_SHORT    equ  1
@@ -129,6 +131,17 @@ tableOps:
 	defOp    "AND",and,al,dl,none,TYPE_LOGIC               ;    20 D0
 	defOp    "AND",and,ax,dx,none,TYPE_LOGIC               ; 66 21 D0
 	defOp    "AND",and,eax,edx,none,TYPE_LOGIC             ;    21 D0
+	defOp    "AND",and,al,0xAA,none,TYPE_LOGIC1            ;    24 AA
+	defOp    "AND",and,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 25 AAAA
+	defOp    "AND",and,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    25 AAAAAAAA
+	defOp    "AND",and,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 E0 AA
+	defOp    "AND",and,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 E0 AA
+	defOp    "AND",and,dl,0xAA,none,TYPE_LOGIC1D           ;    80 E2 AA
+	defOp    "AND",and,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 E2 AAAA
+	defOp    "AND",and,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 E2 AAAAAAAA
+	defOp    "AND",and,al,mem,none,TYPE_LOGIC              ;    22 05 00000000
+	defOp    "AND",and,ax,mem,none,TYPE_LOGIC              ; 66 23 05 00000000
+	defOp    "AND",and,eax,mem,none,TYPE_LOGIC             ;    23 05 00000000
 	defOp    "SUB",sub,al,dl,none,TYPE_ARITH               ;    28 D0
 	defOp    "SUB",sub,ax,dx,none,TYPE_ARITH               ; 66 29 D0
 	defOp    "SUB",sub,eax,edx,none,TYPE_ARITH             ;    29 D0
@@ -147,9 +160,9 @@ tableOps:
 	defOp    "NEG",neg,al,none,none,TYPE_ARITH1            ;    F6 D8
 	defOp    "NEG",neg,ax,none,none,TYPE_ARITH1            ; 66 F7 D8
 	defOp    "NEG",neg,eax,none,none,TYPE_ARITH1           ;    F7 D8
-	defOp    "NOT",not,al,none,none,TYPE_ARITH1            ;    F6 D0
-	defOp    "NOT",not,ax,none,none,TYPE_ARITH1            ; 66 F7 D0
-	defOp    "NOT",not,eax,none,none,TYPE_ARITH1           ;    F7 D0
+	defOp    "NOT",not,al,none,none,TYPE_LOGIC1            ;    F6 D0
+	defOp    "NOT",not,ax,none,none,TYPE_LOGIC1            ; 66 F7 D0
+	defOp    "NOT",not,eax,none,none,TYPE_LOGIC1           ;    F7 D0
 	defOp    "MULA",mul,dl,none,none,TYPE_MULTIPLY         ;    F6 E2
 	defOp    "MULA",mul,dx,none,none,TYPE_MULTIPLY         ; 66 F7 E2
 	defOp    "MULA",mul,edx,none,none,TYPE_MULTIPLY        ;    F7 E2
@@ -249,6 +262,8 @@ typeMasks:
 	dd PS_ARITH
 	dd PS_ARITH
 	dd PS_LOGIC
+	dd PS_LOGIC
+	dd PS_LOGIC
 	dd PS_MULTIPLY
 	dd PS_DIVIDE
 	dd PS_SHIFTS_1
@@ -263,6 +278,16 @@ arithValues:
 
 .dvals:	dd	0x00000000,0x00000001,0x00000002,0x7FFFFFFE,0x7FFFFFFF,0x80000000,0x80000001,0xFFFFFFFE,0xFFFFFFFF
 	ARITH_DWORDS equ ($-.dvals)/4
+
+logicValues:
+.bvals:	dd	0x00,0x01,0x55,0xAA,0x5A,0xA5,0xFF
+	LOGIC_BYTES equ ($-.bvals)/4
+
+.wvals:	dd	0x0000,0x0001,0x5555,0xAAAA,0x5A5A,0xA5A5,0xFFFF
+	LOGIC_WORDS equ ($-.wvals)/4
+
+.dvals:	dd	0x00000000,0x00000001,0x55555555,0xAAAAAAAA,0x5A5A5A5A,0xA5A5A5A5,0xFFFFFFFF
+	LOGIC_DWORDS equ ($-.dvals)/4
 
 muldivValues:
 .bvals:	dd	0x00,0x01,0x02,0x3F,0x40,0x41,0x7E,0x7F,0x80,0x81,0xFE,0xFF
@@ -318,11 +343,25 @@ typeValues:
 	dd	1,arithValues,ARITH_BYTES+ARITH_WORDS+ARITH_DWORDS,arithValues
 	dd	0,0,0,0
 	;
-	; Values for TYPE_LOGIC (using ARITH values for now)
+	; Values for TYPE_LOGIC
 	;
-	dd	ARITH_BYTES,arithValues,ARITH_BYTES,arithValues
-	dd	ARITH_BYTES+ARITH_WORDS,arithValues,ARITH_BYTES+ARITH_WORDS,arithValues
-	dd	ARITH_BYTES+ARITH_WORDS+ARITH_DWORDS,arithValues,ARITH_BYTES+ARITH_WORDS+ARITH_DWORDS,arithValues
+	dd	LOGIC_BYTES,logicValues,LOGIC_BYTES,logicValues
+	dd	LOGIC_BYTES+LOGIC_WORDS,logicValues,LOGIC_BYTES+LOGIC_WORDS,logicValues
+	dd	LOGIC_BYTES+LOGIC_WORDS+LOGIC_DWORDS,logicValues,LOGIC_BYTES+LOGIC_WORDS+LOGIC_DWORDS,logicValues
+	dd	0,0,0,0
+	;
+	; Values for TYPE_LOGIC1
+	;
+	dd	LOGIC_BYTES,logicValues,1,logicValues
+	dd	LOGIC_BYTES+LOGIC_WORDS,logicValues,1,logicValues
+	dd	LOGIC_BYTES+LOGIC_WORDS+LOGIC_DWORDS,logicValues,1,logicValues
+	dd	0,0,0,0
+	;
+	; Values for TYPE_LOGIC1D
+	;
+	dd	1,logicValues,LOGIC_BYTES,logicValues
+	dd	1,logicValues,LOGIC_BYTES+LOGIC_WORDS,logicValues
+	dd	1,logicValues,LOGIC_BYTES+LOGIC_WORDS+LOGIC_DWORDS,logicValues
 	dd	0,0,0,0
 	;
 	; Values for TYPE_MULTIPLY (a superset of ARITH values)

@@ -167,6 +167,17 @@ tableOps:
 	defOp    "SUB",sub,al,dl,none,TYPE_ARITH               ;    28 D0
 	defOp    "SUB",sub,ax,dx,none,TYPE_ARITH               ; 66 29 D0
 	defOp    "SUB",sub,eax,edx,none,TYPE_ARITH             ;    29 D0
+	defOp    "SUB",sub,al,0xFF,none,TYPE_ARITH1            ;    2C FF
+	defOp    "SUB",sub,ax,0x8000,none,TYPE_ARITH1          ; 66 2D 0080
+	defOp    "SUB",sub,eax,0x80000000,none,TYPE_ARITH1     ;    2D 00000080
+	defOp    "SUB",sub,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 E8 FF
+	defOp    "SUB",sub,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 E8 FF
+	defOp    "SUB",sub,dl,0xFF,none,TYPE_ARITH1D           ;    80 EA FF
+	defOp    "SUB",sub,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 EA 0080
+	defOp    "SUB",sub,edx,0x80000000,none,TYPE_ARITH1D    ;    81 EA 00000080
+	defOp    "SUB",sub,al,mem,none,TYPE_ARITH              ;    2A 05 00000000
+	defOp    "SUB",sub,ax,mem,none,TYPE_ARITH              ; 66 2B 05 00000000
+	defOp    "SUB",sub,eax,mem,none,TYPE_ARITH             ;    2B 05 00000000
 	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
 	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
 	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0

@@ -141,255 +141,255 @@ SIZE_LONG     equ  2
 ALLOPS equ 1
 
 tableOps:
-	defOp0   "CBW",cbw,b,TYPE_ARITH1                       ; 66 98
-	defOp0   "CWDE",cwde,w,TYPE_ARITH1                     ;    98
-	defOp0   "CWD",cwd,w,TYPE_ARITH1                       ; 66 99
-	defOp0   "CDQ",cdq,d,TYPE_ARITH1                       ;    99
-	defOp    "ADD",add,al,dl,none,TYPE_ARITH               ;    00 D0
-	defOp    "ADD",add,ax,dx,none,TYPE_ARITH               ; 66 01 D0
-	defOp    "ADD",add,eax,edx,none,TYPE_ARITH             ;    01 D0
-	defOp    "ADD",add,al,0xFF,none,TYPE_ARITH1            ;    04 FF
-	defOp    "ADD",add,ax,0x8002,none,TYPE_ARITH1          ; 66 05 0280
-	defOp    "ADD",add,eax,0x80000002,none,TYPE_ARITH1     ;    05 02000080
-	defOp    "ADD",add,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 C0 FF
-	defOp    "ADD",add,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 C0 FF
-	defOp    "ADD",add,dl,0xFF,none,TYPE_ARITH1D           ;    80 C2 FF
-	defOp    "ADD",add,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 C2 0280
-	defOp    "ADD",add,edx,0x80000002,none,TYPE_ARITH1D    ;    81 C2 02000080
-	defOp    "ADD",add,al,mem,none,TYPE_ARITH              ;    02 05 00000000
-	defOp    "ADD",add,ax,mem,none,TYPE_ARITH              ; 66 03 05 00000000
-	defOp    "ADD",add,eax,mem,none,TYPE_ARITH             ;    03 05 00000000
-	defOp    "OR",or,al,dl,none,TYPE_LOGIC                 ;    08 D0
-	defOp    "OR",or,ax,dx,none,TYPE_LOGIC                 ; 66 09 D0
-	defOp    "OR",or,eax,edx,none,TYPE_LOGIC               ;    09 D0
-	defOp    "OR",or,al,0xAA,none,TYPE_LOGIC1              ;    0C AA
-	defOp    "OR",or,ax,0xAAAA,none,TYPE_LOGIC1            ; 66 0D AAAA
-	defOp    "OR",or,eax,0xAAAAAAAA,none,TYPE_LOGIC1       ;    0D AAAAAAAA
-	defOp    "OR",or,ax,byte 0xAA,none,TYPE_LOGIC1         ; 66 83 C8 AA
-	defOp    "OR",or,eax,byte 0xAA,none,TYPE_LOGIC1        ;    83 C8 AA
-	defOp    "OR",or,dl,0xAA,none,TYPE_LOGIC1D             ;    80 CA AA
-	defOp    "OR",or,dx,0xAAAA,none,TYPE_LOGIC1D           ; 66 81 CA AAAA
-	defOp    "OR",or,edx,0xAAAAAAAA,none,TYPE_LOGIC1D      ;    81 CA AAAAAAAA
-	defOp    "OR",or,al,mem,none,TYPE_LOGIC                ;    0A 05 00000000
-	defOp    "OR",or,ax,mem,none,TYPE_LOGIC                ; 66 0B 05 00000000
-	defOp    "OR",or,eax,mem,none,TYPE_LOGIC               ;    0B 05 00000000
-	defOp    "ADC",adc,al,dl,none,TYPE_ARITH               ;    10 D0
-	defOp    "ADC",adc,ax,dx,none,TYPE_ARITH               ; 66 11 D0
-	defOp    "ADC",adc,eax,edx,none,TYPE_ARITH             ;    11 D0
-	defOp    "ADC",adc,al,0xFF,none,TYPE_ARITH1            ;    14 FF
-	defOp    "ADC",adc,ax,0x8002,none,TYPE_ARITH1          ; 66 15 0280
-	defOp    "ADC",adc,eax,0x80000002,none,TYPE_ARITH1     ;    15 02000080
-	defOp    "ADC",adc,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D0 FF
-	defOp    "ADC",adc,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D0 FF
-	defOp    "ADC",adc,dl,0xFF,none,TYPE_ARITH1D           ;    80 D2 FF
-	defOp    "ADC",adc,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 D2 0280
-	defOp    "ADC",adc,edx,0x80000002,none,TYPE_ARITH1D    ;    81 D2 02000080
-	defOp    "ADC",adc,al,mem,none,TYPE_ARITH              ;    12 05 00000000
-	defOp    "ADC",adc,ax,mem,none,TYPE_ARITH              ; 66 13 05 00000000
-	defOp    "ADC",adc,eax,mem,none,TYPE_ARITH             ;    13 05 00000000
-	defOp    "SBB",sbb,al,dl,none,TYPE_ARITH               ;    18 D0
-	defOp    "SBB",sbb,ax,dx,none,TYPE_ARITH               ; 66 19 D0
-	defOp    "SBB",sbb,eax,edx,none,TYPE_ARITH             ;    19 D0
-	defOp    "SBB",sbb,al,0xFF,none,TYPE_ARITH1            ;    1C FF
-	defOp    "SBB",sbb,ax,0x8000,none,TYPE_ARITH1          ; 66 1D 0080
-	defOp    "SBB",sbb,eax,0x80000000,none,TYPE_ARITH1     ;    1D 00000080
-	defOp    "SBB",sbb,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D8 FF
-	defOp    "SBB",sbb,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D8 FF
-	defOp    "SBB",sbb,dl,0xFF,none,TYPE_ARITH1D           ;    80 DA FF
-	defOp    "SBB",sbb,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 DA 0080
-	defOp    "SBB",sbb,edx,0x80000000,none,TYPE_ARITH1D    ;    81 DA 00000080
-	defOp    "SBB",sbb,al,mem,none,TYPE_ARITH              ;    1A 05 00000000
-	defOp    "SBB",sbb,ax,mem,none,TYPE_ARITH              ; 66 1B 05 00000000
-	defOp    "SBB",sbb,eax,mem,none,TYPE_ARITH             ;    1B 05 00000000
-	defOp    "AND",and,al,dl,none,TYPE_LOGIC               ;    20 D0
-	defOp    "AND",and,ax,dx,none,TYPE_LOGIC               ; 66 21 D0
-	defOp    "AND",and,eax,edx,none,TYPE_LOGIC             ;    21 D0
-	defOp    "AND",and,al,0xAA,none,TYPE_LOGIC1            ;    24 AA
-	defOp    "AND",and,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 25 AAAA
-	defOp    "AND",and,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    25 AAAAAAAA
-	defOp    "AND",and,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 E0 AA
-	defOp    "AND",and,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 E0 AA
-	defOp    "AND",and,dl,0xAA,none,TYPE_LOGIC1D           ;    80 E2 AA
-	defOp    "AND",and,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 E2 AAAA
-	defOp    "AND",and,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 E2 AAAAAAAA
-	defOp    "AND",and,al,mem,none,TYPE_LOGIC              ;    22 05 00000000
-	defOp    "AND",and,ax,mem,none,TYPE_LOGIC              ; 66 23 05 00000000
-	defOp    "AND",and,eax,mem,none,TYPE_LOGIC             ;    23 05 00000000
-	defOp    "SUB",sub,al,dl,none,TYPE_ARITH               ;    28 D0
-	defOp    "SUB",sub,ax,dx,none,TYPE_ARITH               ; 66 29 D0
-	defOp    "SUB",sub,eax,edx,none,TYPE_ARITH             ;    29 D0
-	defOp    "SUB",sub,al,0xFF,none,TYPE_ARITH1            ;    2C FF
-	defOp    "SUB",sub,ax,0x8000,none,TYPE_ARITH1          ; 66 2D 0080
-	defOp    "SUB",sub,eax,0x80000000,none,TYPE_ARITH1     ;    2D 00000080
-	defOp    "SUB",sub,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 E8 FF
-	defOp    "SUB",sub,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 E8 FF
-	defOp    "SUB",sub,dl,0xFF,none,TYPE_ARITH1D           ;    80 EA FF
-	defOp    "SUB",sub,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 EA 0080
-	defOp    "SUB",sub,edx,0x80000000,none,TYPE_ARITH1D    ;    81 EA 00000080
-	defOp    "SUB",sub,al,mem,none,TYPE_ARITH              ;    2A 05 00000000
-	defOp    "SUB",sub,ax,mem,none,TYPE_ARITH              ; 66 2B 05 00000000
-	defOp    "SUB",sub,eax,mem,none,TYPE_ARITH             ;    2B 05 00000000
-	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
-	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
-	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0
-	defOp    "XOR",xor,al,0xAA,none,TYPE_LOGIC1            ;    34 AA
-	defOp    "XOR",xor,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 35 AAAA
-	defOp    "XOR",xor,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    35 AAAAAAAA
-	defOp    "XOR",xor,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F0 AA
-	defOp    "XOR",xor,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F0 AA
-	defOp    "XOR",xor,dl,0xAA,none,TYPE_LOGIC1D           ;    80 F2 AA
-	defOp    "XOR",xor,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 F2 AAAA
-	defOp    "XOR",xor,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 F2 AAAAAAAA
-	defOp    "XOR",xor,al,mem,none,TYPE_LOGIC              ;    32 05 00000000
-	defOp    "XOR",xor,ax,mem,none,TYPE_LOGIC              ; 66 33 05 00000000
-	defOp    "XOR",xor,eax,mem,none,TYPE_LOGIC             ;    33 05 00000000
-	defOp    "CMP",cmp,al,dl,none,TYPE_LOGIC               ;    38 D0
-	defOp    "CMP",cmp,ax,dx,none,TYPE_LOGIC               ; 66 39 D0
-	defOp    "CMP",cmp,eax,edx,none,TYPE_LOGIC             ;    39 D0
-	defOp    "CMP",cmp,al,0xAA,none,TYPE_LOGIC1            ;    3C AA
-	defOp    "CMP",cmp,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 3D AAAA
-	defOp    "CMP",cmp,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    3D AAAAAAAA
-	defOp    "CMP",cmp,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F8 AA
-	defOp    "CMP",cmp,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F8 AA
-	defOp    "CMP",cmp,dl,0xAA,none,TYPE_LOGIC1D           ;    80 FA AA
-	defOp    "CMP",cmp,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 FA AAAA
-	defOp    "CMP",cmp,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 FA AAAAAAAA
-	defOp    "CMP",cmp,al,mem,none,TYPE_LOGIC              ;    3A 05 00000000
-	defOp    "CMP",cmp,ax,mem,none,TYPE_LOGIC              ; 66 3B 05 00000000
-	defOp    "CMP",cmp,eax,mem,none,TYPE_LOGIC             ;    3B 05 00000000
-	defOpInc "INC",inc,ax,word                             ; 66 40
-	defOpInc "INC",inc,cx,word                             ; 66 41
-	defOpInc "INC",inc,dx,word                             ; 66 42
-	defOpInc "INC",inc,bx,word                             ; 66 43
-	defOpInc "INC",inc,sp,word                             ; 66 44
-	defOpInc "INC",inc,bp,word                             ; 66 45
-	defOpInc "INC",inc,si,word                             ; 66 46
-	defOpInc "INC",inc,di,word                             ; 66 47
-	defOpInc "INC",inc,eax,dword                           ;    40
-	defOpInc "INC",inc,ecx,dword                           ;    41
-	defOpInc "INC",inc,edx,dword                           ;    42
-	defOpInc "INC",inc,ebx,dword                           ;    43
-	defOpInc "INC",inc,esp,dword                           ;    44
-	defOpInc "INC",inc,ebp,dword                           ;    45
-	defOpInc "INC",inc,esi,dword                           ;    46
-	defOpInc "INC",inc,edi,dword                           ;    47
-	defOpInc "INC",inc,mem,byte                            ;    FE 05 00000000
-	defOpInc "INC",inc,mem,word                            ; 66 FF 05 00000000
-	defOpInc "INC",inc,mem,dword                           ;    FF 05 00000000
-	defOpInc "DEC",dec,ax,word                             ; 66 48
-	defOpInc "DEC",dec,cx,word                             ; 66 49
-	defOpInc "DEC",dec,dx,word                             ; 66 4A
-	defOpInc "DEC",dec,bx,word                             ; 66 4B
-	defOpInc "DEC",dec,sp,word                             ; 66 4C
-	defOpInc "DEC",dec,bp,word                             ; 66 4D
-	defOpInc "DEC",dec,si,word                             ; 66 4E
-	defOpInc "DEC",dec,di,word                             ; 66 4F
-	defOpInc "DEC",dec,eax,dword                           ;    48
-	defOpInc "DEC",dec,ecx,dword                           ;    49
-	defOpInc "DEC",dec,edx,dword                           ;    4A
-	defOpInc "DEC",dec,ebx,dword                           ;    4B
-	defOpInc "DEC",dec,esp,dword                           ;    4C
-	defOpInc "DEC",dec,ebp,dword                           ;    4D
-	defOpInc "DEC",dec,esi,dword                           ;    4E
-	defOpInc "DEC",dec,edi,dword                           ;    4F
-	defOpInc "DEC",dec,mem,byte                            ;    FE 0D 00000000
-	defOpInc "DEC",dec,mem,word                            ; 66 FF 0D 00000000
-	defOpInc "DEC",dec,mem,dword                           ;    FF 0D 00000000
-	defOp    "NEG",neg,al,none,none,TYPE_ARITH1            ;    F6 D8
-	defOp    "NEG",neg,ax,none,none,TYPE_ARITH1            ; 66 F7 D8
-	defOp    "NEG",neg,eax,none,none,TYPE_ARITH1           ;    F7 D8
-	defOp    "NOT",not,al,none,none,TYPE_LOGIC1            ;    F6 D0
-	defOp    "NOT",not,ax,none,none,TYPE_LOGIC1            ; 66 F7 D0
-	defOp    "NOT",not,eax,none,none,TYPE_LOGIC1           ;    F7 D0
-	defOp    "MULA",mul,dl,none,none,TYPE_MULTIPLY         ;    F6 E2
-	defOp    "MULA",mul,dx,none,none,TYPE_MULTIPLY         ; 66 F7 E2
-	defOp    "MULA",mul,edx,none,none,TYPE_MULTIPLY        ;    F7 E2
-	defOp    "IMULA",imul,dl,none,none,TYPE_MULTIPLY       ;    F6 EA
-	defOp    "IMULA",imul,dx,none,none,TYPE_MULTIPLY       ; 66 F7 EA
-	defOp    "IMULA",imul,edx,none,none,TYPE_MULTIPLY      ;    F7 EA
-	defOp    "IMUL",imul,ax,dx,none,TYPE_MULTIPLY          ; 66 0FAF C2
-	defOp    "IMUL",imul,eax,edx,none,TYPE_MULTIPLY        ;    0FAF C2
-	defOp    "IMUL8",imul,ax,dx,0x77,TYPE_MULTIPLY         ; 66 6B C2 77
-	defOp    "IMUL8",imul,ax,dx,-0x77,TYPE_MULTIPLY        ; 66 6B C2 89
-	defOp    "IMUL8",imul,eax,edx,0x77,TYPE_MULTIPLY       ;    6B C2 77
-	defOp    "IMUL8",imul,eax,edx,-0x77,TYPE_MULTIPLY      ;    6B C2 89
-	defOp    "IMUL16",imul,ax,0x777,none,TYPE_MULTIPLY     ; 66 69 C0 7707
-	defOp    "IMUL32",imul,eax,0x777777,none,TYPE_MULTIPLY ;    69 C0 77777700
-	defOp    "DIVDL",div,dl,none,none,TYPE_DIVIDE          ;    F6 F2
-	defOp    "DIVDX",div,dx,none,none,TYPE_DIVIDE          ; 66 F7 F2
-	defOp    "DIVEDX",div,edx,none,none,TYPE_DIVIDE        ;    F7 F2
-	defOp    "DIVAL",div,al,none,none,TYPE_DIVIDE          ;    F6 F0
-	defOp    "DIVAX",div,ax,none,none,TYPE_DIVIDE          ; 66 F7 F0
-	defOp    "DIVEAX",div,eax,none,none,TYPE_DIVIDE        ;    F7 F0
-	defOp    "IDIVDL",idiv,dl,none,none,TYPE_DIVIDE        ;    F6 FA
-	defOp    "IDIVDX",idiv,dx,none,none,TYPE_DIVIDE        ; 66 F7 FA
-	defOp    "IDIVEDX",idiv,edx,none,none,TYPE_DIVIDE      ;    F7 FA
-	defOp    "IDIVAL",idiv,al,none,none,TYPE_DIVIDE        ;    F6 F8
-	defOp    "IDIVAX",idiv,ax,none,none,TYPE_DIVIDE        ; 66 F7 F8
-	defOp    "IDIVEAX",idiv,eax,none,none,TYPE_DIVIDE      ;    F7 F8
-	defOpSh  "SAL1",sal,al,1,TYPE_SHIFTS_1    ;    D0 E0
-	defOpSh  "SAL1",sal,ax,1,TYPE_SHIFTS_1    ; 66 D1 E0
-	defOpSh  "SAL1",sal,eax,1,TYPE_SHIFTS_1   ;    D1 E0
-	defOpSh  "SALi",sal,al,7,TYPE_SHIFTS_R    ;    C0 E007
-	defOpSh  "SALi",sal,ax,7,TYPE_SHIFTS_R    ; 66 C1 E007
-	defOpSh  "SALi",sal,eax,7,TYPE_SHIFTS_R   ;    C1 E007
-	defOpSh  "SALr",sal,al,cl,TYPE_SHIFTS_R   ;    D2 E0
-	defOpSh  "SALr",sal,ax,cl,TYPE_SHIFTS_R   ; 66 D3 E0
-	defOpSh  "SALr",sal,eax,cl,TYPE_SHIFTS_R  ;    D3 E0
-	defOpSh  "SAR1",sar,al,1,TYPE_SHIFTS_1    ;    D0 F8
-	defOpSh  "SAR1",sar,ax,1,TYPE_SHIFTS_1    ; 66 D1 F8
-	defOpSh  "SAR1",sar,eax,1,TYPE_SHIFTS_1   ;    D1 F8
-	defOpSh  "SARi",sar,al,7,TYPE_SHIFTS_R    ;    C0 F807
-	defOpSh  "SARi",sar,ax,7,TYPE_SHIFTS_R    ; 66 C1 F807
-	defOpSh  "SARi",sar,eax,7,TYPE_SHIFTS_R   ;    C1 F807
-	defOpSh  "SARr",sar,al,cl,TYPE_SHIFTS_R   ;    D2 F8
-	defOpSh  "SARr",sar,ax,cl,TYPE_SHIFTS_R   ; 66 D3 F8
-	defOpSh  "SARr",sar,eax,cl,TYPE_SHIFTS_R  ;    D3 F8
-	defOpSh  "SHR1",shr,al,1,TYPE_SHIFTS_1    ;    D0 E8
-	defOpSh  "SHR1",shr,ax,1,TYPE_SHIFTS_1    ; 66 D1 E8
-	defOpSh  "SHR1",shr,eax,1,TYPE_SHIFTS_1   ;    D1 E8
-	defOpSh  "SHRi",shr,al,7,TYPE_SHIFTS_R    ;    C0 E807
-	defOpSh  "SHRi",shr,ax,7,TYPE_SHIFTS_R    ; 66 C1 E807
-	defOpSh  "SHRi",shr,eax,7,TYPE_SHIFTS_R   ;    C1 E807
-	defOpSh  "SHRr",shr,al,cl,TYPE_SHIFTS_R   ;    D2 E8
-	defOpSh  "SHRr",shr,ax,cl,TYPE_SHIFTS_R   ; 66 D3 E8
-	defOpSh  "SHRr",shr,eax,cl,TYPE_SHIFTS_R  ;    D3 E8
-	defOpSh  "ROL1",rol,al,1,TYPE_SHIFTS_1    ;    D0 C0
-	defOpSh  "ROL1",rol,ax,1,TYPE_SHIFTS_1    ; 66 D1 C0
-	defOpSh  "ROL1",rol,eax,1,TYPE_SHIFTS_1   ;    D1 C0
-	defOpSh  "ROLi",rol,al,7,TYPE_SHIFTS_1    ;    C0 C007
-	defOpSh  "ROLi",rol,ax,7,TYPE_SHIFTS_1    ; 66 C1 C007
-	defOpSh  "ROLi",rol,eax,7,TYPE_SHIFTS_1   ;    C1 C007
-	defOpSh  "ROLr",rol,al,cl,TYPE_SHIFTS_R   ;    D2 C0
-	defOpSh  "ROLr",rol,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C0
-	defOpSh  "ROLr",rol,eax,cl,TYPE_SHIFTS_R  ;    D3 C0
-	defOpSh  "ROR1",ror,al,1,TYPE_SHIFTS_1    ;    D0 C8
-	defOpSh  "ROR1",ror,ax,1,TYPE_SHIFTS_1    ; 66 D1 C8
-	defOpSh  "ROR1",ror,eax,1,TYPE_SHIFTS_1   ;    D1 C8
-	defOpSh  "RORi",ror,al,7,TYPE_SHIFTS_1    ;    C0 C807
-	defOpSh  "RORi",ror,ax,7,TYPE_SHIFTS_1    ; 66 C1 C807
-	defOpSh  "RORi",ror,eax,7,TYPE_SHIFTS_1   ;    C1 C807
-	defOpSh  "RORr",ror,al,cl,TYPE_SHIFTS_R   ;    D2 C8
-	defOpSh  "RORr",ror,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C8
-	defOpSh  "RORr",ror,eax,cl,TYPE_SHIFTS_R  ;    D3 C8
-	defOpSh  "RCL1",rcl,al,1,TYPE_SHIFTS_1    ;    D0 D0
-	defOpSh  "RCL1",rcl,ax,1,TYPE_SHIFTS_1    ; 66 D1 D0
-	defOpSh  "RCL1",rcl,eax,1,TYPE_SHIFTS_1   ;    D1 D0
-	defOpSh  "RCLi",rcl,al,7,TYPE_SHIFTS_1    ;    C0 D007
-	defOpSh  "RCLi",rcl,ax,7,TYPE_SHIFTS_1    ; 66 C1 D007
-	defOpSh  "RCLi",rcl,eax,7,TYPE_SHIFTS_1   ;    C1 D007
-	defOpSh  "RCLr",rcl,al,cl,TYPE_SHIFTS_R   ;    D2 D0
-	defOpSh  "RCLr",rcl,ax,cl,TYPE_SHIFTS_R   ; 66 D3 D0
-	defOpSh  "RCLr",rcl,eax,cl,TYPE_SHIFTS_R  ;    D3 D0
-	defOpSh  "RCR1",rol,al,1,TYPE_SHIFTS_1    ;    D0 C0
-	defOpSh  "RCR1",rol,ax,1,TYPE_SHIFTS_1    ; 66 D1 C0
-	defOpSh  "RCR1",rol,eax,1,TYPE_SHIFTS_1   ;    D1 C0
-	defOpSh  "RCRi",rol,al,7,TYPE_SHIFTS_1    ;    C0 C007
-	defOpSh  "RCRi",rol,ax,7,TYPE_SHIFTS_1    ; 66 C1 C007
-	defOpSh  "RCRi",rol,eax,7,TYPE_SHIFTS_1   ;    C1 C007
-	defOpSh  "RCRr",rol,al,cl,TYPE_SHIFTS_R   ;    D2 C0
-	defOpSh  "RCRr",rol,ax,cl,TYPE_SHIFTS_R   ; 66 D3 C0
-	defOpSh  "RCRr",rol,eax,cl,TYPE_SHIFTS_R  ;    D3 C0
+	defOp0   "98 CBW",cbw,b,TYPE_ARITH1                       ; 66 98
+	defOp0   "98 CWDE",cwde,w,TYPE_ARITH1                     ;    98
+	defOp0   "99 CWD",cwd,w,TYPE_ARITH1                       ; 66 99
+	defOp0   "99 CDQ",cdq,d,TYPE_ARITH1                       ;    99
+	defOp    "00 ADD",add,al,dl,none,TYPE_ARITH               ;    00 D0
+	defOp    "01 ADD",add,ax,dx,none,TYPE_ARITH               ; 66 01 D0
+	defOp    "01 ADD",add,eax,edx,none,TYPE_ARITH             ;    01 D0
+	defOp    "04 ADD",add,al,0xFF,none,TYPE_ARITH1            ;    04 FF
+	defOp    "05 ADD",add,ax,0x8002,none,TYPE_ARITH1          ; 66 05 0280
+	defOp    "05 ADD",add,eax,0x80000002,none,TYPE_ARITH1     ;    05 02000080
+	defOp    "83 ADD",add,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 C0 FF
+	defOp    "83 ADD",add,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 C0 FF
+	defOp    "80 ADD",add,dl,0xFF,none,TYPE_ARITH1D           ;    80 C2 FF
+	defOp    "81 ADD",add,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 C2 0280
+	defOp    "81 ADD",add,edx,0x80000002,none,TYPE_ARITH1D    ;    81 C2 02000080
+	defOp    "02 ADD",add,al,mem,none,TYPE_ARITH              ;    02 05 00000000
+	defOp    "03 ADD",add,ax,mem,none,TYPE_ARITH              ; 66 03 05 00000000
+	defOp    "03 ADD",add,eax,mem,none,TYPE_ARITH             ;    03 05 00000000
+	defOp    "08 OR",or,al,dl,none,TYPE_LOGIC                 ;    08 D0
+	defOp    "09 OR",or,ax,dx,none,TYPE_LOGIC                 ; 66 09 D0
+	defOp    "09 OR",or,eax,edx,none,TYPE_LOGIC               ;    09 D0
+	defOp    "0C OR",or,al,0xAA,none,TYPE_LOGIC1              ;    0C AA
+	defOp    "0D OR",or,ax,0xAAAA,none,TYPE_LOGIC1            ; 66 0D AAAA
+	defOp    "0D OR",or,eax,0xAAAAAAAA,none,TYPE_LOGIC1       ;    0D AAAAAAAA
+	defOp    "83 OR",or,ax,byte 0xAA,none,TYPE_LOGIC1         ; 66 83 C8 AA
+	defOp    "83 OR",or,eax,byte 0xAA,none,TYPE_LOGIC1        ;    83 C8 AA
+	defOp    "80 OR",or,dl,0xAA,none,TYPE_LOGIC1D             ;    80 CA AA
+	defOp    "81 OR",or,dx,0xAAAA,none,TYPE_LOGIC1D           ; 66 81 CA AAAA
+	defOp    "81 OR",or,edx,0xAAAAAAAA,none,TYPE_LOGIC1D      ;    81 CA AAAAAAAA
+	defOp    "0A OR",or,al,mem,none,TYPE_LOGIC                ;    0A 05 00000000
+	defOp    "0B OR",or,ax,mem,none,TYPE_LOGIC                ; 66 0B 05 00000000
+	defOp    "0B OR",or,eax,mem,none,TYPE_LOGIC               ;    0B 05 00000000
+	defOp    "10 ADC",adc,al,dl,none,TYPE_ARITH               ;    10 D0
+	defOp    "11 ADC",adc,ax,dx,none,TYPE_ARITH               ; 66 11 D0
+	defOp    "11 ADC",adc,eax,edx,none,TYPE_ARITH             ;    11 D0
+	defOp    "14 ADC",adc,al,0xFF,none,TYPE_ARITH1            ;    14 FF
+	defOp    "15 ADC",adc,ax,0x8002,none,TYPE_ARITH1          ; 66 15 0280
+	defOp    "15 ADC",adc,eax,0x80000002,none,TYPE_ARITH1     ;    15 02000080
+	defOp    "83 ADC",adc,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D0 FF
+	defOp    "83 ADC",adc,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D0 FF
+	defOp    "80 ADC",adc,dl,0xFF,none,TYPE_ARITH1D           ;    80 D2 FF
+	defOp    "81 ADC",adc,dx,0x8002,none,TYPE_ARITH1D         ; 66 81 D2 0280
+	defOp    "81 ADC",adc,edx,0x80000002,none,TYPE_ARITH1D    ;    81 D2 02000080
+	defOp    "12 ADC",adc,al,mem,none,TYPE_ARITH              ;    12 05 00000000
+	defOp    "13 ADC",adc,ax,mem,none,TYPE_ARITH              ; 66 13 05 00000000
+	defOp    "13 ADC",adc,eax,mem,none,TYPE_ARITH             ;    13 05 00000000
+	defOp    "18 SBB",sbb,al,dl,none,TYPE_ARITH               ;    18 D0
+	defOp    "19 SBB",sbb,ax,dx,none,TYPE_ARITH               ; 66 19 D0
+	defOp    "19 SBB",sbb,eax,edx,none,TYPE_ARITH             ;    19 D0
+	defOp    "1C SBB",sbb,al,0xFF,none,TYPE_ARITH1            ;    1C FF
+	defOp    "1D SBB",sbb,ax,0x8000,none,TYPE_ARITH1          ; 66 1D 0080
+	defOp    "1D SBB",sbb,eax,0x80000000,none,TYPE_ARITH1     ;    1D 00000080
+	defOp    "83 SBB",sbb,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 D8 FF
+	defOp    "83 SBB",sbb,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 D8 FF
+	defOp    "80 SBB",sbb,dl,0xFF,none,TYPE_ARITH1D           ;    80 DA FF
+	defOp    "81 SBB",sbb,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 DA 0080
+	defOp    "81 SBB",sbb,edx,0x80000000,none,TYPE_ARITH1D    ;    81 DA 00000080
+	defOp    "1A SBB",sbb,al,mem,none,TYPE_ARITH              ;    1A 05 00000000
+	defOp    "1B SBB",sbb,ax,mem,none,TYPE_ARITH              ; 66 1B 05 00000000
+	defOp    "1B SBB",sbb,eax,mem,none,TYPE_ARITH             ;    1B 05 00000000
+	defOp    "20 AND",and,al,dl,none,TYPE_LOGIC               ;    20 D0
+	defOp    "21 AND",and,ax,dx,none,TYPE_LOGIC               ; 66 21 D0
+	defOp    "21 AND",and,eax,edx,none,TYPE_LOGIC             ;    21 D0
+	defOp    "24 AND",and,al,0xAA,none,TYPE_LOGIC1            ;    24 AA
+	defOp    "25 AND",and,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 25 AAAA
+	defOp    "25 AND",and,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    25 AAAAAAAA
+	defOp    "83 AND",and,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 E0 AA
+	defOp    "83 AND",and,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 E0 AA
+	defOp    "80 AND",and,dl,0xAA,none,TYPE_LOGIC1D           ;    80 E2 AA
+	defOp    "81 AND",and,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 E2 AAAA
+	defOp    "81 AND",and,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 E2 AAAAAAAA
+	defOp    "22 AND",and,al,mem,none,TYPE_LOGIC              ;    22 05 00000000
+	defOp    "23 AND",and,ax,mem,none,TYPE_LOGIC              ; 66 23 05 00000000
+	defOp    "23 AND",and,eax,mem,none,TYPE_LOGIC             ;    23 05 00000000
+	defOp    "28 SUB",sub,al,dl,none,TYPE_ARITH               ;    28 D0
+	defOp    "29 SUB",sub,ax,dx,none,TYPE_ARITH               ; 66 29 D0
+	defOp    "29 SUB",sub,eax,edx,none,TYPE_ARITH             ;    29 D0
+	defOp    "2C SUB",sub,al,0xFF,none,TYPE_ARITH1            ;    2C FF
+	defOp    "2D SUB",sub,ax,0x8000,none,TYPE_ARITH1          ; 66 2D 0080
+	defOp    "2D SUB",sub,eax,0x80000000,none,TYPE_ARITH1     ;    2D 00000080
+	defOp    "83 SUB",sub,ax,byte 0xFF,none,TYPE_ARITH1       ; 66 83 E8 FF
+	defOp    "83 SUB",sub,eax,byte 0xFF,none,TYPE_ARITH1      ;    83 E8 FF
+	defOp    "80 SUB",sub,dl,0xFF,none,TYPE_ARITH1D           ;    80 EA FF
+	defOp    "81 SUB",sub,dx,0x8000,none,TYPE_ARITH1D         ; 66 81 EA 0080
+	defOp    "81 SUB",sub,edx,0x80000000,none,TYPE_ARITH1D    ;    81 EA 00000080
+	defOp    "2A SUB",sub,al,mem,none,TYPE_ARITH              ;    2A 05 00000000
+	defOp    "2B SUB",sub,ax,mem,none,TYPE_ARITH              ; 66 2B 05 00000000
+	defOp    "2B SUB",sub,eax,mem,none,TYPE_ARITH             ;    2B 05 00000000
+	defOp    "30 XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
+	defOp    "31 XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
+	defOp    "31 XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0
+	defOp    "34 XOR",xor,al,0xAA,none,TYPE_LOGIC1            ;    34 AA
+	defOp    "35 XOR",xor,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 35 AAAA
+	defOp    "35 XOR",xor,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    35 AAAAAAAA
+	defOp    "83 XOR",xor,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F0 AA
+	defOp    "83 XOR",xor,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F0 AA
+	defOp    "80 XOR",xor,dl,0xAA,none,TYPE_LOGIC1D           ;    80 F2 AA
+	defOp    "81 XOR",xor,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 F2 AAAA
+	defOp    "81 XOR",xor,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 F2 AAAAAAAA
+	defOp    "32 XOR",xor,al,mem,none,TYPE_LOGIC              ;    32 05 00000000
+	defOp    "33 XOR",xor,ax,mem,none,TYPE_LOGIC              ; 66 33 05 00000000
+	defOp    "33 XOR",xor,eax,mem,none,TYPE_LOGIC             ;    33 05 00000000
+	defOp    "38 CMP",cmp,al,dl,none,TYPE_LOGIC               ;    38 D0
+	defOp    "39 CMP",cmp,ax,dx,none,TYPE_LOGIC               ; 66 39 D0
+	defOp    "39 CMP",cmp,eax,edx,none,TYPE_LOGIC             ;    39 D0
+	defOp    "3C CMP",cmp,al,0xAA,none,TYPE_LOGIC1            ;    3C AA
+	defOp    "3D CMP",cmp,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 3D AAAA
+	defOp    "3D CMP",cmp,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    3D AAAAAAAA
+	defOp    "83 CMP",cmp,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F8 AA
+	defOp    "83 CMP",cmp,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F8 AA
+	defOp    "80 CMP",cmp,dl,0xAA,none,TYPE_LOGIC1D           ;    80 FA AA
+	defOp    "81 CMP",cmp,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 FA AAAA
+	defOp    "81 CMP",cmp,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 FA AAAAAAAA
+	defOp    "3A CMP",cmp,al,mem,none,TYPE_LOGIC              ;    3A 05 00000000
+	defOp    "3B CMP",cmp,ax,mem,none,TYPE_LOGIC              ; 66 3B 05 00000000
+	defOp    "3B CMP",cmp,eax,mem,none,TYPE_LOGIC             ;    3B 05 00000000
+	defOpInc "40 INC",inc,ax,word                             ; 66 40
+	defOpInc "41 INC",inc,cx,word                             ; 66 41
+	defOpInc "42 INC",inc,dx,word                             ; 66 42
+	defOpInc "43 INC",inc,bx,word                             ; 66 43
+	defOpInc "44 INC",inc,sp,word                             ; 66 44
+	defOpInc "45 INC",inc,bp,word                             ; 66 45
+	defOpInc "46 INC",inc,si,word                             ; 66 46
+	defOpInc "47 INC",inc,di,word                             ; 66 47
+	defOpInc "40 INC",inc,eax,dword                           ;    40
+	defOpInc "41 INC",inc,ecx,dword                           ;    41
+	defOpInc "42 INC",inc,edx,dword                           ;    42
+	defOpInc "43 INC",inc,ebx,dword                           ;    43
+	defOpInc "44 INC",inc,esp,dword                           ;    44
+	defOpInc "45 INC",inc,ebp,dword                           ;    45
+	defOpInc "46 INC",inc,esi,dword                           ;    46
+	defOpInc "47 INC",inc,edi,dword                           ;    47
+	defOpInc "FE INC",inc,mem,byte                            ;    FE 05 00000000
+	defOpInc "FF INC",inc,mem,word                            ; 66 FF 05 00000000
+	defOpInc "FF INC",inc,mem,dword                           ;    FF 05 00000000
+	defOpInc "48 DEC",dec,ax,word                             ; 66 48
+	defOpInc "49 DEC",dec,cx,word                             ; 66 49
+	defOpInc "4A DEC",dec,dx,word                             ; 66 4A
+	defOpInc "4B DEC",dec,bx,word                             ; 66 4B
+	defOpInc "4C DEC",dec,sp,word                             ; 66 4C
+	defOpInc "4D DEC",dec,bp,word                             ; 66 4D
+	defOpInc "4E DEC",dec,si,word                             ; 66 4E
+	defOpInc "4F DEC",dec,di,word                             ; 66 4F
+	defOpInc "48 DEC",dec,eax,dword                           ;    48
+	defOpInc "49 DEC",dec,ecx,dword                           ;    49
+	defOpInc "4A DEC",dec,edx,dword                           ;    4A
+	defOpInc "4B DEC",dec,ebx,dword                           ;    4B
+	defOpInc "4C DEC",dec,esp,dword                           ;    4C
+	defOpInc "4D DEC",dec,ebp,dword                           ;    4D
+	defOpInc "4E DEC",dec,esi,dword                           ;    4E
+	defOpInc "4F DEC",dec,edi,dword                           ;    4F
+	defOpInc "FE DEC",dec,mem,byte                            ;    FE 0D 00000000
+	defOpInc "FF DEC",dec,mem,word                            ; 66 FF 0D 00000000
+	defOpInc "FF DEC",dec,mem,dword                           ;    FF 0D 00000000
+	defOp    "F6 NEG",neg,al,none,none,TYPE_ARITH1            ;    F6 D8
+	defOp    "F7 NEG",neg,ax,none,none,TYPE_ARITH1            ; 66 F7 D8
+	defOp    "F7 NEG",neg,eax,none,none,TYPE_ARITH1           ;    F7 D8
+	defOp    "F6 NOT",not,al,none,none,TYPE_LOGIC1            ;    F6 D0
+	defOp    "F7 NOT",not,ax,none,none,TYPE_LOGIC1            ; 66 F7 D0
+	defOp    "F7 NOT",not,eax,none,none,TYPE_LOGIC1           ;    F7 D0
+	defOp    "F6 MUL",mul,dl,none,none,TYPE_MULTIPLY          ;    F6 E2
+	defOp    "F7 MUL",mul,dx,none,none,TYPE_MULTIPLY          ; 66 F7 E2
+	defOp    "F7 MUL",mul,edx,none,none,TYPE_MULTIPLY         ;    F7 E2
+	defOp    "F6 IMUL",imul,dl,none,none,TYPE_MULTIPLY        ;    F6 EA
+	defOp    "F7 IMUL",imul,dx,none,none,TYPE_MULTIPLY        ; 66 F7 EA
+	defOp    "F7 IMUL",imul,edx,none,none,TYPE_MULTIPLY       ;    F7 EA
+	defOp    "0FAF IMUL",imul,ax,dx,none,TYPE_MULTIPLY        ; 66 0FAF C2
+	defOp    "0FAF IMUL",imul,eax,edx,none,TYPE_MULTIPLY      ;    0FAF C2
+	defOp    "6B IMUL",imul,ax,dx,0x77,TYPE_MULTIPLY          ; 66 6B C2 77
+	defOp    "6B IMUL",imul,ax,dx,-0x77,TYPE_MULTIPLY         ; 66 6B C2 89
+	defOp    "6B IMUL",imul,eax,edx,0x77,TYPE_MULTIPLY        ;    6B C2 77
+	defOp    "6B IMUL",imul,eax,edx,-0x77,TYPE_MULTIPLY       ;    6B C2 89
+	defOp    "69 IMUL",imul,ax,0x777,none,TYPE_MULTIPLY       ; 66 69 C0 7707
+	defOp    "69 IMUL",imul,eax,0x777777,none,TYPE_MULTIPLY   ;    69 C0 77777700
+	defOp    "F6 DIV",div,dl,none,none,TYPE_DIVIDE            ;    F6 F2
+	defOp    "F7 DIV",div,dx,none,none,TYPE_DIVIDE            ; 66 F7 F2
+	defOp    "F7 DIV",div,edx,none,none,TYPE_DIVIDE           ;    F7 F2
+	defOp    "F6 DIV",div,al,none,none,TYPE_DIVIDE            ;    F6 F0
+	defOp    "F7 DIV",div,ax,none,none,TYPE_DIVIDE            ; 66 F7 F0
+	defOp    "F7 DIV",div,eax,none,none,TYPE_DIVIDE           ;    F7 F0
+	defOp    "F6 IDIV",idiv,dl,none,none,TYPE_DIVIDE          ;    F6 FA
+	defOp    "F7 IDIV",idiv,dx,none,none,TYPE_DIVIDE          ; 66 F7 FA
+	defOp    "F7 IDIV",idiv,edx,none,none,TYPE_DIVIDE         ;    F7 FA
+	defOp    "F6 IDIV",idiv,al,none,none,TYPE_DIVIDE          ;    F6 F8
+	defOp    "F7 IDIV",idiv,ax,none,none,TYPE_DIVIDE          ; 66 F7 F8
+	defOp    "F7 IDIV",idiv,eax,none,none,TYPE_DIVIDE         ;    F7 F8
+	defOpSh  "D0 SAL",sal,al,1,TYPE_SHIFTS_1                  ;    D0 E0
+	defOpSh  "D1 SAL",sal,ax,1,TYPE_SHIFTS_1                  ; 66 D1 E0
+	defOpSh  "D1 SAL",sal,eax,1,TYPE_SHIFTS_1                 ;    D1 E0
+	defOpSh  "C0 SAL",sal,al,7,TYPE_SHIFTS_R                  ;    C0 E007
+	defOpSh  "C1 SAL",sal,ax,7,TYPE_SHIFTS_R                  ; 66 C1 E007
+	defOpSh  "C1 SAL",sal,eax,7,TYPE_SHIFTS_R                 ;    C1 E007
+	defOpSh  "D2 SAL",sal,al,cl,TYPE_SHIFTS_R                 ;    D2 E0
+	defOpSh  "D3 SAL",sal,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 E0
+	defOpSh  "D3 SAL",sal,eax,cl,TYPE_SHIFTS_R                ;    D3 E0
+	defOpSh  "D0 SAR",sar,al,1,TYPE_SHIFTS_1                  ;    D0 F8
+	defOpSh  "D1 SAR",sar,ax,1,TYPE_SHIFTS_1                  ; 66 D1 F8
+	defOpSh  "D1 SAR",sar,eax,1,TYPE_SHIFTS_1                 ;    D1 F8
+	defOpSh  "C0 SAR",sar,al,7,TYPE_SHIFTS_R                  ;    C0 F807
+	defOpSh  "C1 SAR",sar,ax,7,TYPE_SHIFTS_R                  ; 66 C1 F807
+	defOpSh  "C1 SAR",sar,eax,7,TYPE_SHIFTS_R                 ;    C1 F807
+	defOpSh  "D2 SAR",sar,al,cl,TYPE_SHIFTS_R                 ;    D2 F8
+	defOpSh  "D3 SAR",sar,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 F8
+	defOpSh  "D3 SAR",sar,eax,cl,TYPE_SHIFTS_R                ;    D3 F8
+	defOpSh  "D0 SHR",shr,al,1,TYPE_SHIFTS_1                  ;    D0 E8
+	defOpSh  "D1 SHR",shr,ax,1,TYPE_SHIFTS_1                  ; 66 D1 E8
+	defOpSh  "D1 SHR",shr,eax,1,TYPE_SHIFTS_1                 ;    D1 E8
+	defOpSh  "C0 SHR",shr,al,7,TYPE_SHIFTS_R                  ;    C0 E807
+	defOpSh  "C1 SHR",shr,ax,7,TYPE_SHIFTS_R                  ; 66 C1 E807
+	defOpSh  "C1 SHR",shr,eax,7,TYPE_SHIFTS_R                 ;    C1 E807
+	defOpSh  "D2 SHR",shr,al,cl,TYPE_SHIFTS_R                 ;    D2 E8
+	defOpSh  "D3 SHR",shr,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 E8
+	defOpSh  "D3 SHR",shr,eax,cl,TYPE_SHIFTS_R                ;    D3 E8
+	defOpSh  "D0 ROL",rol,al,1,TYPE_SHIFTS_1                  ;    D0 C0
+	defOpSh  "D1 ROL",rol,ax,1,TYPE_SHIFTS_1                  ; 66 D1 C0
+	defOpSh  "D1 ROL",rol,eax,1,TYPE_SHIFTS_1                 ;    D1 C0
+	defOpSh  "C0 ROL",rol,al,7,TYPE_SHIFTS_1                  ;    C0 C007
+	defOpSh  "C1 ROL",rol,ax,7,TYPE_SHIFTS_1                  ; 66 C1 C007
+	defOpSh  "C1 ROL",rol,eax,7,TYPE_SHIFTS_1                 ;    C1 C007
+	defOpSh  "D2 ROL",rol,al,cl,TYPE_SHIFTS_R                 ;    D2 C0
+	defOpSh  "D3 ROL",rol,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 C0
+	defOpSh  "D3 ROL",rol,eax,cl,TYPE_SHIFTS_R                ;    D3 C0
+	defOpSh  "D0 ROR",ror,al,1,TYPE_SHIFTS_1                  ;    D0 C8
+	defOpSh  "D1 ROR",ror,ax,1,TYPE_SHIFTS_1                  ; 66 D1 C8
+	defOpSh  "D1 ROR",ror,eax,1,TYPE_SHIFTS_1                 ;    D1 C8
+	defOpSh  "C0 ROR",ror,al,7,TYPE_SHIFTS_1                  ;    C0 C807
+	defOpSh  "C1 ROR",ror,ax,7,TYPE_SHIFTS_1                  ; 66 C1 C807
+	defOpSh  "C1 ROR",ror,eax,7,TYPE_SHIFTS_1                 ;    C1 C807
+	defOpSh  "D2 ROR",ror,al,cl,TYPE_SHIFTS_R                 ;    D2 C8
+	defOpSh  "D3 ROR",ror,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 C8
+	defOpSh  "D3 ROR",ror,eax,cl,TYPE_SHIFTS_R                ;    D3 C8
+	defOpSh  "D0 RCL",rcl,al,1,TYPE_SHIFTS_1                  ;    D0 D0
+	defOpSh  "D1 RCL",rcl,ax,1,TYPE_SHIFTS_1                  ; 66 D1 D0
+	defOpSh  "D1 RCL",rcl,eax,1,TYPE_SHIFTS_1                 ;    D1 D0
+	defOpSh  "C0 RCL",rcl,al,7,TYPE_SHIFTS_1                  ;    C0 D007
+	defOpSh  "C1 RCL",rcl,ax,7,TYPE_SHIFTS_1                  ; 66 C1 D007
+	defOpSh  "C1 RCL",rcl,eax,7,TYPE_SHIFTS_1                 ;    C1 D007
+	defOpSh  "D2 RCL",rcl,al,cl,TYPE_SHIFTS_R                 ;    D2 D0
+	defOpSh  "D3 RCL",rcl,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 D0
+	defOpSh  "D3 RCL",rcl,eax,cl,TYPE_SHIFTS_R                ;    D3 D0
+	defOpSh  "D0 RCR",rol,al,1,TYPE_SHIFTS_1                  ;    D0 C0
+	defOpSh  "D1 RCR",rol,ax,1,TYPE_SHIFTS_1                  ; 66 D1 C0
+	defOpSh  "D1 RCR",rol,eax,1,TYPE_SHIFTS_1                 ;    D1 C0
+	defOpSh  "C0 RCR",rol,al,7,TYPE_SHIFTS_1                  ;    C0 C007
+	defOpSh  "C1 RCR",rol,ax,7,TYPE_SHIFTS_1                  ; 66 C1 C007
+	defOpSh  "C1 RCR",rol,eax,7,TYPE_SHIFTS_1                 ;    C1 C007
+	defOpSh  "D2 RCR",rol,al,cl,TYPE_SHIFTS_R                 ;    D2 C0
+	defOpSh  "D3 RCR",rol,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 C0
+	defOpSh  "D3 RCR",rol,eax,cl,TYPE_SHIFTS_R                ;    D3 C0
 
 	db 0
 

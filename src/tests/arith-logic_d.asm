@@ -257,6 +257,15 @@ tableOps:
 	defOp    "3A CMP",cmp,al,mem,none,TYPE_LOGIC              ;    3A 05 00000000
 	defOp    "3B CMP",cmp,ax,mem,none,TYPE_LOGIC              ; 66 3B 05 00000000
 	defOp    "3B CMP",cmp,eax,mem,none,TYPE_LOGIC             ;    3B 05 00000000
+	defOp    "84 TEST",test,al,dl,none,TYPE_LOGIC             ;    84 D0
+	defOp    "85 TEST",test,ax,dx,none,TYPE_LOGIC             ; 66 85 D0
+	defOp    "85 TEST",test,eax,edx,none,TYPE_LOGIC           ;    85 D0
+	defOp    "A8 TEST",test,al,0xAA,none,TYPE_LOGIC1          ;    A8 AA
+	defOp    "A9 TEST",test,ax,0xAAAA,none,TYPE_LOGIC1        ; 66 A9 AAAA
+	defOp    "A9 TEST",test,eax,0xAAAAAAAA,none,TYPE_LOGIC1   ;    A9 AAAAAAAA
+	defOp    "F6 TEST",test,dl,0xAA,none,TYPE_LOGIC1D         ;    F6 C2 AA
+	defOp    "F7 TEST",test,dx,0xAAAA,none,TYPE_LOGIC1D       ; 66 F7 C2 AAAA
+	defOp    "F7 TEST",test,edx,0xAAAAAAAA,none,TYPE_LOGIC1D  ;    F7 C2 AAAAAAAA
 	defOpInc "40 INC",inc,ax,word                             ; 66 40
 	defOpInc "41 INC",inc,cx,word                             ; 66 41
 	defOpInc "42 INC",inc,dx,word                             ; 66 42

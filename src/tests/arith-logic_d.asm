@@ -181,6 +181,17 @@ tableOps:
 	defOp    "XOR",xor,al,dl,none,TYPE_LOGIC               ;    30 D0
 	defOp    "XOR",xor,ax,dx,none,TYPE_LOGIC               ; 66 31 D0
 	defOp    "XOR",xor,eax,edx,none,TYPE_LOGIC             ;    31 D0
+	defOp    "XOR",xor,al,0xAA,none,TYPE_LOGIC1            ;    34 AA
+	defOp    "XOR",xor,ax,0xAAAA,none,TYPE_LOGIC1          ; 66 35 AAAA
+	defOp    "XOR",xor,eax,0xAAAAAAAA,none,TYPE_LOGIC1     ;    35 AAAAAAAA
+	defOp    "XOR",xor,ax,byte 0xAA,none,TYPE_LOGIC1       ; 66 83 F0 AA
+	defOp    "XOR",xor,eax,byte 0xAA,none,TYPE_LOGIC1      ;    83 F0 AA
+	defOp    "XOR",xor,dl,0xAA,none,TYPE_LOGIC1D           ;    80 F2 AA
+	defOp    "XOR",xor,dx,0xAAAA,none,TYPE_LOGIC1D         ; 66 81 F2 AAAA
+	defOp    "XOR",xor,edx,0xAAAAAAAA,none,TYPE_LOGIC1D    ;    81 F2 AAAAAAAA
+	defOp    "XOR",xor,al,mem,none,TYPE_LOGIC              ;    32 05 00000000
+	defOp    "XOR",xor,ax,mem,none,TYPE_LOGIC              ; 66 33 05 00000000
+	defOp    "XOR",xor,eax,mem,none,TYPE_LOGIC             ;    33 05 00000000
 	defOp    "CMP",cmp,al,dl,none,TYPE_LOGIC               ;    38 D0
 	defOp    "CMP",cmp,ax,dx,none,TYPE_LOGIC               ; 66 39 D0
 	defOp    "CMP",cmp,eax,edx,none,TYPE_LOGIC             ;    39 D0

@@ -13,7 +13,14 @@ SIZE_BYTE     equ  0
 SIZE_SHORT    equ  1
 SIZE_LONG     equ  2
 
-%macro	defOp	6
+; Defines a logic/arithmetic operation with 1 to 3 operands
+; %1 name string
+; %2 mnemonic
+; %3 "al" / "ax" / "eax" / "dl" / "dx" / "edx"
+; %4 src operand / immediate / "mem" / "none"
+; %5 3rd operand / "none"
+; %6 type
+%macro defOp 6
 	%ifidni %3,al
 	%assign size SIZE_BYTE
 	%define msrc dl
@@ -46,6 +53,11 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
+; Defines a logic/arithmetic operation with 0 operands
+; %1 name string
+; %2 mnemonic
+; %3 size as "b", "w", or "d"
+; %4 type
 %macro defOp0 4
 	%ifidni %3,b
 	%assign size SIZE_BYTE
@@ -63,6 +75,12 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
+; Defines a shift operation
+; %1 name string
+; %2 mnemonic
+; %3 register operand
+; %4 "cl" or immediate
+; %5 type
 %macro defOpSh 5
 	%ifidni %3,al
 	%assign size SIZE_BYTE
@@ -82,6 +100,39 @@ SIZE_LONG     equ  2
 	xchg cl,dl
 	%else
 	%2	%3,%4
+	%endif
+	ret
+%%end:
+%endmacro
+
+; Defines a INC or DEC operation
+; %1 name string
+; %2 mnemonic
+; %3 register or "mem"
+; %3 size as "byte", "word", or "dword"
+%macro	defOpInc 4
+	%ifidni %4,byte
+	%assign size SIZE_BYTE
+	%define eAX al
+	%elifidni %4,word
+	%assign size SIZE_SHORT
+	%define eAX ax
+	%else
+	%assign size SIZE_LONG
+	%define eAX eax
+	%endif
+	db	%%end-%%beg,TYPE_ARITH1,size
+%%name:
+	db	%1,' ',0
+%%beg:
+	%ifidni %3,mem
+		mov [0], eAX
+		%2	%4 [0]
+		mov eAX, [0]
+	%else
+		xchg eAX, %3
+		%2	%3
+		xchg eAX, %3
 	%endif
 	ret
 %%end:
@@ -206,12 +257,44 @@ tableOps:
 	defOp    "CMP",cmp,al,mem,none,TYPE_LOGIC              ;    3A 05 00000000
 	defOp    "CMP",cmp,ax,mem,none,TYPE_LOGIC              ; 66 3B 05 00000000
 	defOp    "CMP",cmp,eax,mem,none,TYPE_LOGIC             ;    3B 05 00000000
-	defOp    "INC",inc,al,none,none,TYPE_ARITH1            ;    FE C0
-	defOp    "INC",inc,ax,none,none,TYPE_ARITH1            ; 66 40
-	defOp    "INC",inc,eax,none,none,TYPE_ARITH1           ;    40
-	defOp    "DEC",dec,al,none,none,TYPE_ARITH1            ;    FE C8
-	defOp    "DEC",dec,ax,none,none,TYPE_ARITH1            ; 66 48
-	defOp    "DEC",dec,eax,none,none,TYPE_ARITH1           ;    48
+	defOpInc "INC",inc,ax,word                             ; 66 40
+	defOpInc "INC",inc,cx,word                             ; 66 41
+	defOpInc "INC",inc,dx,word                             ; 66 42
+	defOpInc "INC",inc,bx,word                             ; 66 43
+	defOpInc "INC",inc,sp,word                             ; 66 44
+	defOpInc "INC",inc,bp,word                             ; 66 45
+	defOpInc "INC",inc,si,word                             ; 66 46
+	defOpInc "INC",inc,di,word                             ; 66 47
+	defOpInc "INC",inc,eax,dword                           ;    40
+	defOpInc "INC",inc,ecx,dword                           ;    41
+	defOpInc "INC",inc,edx,dword                           ;    42
+	defOpInc "INC",inc,ebx,dword                           ;    43
+	defOpInc "INC",inc,esp,dword                           ;    44
+	defOpInc "INC",inc,ebp,dword                           ;    45
+	defOpInc "INC",inc,esi,dword                           ;    46
+	defOpInc "INC",inc,edi,dword                           ;    47
+	defOpInc "INC",inc,mem,byte                            ;    FE 05 00000000
+	defOpInc "INC",inc,mem,word                            ; 66 FF 05 00000000
+	defOpInc "INC",inc,mem,dword                           ;    FF 05 00000000
+	defOpInc "DEC",dec,ax,word                             ; 66 48
+	defOpInc "DEC",dec,cx,word                             ; 66 49
+	defOpInc "DEC",dec,dx,word                             ; 66 4A
+	defOpInc "DEC",dec,bx,word                             ; 66 4B
+	defOpInc "DEC",dec,sp,word                             ; 66 4C
+	defOpInc "DEC",dec,bp,word                             ; 66 4D
+	defOpInc "DEC",dec,si,word                             ; 66 4E
+	defOpInc "DEC",dec,di,word                             ; 66 4F
+	defOpInc "DEC",dec,eax,dword                           ;    48
+	defOpInc "DEC",dec,ecx,dword                           ;    49
+	defOpInc "DEC",dec,edx,dword                           ;    4A
+	defOpInc "DEC",dec,ebx,dword                           ;    4B
+	defOpInc "DEC",dec,esp,dword                           ;    4C
+	defOpInc "DEC",dec,ebp,dword                           ;    4D
+	defOpInc "DEC",dec,esi,dword                           ;    4E
+	defOpInc "DEC",dec,edi,dword                           ;    4F
+	defOpInc "DEC",dec,mem,byte                            ;    FE 0D 00000000
+	defOpInc "DEC",dec,mem,word                            ; 66 FF 0D 00000000
+	defOpInc "DEC",dec,mem,dword                           ;    FF 0D 00000000
 	defOp    "NEG",neg,al,none,none,TYPE_ARITH1            ;    F6 D8
 	defOp    "NEG",neg,ax,none,none,TYPE_ARITH1            ; 66 F7 D8
 	defOp    "NEG",neg,eax,none,none,TYPE_ARITH1           ;    F7 D8

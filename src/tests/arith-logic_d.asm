@@ -105,6 +105,36 @@ SIZE_LONG     equ  2
 %%end:
 %endmacro
 
+; Defines a double precision shift operation
+; %1 name string
+; %2 mnemonic
+; %3 operand 1: "ax" or "eax"
+; %4 operand 2
+; %5 "cl" or immediate
+; %6 type
+%macro defOpShD 6
+	%ifidni %3,ax
+	%assign size SIZE_SHORT
+	%else ; eax
+	%assign size SIZE_LONG
+	%endif
+	db	%%end-%%beg,%6,size
+%%name:
+	db	%1,' ',0
+%%beg:
+	stc
+	%ifidni %5,cl
+	mov [0],cl
+	mov cl,dl
+	%2	%3,%4,cl
+	mov cl,[0]
+	%else
+	%2	%3,%4,%5
+	%endif
+	ret
+%%end:
+%endmacro
+
 ; Defines a INC or DEC operation
 ; %1 name string
 ; %2 mnemonic
@@ -399,6 +429,14 @@ tableOps:
 	defOpSh  "D2 RCR",rol,al,cl,TYPE_SHIFTS_R                 ;    D2 C0
 	defOpSh  "D3 RCR",rol,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 C0
 	defOpSh  "D3 RCR",rol,eax,cl,TYPE_SHIFTS_R                ;    D3 C0
+	defOpShD "0FA4 SHLD",shld,ax,dx,8,TYPE_SHIFTS_R           ; 66 0FA4 D0 08
+	defOpShD "0FA4 SHLD",shld,eax,edx,16,TYPE_SHIFTS_R        ;    0FA4 D0 10
+	defOpShD "0FA5 SHLD",shld,ax,dx,cl,TYPE_SHIFTS_R          ; 66 0FA5 D0
+	defOpShD "0FA5 SHLD",shld,eax,edx,cl,TYPE_SHIFTS_R        ;    0FA5 D0
+	defOpShD "0FAC SHRD",shrd,ax,dx,8,TYPE_SHIFTS_R           ; 66 0FAC D0 08
+	defOpShD "0FAC SHRD",shrd,eax,edx,16,TYPE_SHIFTS_R        ;    0FAC D0 10
+	defOpShD "0FAD SHRD",shrd,ax,dx,cl,TYPE_SHIFTS_R          ; 66 0FAD D0
+	defOpShD "0FAD SHRD",shrd,eax,edx,cl,TYPE_SHIFTS_R        ;    0FAD D0
 
 	db 0
 
@@ -460,10 +498,10 @@ shiftsValuesR:
 .bvals:	dd	0x00,0x01,0x02,0x08
 	SHIFTS_BYTES_R equ ($-.bvals)/4
 
-.wvals:	dd	0x0000,0x0001,0x0002,0x0010
+.wvals:	dd	0x8000,0x8001,0x8002,0x8010
 	SHIFTS_WORDS_R equ ($-.wvals)/4
 
-.dvals:	dd	0x00000000,0x00000001,0x00000002,0x0000001F,0x00000020
+.dvals:	dd	0x80000000,0x80000001,0x80000002,0x8000001F,0x80000020
 	SHIFTS_DWORDS_R equ ($-.dvals)/4
 
 

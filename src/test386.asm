@@ -737,24 +737,6 @@ protTests:
 	cmp edx, 0xffffffff
 	jne error
 
-
-
-;
-;   Test double precision shifts
-;
-	POST 14
-	mov dword [0x40000], 0x0000a5a5
-	mov ebx, 0x5a5a0000
-	shld [0x40000], ebx, 16
-	cmp dword [0x40000], 0xa5a55a5a
-	jne error
-
-	mov dword [0x40000], 0xa5a50000
-	mov ebx, 0x00005a5a
-	shrd [0x40000], ebx, 16
-	cmp dword [0x40000], 0x5a5aa5a5
-	jne error
-
 ;
 ;   SETcc - Byte set on condition
 ;

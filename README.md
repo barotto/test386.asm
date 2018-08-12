@@ -77,7 +77,6 @@ This is the list of tests with their diagnostic code:
 | 0x11 | Page faults and memory access rights                               |
 | 0x12 | Bit Scan operations                                                |
 | 0x13 | Bit Test operations                                                |
-| 0x14 | Double precision shifts                                            |
 | 0x15 | Byte set on condition                                              |
 | 0x16 | Call in protected mode                                             |
 | 0x17 | Adjust RPL Field of Selector (ARPL)                                |

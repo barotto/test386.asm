@@ -11,14 +11,17 @@
 	%assign value 0x12345678
 	%ifidni %1,b
 		%assign val_size 1
+		%define val_mask 0x000000ff
 		%define sized_eax al
 	%endif
 	%ifidni %1,w
 		%assign val_size 2
+		%define val_mask 0x0000ffff
 		%define sized_eax ax
 	%endif
 	%ifidni %1,d
 		%assign val_size 4
+		%define val_mask 0xffffffff
 		%define sized_eax eax
 	%endif
 
@@ -100,6 +103,17 @@
 	jne    error
 	cmp    esi, off_cmp
 	jne    error
+
+	mov    esi, off_value
+	mov    sized_eax, value
+	mov    [es:ebx], sized_eax
+	xor    eax, eax
+	%3 lods%1         ; LOAD data from DS:ESI into EAX
+	cmp    sized_eax, value & val_mask
+	jne    error
+	cmp    esi, off_cmp
+	jne    error
+
 %endmacro
 
 ;

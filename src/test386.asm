@@ -828,6 +828,42 @@ protTests:
 	setProtModeIntGate 5, OFF_INTDEFAULT
 
 
+;
+;   XCHG
+;
+%include "tests/xchg_m.asm"
+
+	POST 19
+
+	testXchg ax,cx ; 66 91
+	testXchg ax,dx ; 66 92
+	testXchg ax,bx ; 66 93
+	mov bp,sp
+	testXchg ax,sp ; 66 94
+	mov sp,bp
+	testXchg ax,bp ; 66 95
+	testXchg ax,si ; 66 96
+	testXchg ax,di ; 66 97
+
+	testXchg eax,ecx ; 91
+	testXchg eax,edx ; 92
+	testXchg eax,ebx ; 93
+	mov ebp,esp
+	testXchg eax,esp ; 94
+	mov esp,ebp
+	testXchg eax,ebp ; 95
+	testXchg eax,esi ; 96
+	testXchg eax,edi ; 97
+
+	testXchg bl,cl         ; 86 D9
+	testXchg byte [0],cl   ; 86 0D 00000000
+	testXchg bx,cx         ; 66 87 D9
+	testXchg word [0],cx   ; 66 87 0D 00000000
+	testXchg ebx,ecx       ; 87 D9
+	testXchg dword [0],ecx ; 87 0D 00000000
+
+
+
 %include "print_init.asm"
 
 	jmp undefTests

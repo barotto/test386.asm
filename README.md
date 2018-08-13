@@ -81,6 +81,7 @@ This is the list of tests with their diagnostic code:
 | 0x16 | Call in protected mode                                             |
 | 0x17 | Adjust RPL Field of Selector (ARPL)                                |
 | 0x18 | Check Array Index Against Bounds (BOUND)                           |
+| 0x19 | Exchange Register/Memory with Register (XCHG)                      |
 | 0xE0 | Undefined behaviours and bugs (CPU family dependent) *             |
 | 0xEE | Series of unverified tests for arithmetical and logical opcodes ** |
 | 0xFF | Testing completed                                                  |

@@ -1,5 +1,5 @@
 ;
-; Initialises the real mode IDT with CSEG_REAL:error
+; Initialises the real mode IDT with C_SEG_REAL:error
 ;
 %macro initRealModeIDT 0
 	xor    eax, eax
@@ -7,7 +7,7 @@
 	mov    cx, 17
 %%loop:
 	mov    [eax*4], word error
-	mov    [2+eax*4], word CSEG_REAL
+	mov    [2+eax*4], word C_SEG_REAL
 	inc    ax
 	loop   %%loop
 %endmacro
@@ -25,7 +25,7 @@
 	mov    ax, 0
 	mov    ds, ax
 	mov    [%1*4], word %2
-	mov    [%1*4+2], word CSEG_REAL
+	mov    [%1*4+2], word C_SEG_REAL
 %endmacro
 
 ; Checks exc result and restores the default handler
@@ -35,13 +35,13 @@
 %macro realModeExcCheck 2
 	cmp    sp, ESP_REAL-6
 	jne    error
-	cmp    [ss:ESP_REAL-4], word CSEG_REAL
+	cmp    [ss:ESP_REAL-4], word C_SEG_REAL
 	cmp    [ss:ESP_REAL-6], word %2
 	jne    error
 	mov    ax, 0
 	mov    ds, ax
 	mov    [%1*4], word error
-	mov    [%1*4+2], word CSEG_REAL
+	mov    [%1*4+2], word C_SEG_REAL
 %endmacro
 
 
@@ -50,7 +50,7 @@
 ; %2: instruction to execute that causes a fault
 %macro realModeFaultTest 2+
 	realModeExcInit %1, %%continue
-	mov    ax, SSEG_REAL
+	mov    ax, S_SEG_REAL
 	mov    ss, ax
 	mov    sp, ESP_REAL
 %%test:

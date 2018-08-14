@@ -126,10 +126,10 @@
 	jne    error                 ; no, error
 
 	%if %1 <> cs
-	mov    [ebp], dword DSEG_PROT16B ; write test segment on stack
+	mov    [ebp], dword DUMMY_SEG_PROT ; write test segment on stack
 	o32 pop %1                   ; 32-bit POP
 	mov    ax, %1
-	cmp    ax, DSEG_PROT16B      ; is the popped segment the one on the stack?
+	cmp    ax, DUMMY_SEG_PROT      ; is the popped segment the one on the stack?
 	jne    error                 ; no, error
 	cmp    esp, 0x20000          ; did the pop update the correct stack pointer reg?
 	jne    error                 ; no, error
@@ -146,10 +146,10 @@
 	jne    error                 ; no, error
 
 	%if %1 <> cs
-	mov    [ebp+2], word DSEG_PROT16B ; write test segment on stack
+	mov    [ebp+2], word DUMMY_SEG_PROT ; write test segment on stack
 	o16 pop %1                   ; 16-bit POP
 	mov    ax, %1
-	cmp    ax, DSEG_PROT16B      ; is the popped segment the one on the stack?
+	cmp    ax, DUMMY_SEG_PROT      ; is the popped segment the one on the stack?
 	jne    error                 ; no, error
 	cmp    esp, 0x20000          ; did the pop update the correct stack pointer reg?
 	jne    error                 ; no, error

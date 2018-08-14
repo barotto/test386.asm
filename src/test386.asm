@@ -60,7 +60,7 @@ OUT_PORT   equ 0x0   ; hex, additional port for direct ASCII output, 0=disabled
 TEST_UNDEF equ 0     ; boolean, enable undefined behaviours tests
 CPU_FAMILY equ 3     ; integer, used to test undefined behaviours, 3=80386
 IBM_PS1    equ 0     ; boolean, enable specific code for the IBM PS/1 2011 and 2121 models
-BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emulator
+BOCHS      equ 1     ; boolean, enable compatibility with the Bochs x86 PC emulator
 ;
 ; == END OF CONFIGURATION ======================================================
 ;
@@ -77,16 +77,18 @@ BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emula
 ;
 
 TEST_BASE  equ 0x20000
+TEST_BASE1 equ TEST_BASE+0x00000
 TEST_BASE2 equ TEST_BASE+0x20000
 ;
 ;   Real mode segments
 ;
-CSEG_REAL   equ 0xf000
-SSEG_REAL   equ 0x1000
+C_SEG_REAL   equ 0xf000
+S_SEG_REAL   equ 0x1000
+IDT_SEG_REAL equ 0x0040
+D1_SEG_REAL  equ TEST_BASE1 >> 4
+D2_SEG_REAL  equ TEST_BASE2 >> 4
+
 ESP_REAL    equ 0xffff
-DSEG_REAL   equ TEST_BASE>>4
-DSEG2_REAL  equ TEST_BASE2>>4
-IDTSEG_REAL equ 0x0040
 
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
@@ -115,7 +117,7 @@ cpuTest:
 	POST 0
 
 	initRealModeIDT
-	mov ax, SSEG_REAL
+	mov ax, S_SEG_REAL
 	mov ss, ax
 	mov sp, ESP_REAL
 
@@ -169,9 +171,9 @@ cpuTest:
 %include "tests/string_m.asm"
 
 	POST 4
-	mov    dx, DSEG_REAL
+	mov    dx, D1_SEG_REAL
 	mov    ds, dx
-	mov    dx, DSEG2_REAL
+	mov    dx, D2_SEG_REAL
 	mov    es, dx
 	testStringOps b,0,a16
 	testStringOps w,0,a16
@@ -192,18 +194,18 @@ cpuTest:
 %include "tests/call_m.asm"
 
 	POST 5
-	mov    dx, DSEG_REAL
+	mov    dx, D1_SEG_REAL
 	mov    ds, dx
 	mov    si, 0
 	testCallNear sp
-	testCallFar CSEG_REAL
+	testCallFar C_SEG_REAL
 
 ;
 ;   Load full pointer
 ;
 %include "tests/load_ptr_m.asm"
 	POST 6
-	mov    dx, DSEG_REAL
+	mov    dx, D1_SEG_REAL
 	mov    es, dx
 	mov    di, 0
 	testLoadPtr ss
@@ -226,14 +228,14 @@ ESP_PROT equ 0x0000ffff
 romGDT:
 	; the first descriptor in the GDT is always a dud (the null selector)
 	defGDTDesc NULL
-	defGDTDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_16BIT
-	defGDTDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
-	defGDTDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc LDTSEG_PROT,  0x00000500,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
-	defGDTDesc LDTSEGD_PROT, 0x00000500,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc PDIRSEG_PROT, 0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
+	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc LDT_SEG_PROT,  0x00000500,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_DSEG_PROT, 0x00000500,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PDT_SEG_PROT,  0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 romGDTEnd:
 
 romGDTaddr:
@@ -241,19 +243,19 @@ romGDTaddr:
 	dw romGDT, 0x000f         ; 32-bit base address
 memIDTptrReal:
 	dd 0
-	dw IDTSEG_REAL
+	dw IDT_SEG_REAL
 memIDTptrProt:
 	dd 0
-	dw IDTSEG_PROT
+	dw IDT_SEG_PROT
 memIDTaddrProt:
 	dw 0xFF             ; 16-bit limit
-	dd IDTSEG_REAL << 4 ; 32-bit base address
+	dd IDT_SEG_REAL << 4 ; 32-bit base address
 memLDTptrProt:
 	dd 0            ; 32-bit offset
-	dw LDTSEGD_PROT ; 16-bit segment selector
+	dw LDT_DSEG_PROT ; 16-bit segment selector
 memSSptrProt:
 	dd ESP_PROT
-	dw SSEG_PROT32
+	dw S_SEG_PROT32
 
 addrIDTReal:
 	dw 0x3FF      ; 16-bit limit of real-mode IDT
@@ -343,7 +345,7 @@ initPT:
 	mov    eax, cr0
 	or     eax, CR0_MSW_PE | CR0_PG
 	mov    cr0, eax
-	jmp    CSEG_PROT32:toProt32 ; jump to flush the prefetch queue
+	jmp    C_SEG_PROT32:toProt32 ; jump to flush the prefetch queue
 toProt32:
 	bits 32
 
@@ -351,18 +353,17 @@ toProt32:
 %include "protected_p.asm"
 
 protLDTsetup:
-	defLDTDesc DSEG_PROT16,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defLDTDesc DSEG_PROT16B, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defLDTDesc DSEG_PROT32,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DSEG2_PROT32, TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DSEG_PROT32B, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DSEG_PROT16RO,TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT,EXT_16BIT
-	defLDTDesc DUMMYSEG_PROT,0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DPL1SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
-	defLDTDesc NPSEG_PROT,   0x000fffff,0x000fffff,ACC_TYPE_DATA_W
-	defLDTDesc SYSSEG_PROT,  0x000fffff,0x000fffff,ACC_PRESENT
+	defLDTDesc D_SEG_PROT16,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defLDTDesc RO_SEG_PROT,    0x000fffff,0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
+	defLDTDesc DUMMY_SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DPL1_SEG_PROT,  0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
+	defLDTDesc NP_SEG_PROT,    0x000fffff,0x000fffff,ACC_TYPE_DATA_W
+	defLDTDesc SYS_SEG_PROT,   0x000fffff,0x000fffff,ACC_PRESENT
 
-	mov  ax, LDTSEG_PROT
+	mov  ax, LDT_SEG_PROT
 	lldt ax
 
 protTests:
@@ -376,7 +377,7 @@ protTests:
 ;   For the next tests, with a 16-bit data segment in SS, we
 ;   expect all pushes/pops will occur at SP rather than ESP.
 ;
-	mov    ax, DSEG_PROT16
+	mov    ax, D_SEG_PROT16
 	mov    ds, ax
 	mov    ss, ax
 	mov    es, ax
@@ -423,7 +424,7 @@ protTests:
 ;   Now use a 32-bit stack address size.
 ;   All pushes/pops will occur at ESP rather than SP.
 ;
-	mov    ax,  DSEG_PROT32
+	mov    ax,  D_SEG_PROT32
 	mov    ss,  ax
 
 	testPushPopR ax,32
@@ -468,7 +469,7 @@ protTests:
 	testMovSegR_prot ss
 
 	loadProtModeStack
-	mov    ax, DSEG_PROT32
+	mov    ax, D1_SEG_PROT
 	mov    ds, ax
 	mov    es, ax
 	mov    fs, ax
@@ -680,9 +681,9 @@ protTests:
 	POST 10
 	pushad
 	pushfd
-	mov    ax, DSEG_PROT32
+	mov    ax, D1_SEG_PROT
 	mov    ds, ax
-	mov    ax, DSEG2_PROT32
+	mov    ax, D2_SEG_PROT
 	mov    es, ax
 	testStringOps b,0,a32
 	testStringOps w,0,a32
@@ -698,7 +699,7 @@ protTests:
 	testStringReps d,1,a32
 	popfd
 	popad
-	mov    ax, DSEG_PROT32
+	mov    ax, D1_SEG_PROT
 	mov    es, ax
 
 ;
@@ -710,7 +711,7 @@ protTests:
 	mov eax, [NOT_PRESENT_OFF] ; generate a page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
 	jne error
-	mov ax, DSEG_PROT16RO
+	mov ax, RO_SEG_PROT
 	mov ds, ax              ; write protect DS
 	xor eax, eax
 	mov byte [0], 0   ; generate #GP
@@ -770,7 +771,7 @@ protTests:
 	POST 16
 	mov si, 0
 	testCallNear esp
-	testCallFar CSEG_PROT32
+	testCallFar C_SEG_PROT32
 
 ;
 ;	ARPL
@@ -799,13 +800,13 @@ protTests:
 	; operand. Bochs checks that the destination segment is writeable before the
 	; execution of ARPL.
 	;
-	mov ax, DSEG_PROT16RO   ; make DS read only
+	mov ax, RO_SEG_PROT   ; make DS read only
 	mov ds, ax
 	xor eax, eax
 	arpl [0x20000], bx      ; value has not changed, arpl should not write to memory
 	cmp eax, GP_HANDLER_SIG ; test if #GP handler was called
 	je error
-	mov ax, DSEG_PROT16     ; make DS writeable again
+	mov ax, D1_SEG_PROT      ; make DS writeable again
 	mov ds, ax
 	%endif
 	; test with RPL dest > RPL src
@@ -1180,7 +1181,7 @@ intPageFault:
 	jne   error
 	; mark the PTE as present
 	mov   bx, ds ; save DS
-	mov   ax, PTBLSEG_PROT
+	mov   ax, PT_SEG_PROT
 	mov   ds, ax
 	mov   eax, NOT_PRESENT_PTE ; mark PTE as present
 	shl   eax, 2 ; eax <- (NOT_PRESENT_PTE * 4)
@@ -1209,9 +1210,9 @@ intBound:
 intGeneralProtection:
 	pop eax ; pop the error code
 	mov ax, ds
-	cmp ax, DSEG_PROT16RO ; see if this handler was called for a write on RO segment
+	cmp ax, RO_SEG_PROT ; see if this handler was called for a write on RO segment
 	jne error
-	mov ax, DSEG_PROT16
+	mov ax, D1_SEG_PROT
 	mov ds, ax
 	mov eax, GP_HANDLER_SIG
 	iretd
@@ -1236,14 +1237,14 @@ testsDone:
 ; Testing finished, back to real mode and prepare to restart
 ;
 	POST FF
-	mov  ax,  DSEG_PROT16
+	mov  ax,  S_SEG_REAL
 	mov  ss,  ax
-	sub  esp, esp
+	mov  esp, ESP_REAL
 ;
 ;   Return to real-mode, after first resetting the IDTR and loading CS with a 16-bit code segment
 ;
 	o32 lidt [cs:addrIDTReal]
-	jmp  CSEG_PROT16:toProt16
+	jmp  C_SEG_PROT16:toProt16
 toProt16:
 	bits 16
 goReal:
@@ -1251,7 +1252,7 @@ goReal:
 	and    eax, ~(CR0_MSW_PE | CR0_PG) & 0xffffffff
 	mov    cr0, eax
 jmpReal:
-	jmp    CSEG_REAL:toReal
+	jmp    C_SEG_REAL:toReal
 toReal:
 	mov    ax, cs
 	mov    ds, ax
@@ -1266,7 +1267,7 @@ toReal:
 	times 0xfff0-($-$$) nop
 
 resetVector:
-	jmp   CSEG_REAL:cpuTest ; 0000FFF0
+	jmp   C_SEG_REAL:cpuTest ; 0000FFF0
 
 release:
 	db    RELEASE,0       ; 0000FFF5  release date

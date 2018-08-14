@@ -66,9 +66,9 @@
 %macro testMovSegR_prot 1
 	mov    edx, -1
 	%if %1 = cs
-	mov    dx, CSEG_PROT32
+	mov    dx, C_SEG_PROT32
 	%else
-	mov    dx, DSEG_PROT32
+	mov    dx, D_SEG_PROT32
 	%endif
 
 	; MOV reg to Sreg
@@ -107,7 +107,7 @@
 	protModeFaultTest EX_UD, 0, mov %1,[0] ; test for #UD
 	%else
 	mov    cx, ds ; save current DS in CX
-	mov    ax, DUMMYSEG_PROT
+	mov    ax, DUMMY_SEG_PROT
 	mov    %1, ax
 	%if %1 = ds
 	mov    es, cx
@@ -128,14 +128,14 @@
 	mov ax, NULL
 	protModeFaultTest EX_GP, 0, mov %1,ax
 	; #GP(selector) If the SS register is being loaded and the segment selector's RPL and the segment descriptor’s DPL are not equal to the CPL.
-	mov ax, DPL1SEG_PROT|1
-	protModeFaultTest EX_GP, DPL1SEG_PROT, mov %1,ax
+	mov ax, DPL1_SEG_PROT|1
+	protModeFaultTest EX_GP, DPL1_SEG_PROT, mov %1,ax
 	; #GP(selector) If the SS register is being loaded and the segment pointed to is a non-writable data segment.
-	mov ax, DSEG_PROT16RO
-	protModeFaultTest EX_GP, DSEG_PROT16RO, mov %1,ax
+	mov ax, RO_SEG_PROT
+	protModeFaultTest EX_GP, RO_SEG_PROT, mov %1,ax
 	; #SS(selector) If the SS register is being loaded and the segment pointed to is marked not present.
-	mov ax, NPSEG_PROT
-	protModeFaultTest EX_SS, NPSEG_PROT, mov %1,ax
+	mov ax, NP_SEG_PROT
+	protModeFaultTest EX_SS, NP_SEG_PROT, mov %1,ax
 	%endif
 	%if %1 != cs
 	; #GP(selector) If segment selector index is outside descriptor table limits.
@@ -143,11 +143,11 @@
 	protModeFaultTest EX_GP, 0xfff8, mov %1,ax
 	%if %1 != ss
 	; #NP(selector) If the DS, ES, FS, or GS register is being loaded and the segment pointed to is marked not present.
-	mov ax, NPSEG_PROT
-	protModeFaultTest EX_NP, NPSEG_PROT, mov %1,ax
+	mov ax, NP_SEG_PROT
+	protModeFaultTest EX_NP, NP_SEG_PROT, mov %1,ax
 	; #GP(selector) If the DS, ES, FS, or GS register is being loaded and the segment pointed to is not a data or readable code segment.
-	mov ax, SYSSEG_PROT
-	protModeFaultTest EX_GP, SYSSEG_PROT, mov %1,ax
+	mov ax, SYS_SEG_PROT
+	protModeFaultTest EX_GP, SYS_SEG_PROT, mov %1,ax
 	; TODO
 	; #GP(selector)
 	; If the DS, ES, FS, or GS register is being loaded and the segment pointed to is a data or nonconforming code segment, but both the RPL and the CPL are greater than the DPL.

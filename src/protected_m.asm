@@ -150,7 +150,7 @@
 	%else
 	%assign exc_errcode 0
 	%endif
-	cmp    [ss:esp+exc_errcode+4], dword CSEG_PROT32
+	cmp    [ss:esp+exc_errcode+4], dword C_SEG_PROT32
 	jne    error
 	cmp    [ss:esp+exc_errcode], dword %3
 	jne    error

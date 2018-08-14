@@ -339,11 +339,11 @@ protLDTsetup:
 	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defLDTDesc RO_SEG_PROT,    0x000fffff,0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
-	defLDTDesc DUMMY_SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DPL1_SEG_PROT,  0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
-	defLDTDesc NP_SEG_PROT,    0x000fffff,0x000fffff,ACC_TYPE_DATA_W
-	defLDTDesc SYS_SEG_PROT,   0x000fffff,0x000fffff,ACC_PRESENT
+	defLDTDesc RO_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
+	defLDTDesc DUMMY_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DPL1_SEG_PROT,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
+	defLDTDesc NP_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W
+	defLDTDesc SYS_SEG_PROT,   TEST_BASE, 0x000fffff,ACC_PRESENT
 
 	mov  ax, LDT_SEG_PROT
 	lldt ax
@@ -782,13 +782,17 @@ protTests:
 	; operand. Bochs checks that the destination segment is writeable before the
 	; execution of ARPL.
 	;
-	mov ax, RO_SEG_PROT   ; make DS read only
+	; make DS read only
+	updLDTDescAcc D1_SEG_PROT,ACC_TYPE_DATA_R|ACC_PRESENT
+	mov ax, D1_SEG_PROT
 	mov ds, ax
 	xor eax, eax
 	arpl [0x20000], bx      ; value has not changed, arpl should not write to memory
 	cmp eax, GP_HANDLER_SIG ; test if #GP handler was called
 	je error
-	mov ax, D1_SEG_PROT      ; make DS writeable again
+	; make DS writeable again
+	updLDTDescAcc D1_SEG_PROT,ACC_TYPE_DATA_W|ACC_PRESENT
+	mov ax, D1_SEG_PROT
 	mov ds, ax
 	%endif
 	; test with RPL dest > RPL src

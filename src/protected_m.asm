@@ -37,6 +37,21 @@
 %endmacro
 
 ;
+; Updates the access byte of a descriptor in the LDT
+; %1 LDT selector
+; %2 access byte new value (ACC_* or'd equs)
+; Uses DS
+%macro updLDTDescAcc 2
+	pushad
+	pushf
+	lds  ebx, [cs:memLDTptrProt]
+	add  ebx, (%1) & 0xFFF8
+	mov  byte [ebx+5], (%2)>>8 ; acc byte
+	popf
+	popad
+%endmacro
+
+;
 ; Initializes an interrupt gate in system memory
 ;
 ; %1 vector

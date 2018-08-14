@@ -13,6 +13,6 @@ OUT_PORT   equ 0x0   ; hex, additional port for direct ASCII output, 0=disabled
 TEST_UNDEF equ 0     ; boolean, enable undefined behaviours tests
 CPU_FAMILY equ 3     ; integer, used to test undefined behaviours, 3=80386
 IBM_PS1    equ 0     ; boolean, enable specific code for the IBM PS/1 2011 and 2121 models
-BOCHS      equ 1     ; boolean, enable compatibility with the Bochs x86 PC emulator
+BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emulator
 
 ; == END OF CONFIGURATION ======================================================

@@ -4,24 +4,28 @@ test386.asm is a 80386 or later CPU tester, written for the
 [NASM](http://www.nasm.us/) assembler. It runs as a BIOS replacement and does
 not depend on any OS or external library.
 
-test386.asm communicates with the external world through the POST I/O port and
-the parallel and/or serial ports. You'll need to configure the addresses of
-these ports for the system you're testing.
+test386.asm communicates with the external world through the diagnostic POST I/O
+port and the parallel and/or serial ports. You'll need to configure the
+addresses of these ports for the system you're testing.
 
 Please note that in the current version, test386.asm is still incomplete and is
 not able to test every functionality of the CPU. It will probably not detect
 that bug that is keeping you up at night, sorry.
+
+For the full list of tested opcodes see **<tt>intel-opcodes.ods</tt>**.
+Those opcodes that are tested have the relevant diagnostic code in the "test in
+real mode" and/or "test in prot. mode" columns.
 
 **WARNING**: this program is designed for emulators and was never tested on real
 hardware. Use at your own risk.
 
 ## How to assemble
 
-First of all open <tt>src/configuration.asm</tt> and configure the EQUs with 
-suitable values for your system.
-
-Then grab the NASM assembler from http://www.nasm.us/ and follow its
+First of all grab the NASM assembler from http://www.nasm.us/ and follow its
 installation instructions.
+
+Then open <tt>src/configuration.asm</tt> and configure the EQUs with suitable
+values for your system.
 
 If you're in a UNIX environment you can then use:
 ```
@@ -58,7 +62,7 @@ as a guide to diagnose any possible error.
 This is the list of tests with their diagnostic code:
 
 | POST | Description                                                        |
-| ---- | ---------------------------------------------------------------    |
+| ---- | ------------------------------------------------------------------ |
 | 0x00 | Real mode initialisation                                           |
 | 0x01 | Conditional jumps and loops                                        |
 | 0x02 | Quick tests of unsigned 32-bit multiplication and division         |
@@ -94,10 +98,6 @@ only 80386 supported).
 computational results on the parallel and/or serial ports. You'll need to
 manually compare those results with the reference file
 **<tt>test386-EE-reference.txt</tt>** using a diff-like tool.
-
-For the full list of tested opcodes see **<tt>intel-opcodes.ods</tt>**.
-Those opcodes that are tested have the relevant diagnostic code in the "test in
-real mode" and/or "test in prot. mode" columns.
 
 ## Copyright
 

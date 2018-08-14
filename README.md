@@ -17,8 +17,8 @@ hardware. Use at your own risk.
 
 ## How to assemble
 
-First of all open <tt>src/test386.asm</tt> and configure the EQUs in the
-CONFIGURATION section with suitable values for your system.
+First of all open <tt>src/configuration.asm</tt> and configure the EQUs with 
+suitable values for your system.
 
 Then grab the NASM assembler from http://www.nasm.us/ and follow its
 installation instructions.
@@ -33,8 +33,8 @@ Otherwise use a command line like this one:
 nasm -i./src/ -f bin src/test386.asm -l test386.lst -o test386.bin
 ```
 
-Please note that the <tt>(testBCD:19) unterminated string</tt> warning is
-expected and can be ignored.
+Please note that the multiple <tt>(testBCD:19) unterminated string</tt> warnings
+are expected and can be ignored.
 
 The final product is a binary file named **<tt>test386.bin</tt>** of exactly
 65,536 bytes.

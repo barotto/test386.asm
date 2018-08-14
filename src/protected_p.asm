@@ -1,6 +1,18 @@
 ; Procedures for 32 bit code segment
 
 initIntGateMemProt:
-	initIntGateMem_body
+	pushad
+	pushf
+	initIntGateMem
+	popf
+	popad
+	ret
 
 
+initSegDescMemProt:
+	pushad
+	pushf
+	initSegDescMem
+	popf
+	popad
+	ret

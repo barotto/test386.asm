@@ -66,7 +66,7 @@ This is the list of tests with their diagnostic code:
 | 0x04 | Store, move, scan, and compare string data in real mode            |
 | 0x05 | Call in real mode                                                  |
 | 0x06 | Load full pointer in real mode                                     |
-| 0x09 | Page directory and page table setup, enable protected mode         |
+| 0x09 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
 | 0x0A | Stack functionality                                                |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |

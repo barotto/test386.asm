@@ -23,6 +23,7 @@ ACC_PRESENT          equ 0x8000
 ACC_TYPE_CODE_R      equ 0x1a00
 ACC_TYPE_DATA_R      equ 0x1000
 ACC_TYPE_DATA_W      equ 0x1200
+ACC_TYPE_LDT         equ 0x0200
 
 ACC_DPL_0 equ 0x0000
 ACC_DPL_1 equ 0x2000

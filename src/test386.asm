@@ -69,21 +69,23 @@ BOCHS      equ 0     ; boolean, enable compatibility with the Bochs x86 PC emula
 ; memory map:
 ;  00000-003FF real mode IDT
 ;  00400-004FF protected mode IDT
+;  00500-00FFF protected mode LDT (GDT is in ROM)
 ;  01000-01FFF page directory
 ;  02000-02FFF page table
 ;  10000-1FFFF stack
-;  20000-3FFFF unused
-;  40000-9FFFF tests
+;  20000-9FFFF tests
 ;
 
+TEST_BASE  equ 0x20000
+TEST_BASE2 equ TEST_BASE+0x20000
 ;
 ;   Real mode segments
 ;
 CSEG_REAL   equ 0xf000
 SSEG_REAL   equ 0x1000
 ESP_REAL    equ 0xffff
-DSEG_REAL   equ 0x4000
-DSEG2_REAL  equ 0x8000
+DSEG_REAL   equ TEST_BASE>>4
+DSEG2_REAL  equ TEST_BASE2>>4
 IDTSEG_REAL equ 0x0040
 
 ;
@@ -222,23 +224,16 @@ cpuTest:
 ESP_PROT equ 0x0000ffff
 
 romGDT:
-	; the first descriptor in any descriptor table is always a dud (the null selector)
-	defDesc NULL
-	defDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_16BIT
-	defDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
-	defDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defDesc DSEG_PROT16,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defDesc DSEG_PROT16B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
-	defDesc DSEG_PROT32,  0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defDesc DSEG2_PROT32, 0x00080000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defDesc DSEG_PROT32B, 0x00040000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defDesc DSEG_PROT16RO,0x00040000,0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT,EXT_16BIT
-	defDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defDesc DUMMYSEG_PROT,0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defDesc DPL1SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
-	defDesc NPSEG_PROT,   0x000fffff,0x000fffff,ACC_TYPE_DATA_W
-	defDesc SYSSEG_PROT,  0x000fffff,0x000fffff,ACC_PRESENT
+	; the first descriptor in the GDT is always a dud (the null selector)
+	defGDTDesc NULL
+	defGDTDesc CSEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_16BIT
+	defGDTDesc CSEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDesc IDTSEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc LDTSEG_PROT,  0x00000500,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDTSEGD_PROT, 0x00000500,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PDIRSEG_PROT, 0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PTBLSEG_PROT, 0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc SSEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 romGDTEnd:
 
 romGDTaddr:
@@ -253,6 +248,9 @@ memIDTptrProt:
 memIDTaddrProt:
 	dw 0xFF             ; 16-bit limit
 	dd IDTSEG_REAL << 4 ; 32-bit base address
+memLDTptrProt:
+	dd 0            ; 32-bit offset
+	dw LDTSEGD_PROT ; 16-bit segment selector
 memSSptrProt:
 	dd ESP_PROT
 	dw SSEG_PROT32
@@ -265,27 +263,32 @@ addrIDTReal:
 ; Initializes an interrupt gate in system memory in real mode
 ;
 initIntGateMemReal:
-	initIntGateMem_body
+	pushad
+	pushf
+	initIntGateMem
+	popf
+	popad
+	ret
 
 initPages:
 ;
 ; pages:
-;  00000-00FFF   1  1000   4K IDTs
-;  01000-01FFF   1  1000   4K page directory
-;  02000-02FFF   1  1000   4K page table
-;  03000-0FFFF  13  d000  52K free
-;  10000-1FFFF  16 10000  64K stack
-;  20000-5FFFF  64 40000 256K
-;  60000-60FFF   1  1000   4K non present page (PTE 60h)
-;  61000-9FFFF 159 9f000 636K
+;  00000-00FFF   1  1000h   4K IDTs
+;  01000-01FFF   1  1000h   4K page directory
+;  02000-02FFF   1  1000h   4K page table
+;  03000-0FFFF  13  d000h  52K free
+;  10000-1FFFF  16 10000h  64K stack
+;  20000-9EFFF 127 7f000h 508K tests
+;  9F000-9FFFF   1  1000h   4K non present page (PTE 9Fh)
+
 ;
 
 PAGE_DIR_ADDR equ 0x1000
 PAGE_DIR_SIZE equ 0x1000
 PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
-NOT_PRESENT_PTE equ 0x60    ; page table entry
-NOT_PRESENT_LIN equ 0x60000 ; linear address
-NOT_PRESENT_OFF equ 0x20000 ; DSEG offset
+NOT_PRESENT_LIN equ 0x9F000 ; linear address of the not present page (#NP test)
+NOT_PRESENT_PTE equ NOT_PRESENT_LIN>>12 ; page table entry (#NP test)
+NOT_PRESENT_OFF equ NOT_PRESENT_LIN-TEST_BASE ; offset relative to DESG base (#NP test)
 GP_HANDLER_SIG    equ 0x47504841
 PF_HANDLER_SIG    equ 0x50465046
 BOUND_HANDLER_SIG equ 0x626f756e
@@ -344,11 +347,25 @@ initPT:
 toProt32:
 	bits 32
 
-	jmp    protTests
+	jmp    protLDTsetup
 %include "protected_p.asm"
 
-protTests:
+protLDTsetup:
+	defLDTDesc DSEG_PROT16,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defLDTDesc DSEG_PROT16B, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_16BIT
+	defLDTDesc DSEG_PROT32,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DSEG2_PROT32, TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DSEG_PROT32B, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DSEG_PROT16RO,TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT,EXT_16BIT
+	defLDTDesc DUMMYSEG_PROT,0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DPL1SEG_PROT, 0x000fffff,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
+	defLDTDesc NPSEG_PROT,   0x000fffff,0x000fffff,ACC_TYPE_DATA_W
+	defLDTDesc SYSSEG_PROT,  0x000fffff,0x000fffff,ACC_PRESENT
 
+	mov  ax, LDTSEG_PROT
+	lldt ax
+
+protTests:
 ;
 ;   Test the stack
 ;
@@ -626,10 +643,10 @@ protTests:
 
 	; store a known word at the scratch address
 	mov    ebx, 0x11223344
-	mov    [0x40000], ebx
+	mov    [0x10000], ebx
 
 	; now access that scratch address using various addressing modes
-	mov    ecx, 0x40000
+	mov    ecx, 0x10000
 	cmp    [ecx], ebx
 	jne    error
 
@@ -639,21 +656,21 @@ protTests:
 
 	sub    ecx, 64
 	shr    ecx, 1
-	cmp    [ecx+0x20000], ebx
+	cmp    [ecx+0x8000], ebx
 	jne    error
 
 	cmp    [ecx+ecx], ebx
 	jne    error
 
 	shr    ecx, 1
-	cmp    [ecx+ecx*2+0x10000], ebx
+	cmp    [ecx+ecx*2+0x4000], ebx
 	jne    error
 
 	cmp    [ecx*4], ebx
 	jne    error
 
 	mov    ebp, ecx
-	cmp    [ebp+ecx*2+0x10000], ebx ; EBP is used so the default segment is SS
+	cmp    [ebp+ecx*2+0x4000], ebx ; EBP is used so the default segment is SS
 	je     error ; since SS != DS, this better be a mismatch
 
 
@@ -696,7 +713,7 @@ protTests:
 	mov ax, DSEG_PROT16RO
 	mov ds, ax              ; write protect DS
 	xor eax, eax
-	mov byte [0x40000], 0   ; generate #GP
+	mov byte [0], 0   ; generate #GP
 	cmp eax, GP_HANDLER_SIG ; see if #GP handler was called
 	jne error
 	setProtModeIntGate 13, OFF_INTDEFAULT
@@ -744,7 +761,7 @@ protTests:
 
 	POST 15
 	testSetcc bl
-	testSetcc byte [0x40000]
+	testSetcc byte [0x10000]
 
 
 ;
@@ -769,10 +786,10 @@ protTests:
 	jne error
 	; test on memory destination
 	xor ax, ax       ; ZF = 0
-	mov word [0x40000], 0xfff0
-	arpl [0x40000], bx
+	mov word [0x20000], 0xfff0
+	arpl [0x20000], bx
 	jnz error
-	cmp word [0x40000], 0xfff2
+	cmp word [0x20000], 0xfff2
 	jne error
 	%if BOCHS = 0
 	; test unexpected memory write
@@ -785,7 +802,7 @@ protTests:
 	mov ax, DSEG_PROT16RO   ; make DS read only
 	mov ds, ax
 	xor eax, eax
-	arpl [0x40000], bx      ; value has not changed, arpl should not write to memory
+	arpl [0x20000], bx      ; value has not changed, arpl should not write to memory
 	cmp eax, GP_HANDLER_SIG ; test if #GP handler was called
 	je error
 	mov ax, DSEG_PROT16     ; make DS writeable again
@@ -806,23 +823,23 @@ protTests:
 	setProtModeIntGate 5, OFF_INTBOUND
 	xor eax, eax
 	mov ebx, 0x10100
-	mov word [0x40000], 0x0010
-	mov word [0x40002], 0x0102
-	o16 bound bx, [0x40000]
+	mov word [0x20000], 0x0010
+	mov word [0x20002], 0x0102
+	o16 bound bx, [0x20000]
 	cmp eax, BOUND_HANDLER_SIG
 	je error
-	mov word [0x40002], 0x00FF
-	o16 bound bx, [0x40000]
+	mov word [0x20002], 0x00FF
+	o16 bound bx, [0x20000]
 	cmp eax, BOUND_HANDLER_SIG
 	jne error
 	xor eax, eax
-	mov dword [0x40004], 0x10010
-	mov dword [0x40008], 0x10102
-	o32 bound ebx, [0x40004]
+	mov dword [0x20004], 0x10010
+	mov dword [0x20008], 0x10102
+	o32 bound ebx, [0x20004]
 	cmp eax, BOUND_HANDLER_SIG
 	je error
-	mov dword [0x40008], 0x100FF
-	o32 bound ebx, [0x40004]
+	mov dword [0x20008], 0x100FF
+	o32 bound ebx, [0x20004]
 	cmp eax, BOUND_HANDLER_SIG
 	jne error
 	setProtModeIntGate 5, OFF_INTDEFAULT
@@ -1182,8 +1199,8 @@ intPageFault:
 	times OFF_INTBOUND-($-$$) nop
 
 intBound:
-	mov word [0x40002], 0x0100
-	mov dword [0x40008], 0x10100
+	mov word [0x20002], 0x0100
+	mov dword [0x20008], 0x10100
 	mov eax, BOUND_HANDLER_SIG
 	iretd
 

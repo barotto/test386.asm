@@ -1,4 +1,21 @@
 ;
+; Advances the base address of data segments used by tests, D1_SEG_PROT and
+; D2_SEG_PROT.
+;
+; Loads DS with D1_SEG_PROT and ES with D2_SEG_PROT.
+;
+%macro advTestSegProt 0
+	advTestBase
+	updLDTDescBase D1_SEG_PROT,TEST_BASE1
+	updLDTDescBase D2_SEG_PROT,TEST_BASE2
+	mov    dx, D1_SEG_PROT
+	mov    ds, dx
+	mov    dx, D2_SEG_PROT
+	mov    es, dx
+%endmacro
+
+
+;
 ;   Defines an interrupt gate, given a selector (%1) and an offset (%2)
 ;
 %macro defIntGate 2
@@ -49,6 +66,19 @@
 	mov  byte [ebx+5], (%2)>>8 ; acc byte
 	popf
 	popad
+%endmacro
+
+;
+; Updates the base of a descriptor in the LDT
+; %1 LDT selector
+; %2 new base
+; Uses DS,EBX,flags
+%macro updLDTDescBase 2
+	lds  ebx, [cs:memLDTptrProt]
+	add  ebx, (%1) & 0xFFF8
+	mov  word [ebx+2], (%2)&0xFFFF     ; BASE 15-0
+	mov  byte [ebx+4], ((%2)>>16)&0xFF ; BASE 23-16
+	mov  byte [ebx+7], ((%2)>>24)&0xFF ; BASE 31-24
 %endmacro
 
 ;

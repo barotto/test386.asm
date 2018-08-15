@@ -66,3 +66,9 @@
 	or     byte [ebx+6], dl ; ext nibble
 	mov    byte [ebx+7], ah ; BASE 31-24
 %endmacro
+
+
+%macro advTestBase 0
+	%assign TEST_BASE1 TEST_BASE1+0x1000
+	%assign TEST_BASE2 TEST_BASE2+0x1000
+%endmacro

@@ -5,9 +5,9 @@
 ;
 %macro testMovSegR_real 1
 	%if %1 = cs
-	mov    dx, 0xF000
+	mov    dx, C_SEG_REAL
 	%else
-	mov    dx, 0x55AA
+	mov    dx, D1_SEG_REAL
 	%endif
 
 	; MOV reg to Sreg
@@ -30,9 +30,6 @@
 	; TODO: verify on real hw and check TEST_UNDEF
 	cmp    ax, dx
 	jne    error
-
-	; use ds:[0] as scratch mem, value of ds doesn't matter
-	mov    bx, [0] ; save data
 
 	; MOV Sreg to word mem
 	mov    [0], word 0xbeef
@@ -58,8 +55,6 @@
 	jne    error
 	%endif
 
-	mov    [0], bx ; restore data
-
 %endmacro
 
 
@@ -68,7 +63,7 @@
 	%if %1 = cs
 	mov    dx, C_SEG_PROT32
 	%else
-	mov    dx, D_SEG_PROT32
+	mov    dx, D1_SEG_PROT
 	%endif
 
 	; MOV reg to Sreg
@@ -93,9 +88,6 @@
 	cmp    ax, dx
 	jne    error
 
-	; use ds:[0] as scratch mem, value of ds doesn't matter
-	mov    ebx, [0] ; save data
-
 	; MOV Sreg to word mem
 	mov    [0], dword -1
 	mov    [0], %1
@@ -119,8 +111,6 @@
 	cmp    ax, dx
 	jne    error
 	%endif
-
-	mov    [0], ebx ; restore data
 
 	loadProtModeStack
 	%if %1 = ss

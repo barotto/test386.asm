@@ -59,16 +59,17 @@
 ;
 
 TEST_BASE  equ 0x20000
-TEST_BASE1 equ TEST_BASE+0x00000
-TEST_BASE2 equ TEST_BASE+0x20000
+%assign TEST_BASE1 TEST_BASE+0x00000
+%assign TEST_BASE2 TEST_BASE+0x40000
+
 ;
 ;   Real mode segments
 ;
 C_SEG_REAL   equ 0xf000
 S_SEG_REAL   equ 0x1000
 IDT_SEG_REAL equ 0x0040
-D1_SEG_REAL  equ TEST_BASE1 >> 4
-D2_SEG_REAL  equ TEST_BASE2 >> 4
+%assign D1_SEG_REAL TEST_BASE1 >> 4
+%assign D2_SEG_REAL TEST_BASE2 >> 4
 
 ESP_REAL    equ 0xffff
 
@@ -102,6 +103,10 @@ cpuTest:
 	mov ax, S_SEG_REAL
 	mov ss, ax
 	mov sp, ESP_REAL
+	mov dx, D1_SEG_REAL
+	mov ds, dx
+	mov dx, D2_SEG_REAL
+	mov es, dx
 
 	POST 1
 ;
@@ -147,16 +152,14 @@ cpuTest:
 	testMovSegR_real gs
 	testMovSegR_real cs
 
+	advTestSegReal
+
 ;
 ;   Test store, move, scan, and compare string data
 ;
 %include "tests/string_m.asm"
 
 	POST 4
-	mov    dx, D1_SEG_REAL
-	mov    ds, dx
-	mov    dx, D2_SEG_REAL
-	mov    es, dx
 	testStringOps b,0,a16
 	testStringOps w,0,a16
 	testStringOps d,0,a16
@@ -170,31 +173,33 @@ cpuTest:
 	testStringReps w,1,a16
 	testStringReps d,1,a16
 
+	advTestSegReal
+
 ;
 ;   Calls
 ;
 %include "tests/call_m.asm"
 
 	POST 5
-	mov    dx, D1_SEG_REAL
-	mov    ds, dx
 	mov    si, 0
 	testCallNear sp
 	testCallFar C_SEG_REAL
+
+	advTestSegReal
 
 ;
 ;   Load full pointer
 ;
 %include "tests/load_ptr_m.asm"
 	POST 6
-	mov    dx, D1_SEG_REAL
-	mov    es, dx
 	mov    di, 0
 	testLoadPtr ss
 	testLoadPtr ds
 	testLoadPtr es
 	testLoadPtr fs
 	testLoadPtr gs
+
+	advTestSegReal
 
 
 ; ==============================================================================
@@ -438,6 +443,8 @@ protTests:
 	; initialize it for the next tests
 	loadProtModeStack
 
+	advTestSegProt
+
 ;
 ;   Test of moving segment registers in protected mode
 ;
@@ -451,11 +458,7 @@ protTests:
 	testMovSegR_prot ss
 
 	loadProtModeStack
-	mov    ax, D1_SEG_PROT
-	mov    ds, ax
-	mov    es, ax
-	mov    fs, ax
-	mov    gs, ax
+	advTestSegProt
 
 ;
 ;   Zero and sign-extension tests
@@ -656,6 +659,7 @@ protTests:
 	cmp    [ebp+ecx*2+0x4000], ebx ; EBP is used so the default segment is SS
 	je     error ; since SS != DS, this better be a mismatch
 
+	advTestSegProt
 
 ;
 ;   Verify string operations
@@ -663,10 +667,6 @@ protTests:
 	POST 10
 	pushad
 	pushfd
-	mov    ax, D1_SEG_PROT
-	mov    ds, ax
-	mov    ax, D2_SEG_PROT
-	mov    es, ax
 	testStringOps b,0,a32
 	testStringOps w,0,a32
 	testStringOps d,0,a32
@@ -681,8 +681,8 @@ protTests:
 	testStringReps d,1,a32
 	popfd
 	popad
-	mov    ax, D1_SEG_PROT
-	mov    es, ax
+
+	advTestSegProt
 
 ;
 ;	Verify page faults and memory access rights
@@ -690,6 +690,8 @@ protTests:
 	POST 11
 	setProtModeIntGate 13, OFF_INTGP
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
+	mov ax, D_SEG_PROT32
+	mov ds, ax
 	mov eax, [NOT_PRESENT_OFF] ; generate a page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
 	jne error
@@ -701,6 +703,8 @@ protTests:
 	jne error
 	setProtModeIntGate 13, OFF_INTDEFAULT
 	setProtModeIntGate 14, OFF_INTDEFAULT
+	mov ax, D1_SEG_PROT
+	mov ds, ax
 
 ;
 ;   Verify Bit Scan operations
@@ -746,6 +750,7 @@ protTests:
 	testSetcc bl
 	testSetcc byte [0x10000]
 
+	advTestSegProt
 
 ;
 ;	Call protected mode
@@ -754,6 +759,8 @@ protTests:
 	mov si, 0
 	testCallNear esp
 	testCallFar C_SEG_PROT32
+
+	advTestSegProt
 
 ;
 ;	ARPL
@@ -803,6 +810,8 @@ protTests:
 	cmp ax, 0xfff3
 	jne error
 
+	advTestSegProt
+
 ;
 ;	BOUND
 ;
@@ -831,6 +840,7 @@ protTests:
 	jne error
 	setProtModeIntGate 5, OFF_INTDEFAULT
 
+	advTestSegProt
 
 ;
 ;   XCHG
@@ -866,6 +876,7 @@ protTests:
 	testXchg ebx,ecx       ; 87 D9
 	testXchg dword [0],ecx ; 87 0D 00000000
 
+	advTestSegProt
 
 
 %include "print_init.asm"

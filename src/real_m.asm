@@ -1,4 +1,21 @@
 ;
+; Advances the base address of data segments used by tests, D1_SEG_REAL and
+; D2_SEG_REAL.
+;
+; Loads DS with D1_SEG_REAL and ES with D2_SEG_REAL.
+;
+%macro advTestSegReal 0
+	advTestBase
+	%assign D1_SEG_REAL TEST_BASE1 >> 4
+	%assign D2_SEG_REAL TEST_BASE2 >> 4
+	mov    dx, D1_SEG_REAL
+	mov    ds, dx
+	mov    dx, D2_SEG_REAL
+	mov    es, dx
+%endmacro
+
+
+;
 ; Initialises the real mode IDT with C_SEG_REAL:error
 ;
 %macro initRealModeIDT 0

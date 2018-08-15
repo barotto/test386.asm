@@ -1231,37 +1231,20 @@ signedByte:
 
 testsDone:
 ;
-; Testing finished, back to real mode and prepare to restart
+; Testing finished. STOP.
 ;
 	POST FF
-	mov  ax,  S_SEG_REAL
-	mov  ss,  ax
-	mov  esp, ESP_REAL
-;
-;   Return to real-mode, after first resetting the IDTR and loading CS with a 16-bit code segment
-;
-	o32 lidt [cs:addrIDTReal]
-	jmp  C_SEG_PROT16:toProt16
-toProt16:
-	bits 16
-goReal:
-	mov    eax, cr0
-	and    eax, ~(CR0_MSW_PE | CR0_PG) & 0xffffffff
-	mov    cr0, eax
-jmpReal:
-	jmp    C_SEG_REAL:toReal
-toReal:
-	mov    ax, cs
-	mov    ds, ax
-	mov    es, ax
-	mov    ss, ax
-	mov    sp, 0xfffe
 	cli
 	hlt
+	jmp testsDone
+
 ;
 ;   Fill the remaining space with NOPs until we get to target offset 0xFFF0.
 ;
 	times 0xfff0-($-$$) nop
+
+
+bits 16
 
 resetVector:
 	jmp   C_SEG_REAL:cpuTest ; 0000FFF0

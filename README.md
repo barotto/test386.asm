@@ -74,8 +74,8 @@ This is the list of tests with their diagnostic code:
 | 0x0A | Stack functionality                                                |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
-| 0x0D | 16-bit addressing modes                                            |
-| 0x0E | 32-bit addressing modes                                            |
+| 0x0D | 16-bit addressing modes (LEA)                                      |
+| 0x0E | 32-bit addressing modes (LEA)                                      |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
 | 0x11 | Page faults and memory access rights                               |

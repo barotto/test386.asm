@@ -344,6 +344,7 @@ protLDTsetup:
 	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defLDTDesc RO_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
 	defLDTDesc DUMMY_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc DPL1_SEG_PROT,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
@@ -544,8 +545,11 @@ protTests:
 ;
 ;   Test 16-bit addressing modes
 ;
+	jmp postD
 %include "tests/lea_m.asm"
+%include "tests/lea_p.asm"
 
+postD:
 	POST D
 	mov ax, 0x0001
 	mov bx, 0x0002
@@ -573,54 +577,8 @@ protTests:
 ;   Test 32-bit addressing modes
 ;
 	POST E
-	mov eax, 0x0001
-	mov ebx, 0x0002
-	mov ecx, 0x0004
-	mov edx, 0x0008
-	mov esi, 0x0010
-	mov edi, 0x0020
-	testLEA32 [0x4000], 0x00004000
-	testLEA32 [eax], 0x00000001
-	testLEA32 [ebx], 0x00000002
-	testLEA32 [ecx], 0x00000004
-	testLEA32 [edx], 0x00000008
-	testLEA32 [esi], 0x00000010
-	testLEA32 [edi], 0x00000020
-	testLEA32 [eax + 0x40], 0x00000041
-	testLEA32 [ebx + 0x40], 0x00000042
-	testLEA32 [ecx + 0x40], 0x00000044
-	testLEA32 [edx + 0x40], 0x00000048
-	testLEA32 [esi + 0x40], 0x00000050
-	testLEA32 [edi + 0x40], 0x00000060
-	testLEA32 [eax + 0x40000], 0x00040001
-	testLEA32 [ebx + 0x40000], 0x00040002
-	testLEA32 [ecx + 0x40000], 0x00040004
-	testLEA32 [edx + 0x40000], 0x00040008
-	testLEA32 [esi + 0x40000], 0x00040010
-	testLEA32 [edi + 0x40000], 0x00040020
-	testLEA32 [eax + ecx], 0x00000005
-	testLEA32 [ebx + edx], 0x0000000a
-	testLEA32 [ecx + ecx], 0x00000008
-	testLEA32 [edx + ecx], 0x0000000c
-	testLEA32 [esi + ecx], 0x00000014
-	testLEA32 [edi + ecx], 0x00000024
-	testLEA32 [eax + ecx + 0x40], 0x00000045
-	testLEA32 [ebx + edx + 0x4000], 0x0000400a
-	testLEA32 [ecx + ecx * 2], 0x0000000c
-	testLEA32 [edx + ecx * 4], 0x00000018
-	testLEA32 [esi + ecx * 8], 0x00000030
-	testLEA32 [eax * 2], 0x00000002
-	testLEA32 [ebx * 4], 0x00000008
-	testLEA32 [ecx * 8], 0x00000020
-	testLEA32 [0x40 + eax * 2], 0x00000042
-	testLEA32 [0x40 + ebx * 4], 0x00000048
-	testLEA32 [0x40 + ecx * 8], 0x00000060
-	testLEA32 [ecx - 10 + ecx * 2], 0x00000002
-	testLEA32 [edx - 10 + ecx * 4], 0x0000000e
-	testLEA32 [esi - 10 + ecx * 8], 0x00000026
-	testLEA32 [ecx + 0x40000 + ecx * 2], 0x0004000c
-	testLEA32 [edx + 0x40000 + ecx * 4], 0x00040018
-	testLEA32 [esi + 0x40000 + ecx * 8], 0x00040030
+	call testAddressing32
+
 
 ;
 ;   Access memory using various addressing modes

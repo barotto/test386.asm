@@ -632,9 +632,45 @@ postD:
 	cmp    [ecx*4], ebx
 	jne    error
 
+	; test default segment SS
 	mov    ebp, ecx
-	cmp    [ebp+ecx*2+0x4000], ebx ; EBP is used so the default segment is SS
+	cmp    [ebp+ecx*2+0x4000], ebx ; EBP is used as base so the default segment is SS
 	je     error ; since SS != DS, this better be a mismatch
+
+	mov    eax, esp ; save ESP
+	mov    esp, ecx
+	cmp    [esp+ecx*2+0x4000], ebx ; ESP is used as base so the default segment is SS
+	je     error ; since SS != DS, this better be a mismatch
+	mov    esp, eax ; restore ESP
+
+	mov    ax, D1_SEG_PROT
+	mov    dx, D2_SEG_PROT
+
+	; store the known word in a different segment
+	mov    ds, dx
+	mov    [0x10000], ebx
+	mov    ds, ax
+
+	; test segment overrides
+	mov    es, dx
+	cmp    [es:ecx+ecx*2+0x4000], ebx
+	jne    error
+	mov    es, ax
+	mov    fs, dx
+	cmp    [fs:ecx+ecx*2+0x4000], ebx
+	jne    error
+	mov    fs, ax
+	mov    gs, dx
+	cmp    [gs:ecx+ecx*2+0x4000], ebx
+	jne    error
+	mov    gs, ax
+	mov    ss, dx
+	cmp    [ss:ecx+ecx*2+0x4000], ebx
+	jne    error
+	mov    dx, S_SEG_PROT32
+	mov    ss, dx
+	cmp    [ds:ebp+ecx*2+0x4000], ebx
+	jne    error
 
 	advTestSegProt
 

@@ -35,6 +35,24 @@
 ;   address 0xfffffff0, which will transfer control to f000:0045.  From that
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
+
+;
+; WARNING
+;
+;   A word of caution before you start developing.
+;   NASM (2.11.08) generates [ebp + ebp] for [ebp*2] (i.e. no base register),
+;   which are not the same thing: [ebp+ebp] references the SS segment, [ebp*2]
+;   references the DS segment.
+;   NASM developers think [ebp*2] and [ebp+ebp] are the same, but that is true
+;   only assuming a flat memory model. Until the time NASM authors realize their
+;   mistake (any assumption of a flat memory model should be optional), you can
+;   disable this behaviour by writing: [nosplit ebp*2].
+;
+;	NASM Assembly            Translated               Assembled
+;	mov eax,[ebp*2]          mov eax,[ebp+ebp*1+0x0]  8B442D00
+;	mov eax,[nosplit ebp*2]  mov eax,[ebp*2+0x0]      8B046D00000000
+;
+
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2018 Marco Bortolin '
 %define RELEASE   '??/??/18'
 

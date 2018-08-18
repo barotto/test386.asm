@@ -597,6 +597,7 @@ postD:
 	POST E
 	call testAddressing32
 
+	advTestSegProt
 
 ;
 ;   Access memory using various addressing modes

@@ -9,6 +9,16 @@
 ; Is this really necessary? No.
 ; Was it fun to code at least? Somewhat.
 ; Would I do it again? Probably not.
+; What is a reasonable alternative? Create a binary table with every possible
+; valid combination of the LEA instruction followed by RET; this is a fairly
+; easy, 1-time job that is less prone to bugs.
+; For every entry in the table:
+; 1. initialize every register with known values
+; 2. call the LEA+RET code at the current table offset
+; 3. print the value of every register to the output port
+; At the end, manually compare the output with a reference.
+; Don't depend on NASM to assemble the LEA instructions, it tends to use
+; optimizations.
 
 
 ;

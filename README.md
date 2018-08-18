@@ -68,7 +68,7 @@ This is the list of tests with their diagnostic code:
 | 0x02 | Quick tests of unsigned 32-bit multiplication and division         |
 | 0x03 | Move segment registers in real mode                                |
 | 0x04 | Store, move, scan, and compare string data in real mode            |
-| 0x05 | Call in real mode                                                  |
+| 0x05 | Calls in real mode                                                 |
 | 0x06 | Load full pointer in real mode                                     |
 | 0x09 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
 | 0x0A | Stack functionality                                                |
@@ -78,11 +78,12 @@ This is the list of tests with their diagnostic code:
 | 0x0E | 32-bit addressing modes (LEA)                                      |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
-| 0x11 | Page faults and memory access rights                               |
-| 0x12 | Bit Scan operations                                                |
-| 0x13 | Bit Test operations                                                |
+| 0x11 | Page faults                                                        |
+| 0x12 | Other memory access faults                                         |
+| 0x13 | Bit Scan operations                                                |
+| 0x14 | Bit Test operations                                                |
 | 0x15 | Byte set on condition                                              |
-| 0x16 | Call in protected mode                                             |
+| 0x16 | Calls in protected mode                                            |
 | 0x17 | Adjust RPL Field of Selector (ARPL)                                |
 | 0x18 | Check Array Index Against Bounds (BOUND)                           |
 | 0x19 | Exchange Register/Memory with Register (XCHG)                      |

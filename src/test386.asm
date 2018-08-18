@@ -99,7 +99,6 @@ OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
-OFF_INTGP        equ OFF_INTBOUND+0x200
 
 
 header:
@@ -296,7 +295,6 @@ PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
 NOT_PRESENT_LIN equ 0x9F000 ; linear address of the not present page (#NP test)
 NOT_PRESENT_PTE equ NOT_PRESENT_LIN>>12 ; page table entry (#NP test)
 NOT_PRESENT_OFF equ NOT_PRESENT_LIN-TEST_BASE ; offset relative to DESG base (#NP test)
-GP_HANDLER_SIG    equ 0x47504841
 PF_HANDLER_SIG    equ 0x50465046
 BOUND_HANDLER_SIG equ 0x626f756e
 
@@ -698,40 +696,51 @@ postD:
 	advTestSegProt
 
 ;
-;	Verify page faults and memory access rights
+;	Verify page faults
 ;
 	POST 11
-	setProtModeIntGate 13, OFF_INTGP
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
 	mov ax, D_SEG_PROT32
 	mov ds, ax
-	mov eax, [NOT_PRESENT_OFF] ; generate a page fault
+	mov eax, [NOT_PRESENT_OFF] ; generate a "not present" page fault
 	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
 	jne error
-	mov ax, RO_SEG_PROT
-	mov ds, ax              ; write protect DS
-	xor eax, eax
-	mov byte [0], 0   ; generate #GP
-	cmp eax, GP_HANDLER_SIG ; see if #GP handler was called
-	jne error
-	setProtModeIntGate 13, OFF_INTDEFAULT
 	setProtModeIntGate 14, OFF_INTDEFAULT
 	mov ax, D1_SEG_PROT
 	mov ds, ax
+
+;
+;   Verify other memory access faults
+;
+	POST 12
+	; #GP(0) If the destination operand is in a non-writable segment.
+	mov ax, RO_SEG_PROT ; write protect DS
+	mov ds, ax
+	protModeFaultTest EX_GP, 0, mov [0],eax
+	mov ax, D1_SEG_PROT ; restore DS
+	mov ds, ax
+	; #GP(0) If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+	protModeFaultTest EX_GP, 0, mov eax,[-1] ; check on read
+	protModeFaultTest EX_GP, 0, mov [-1],eax ; check on write
+	; #SS(0) If a memory operand effective address is outside the SS segment limit.
+	protModeFaultTest EX_SS, 0, mov eax,[ss:-1] ; check on read
+	protModeFaultTest EX_SS, 0, mov [ss:-1],eax ; check on write
+	; #UD If the LOCK prefix is used.
+	protModeFaultTest EX_UD, 0, lock mov [0],eax
 
 ;
 ;   Verify Bit Scan operations
 ;
 %include "tests/bit_m.asm"
 
-	POST 12
+	POST 13
 	testBitscan bsf
 	testBitscan bsr
 
 ;
 ;   Verify Bit Test operations
 ;
-	POST 13
+	POST 14
 	testBittest16 bt
 	testBittest16 btc
 	cmp edx, 0x00005555
@@ -1215,17 +1224,6 @@ intBound:
 	mov eax, BOUND_HANDLER_SIG
 	iretd
 
-	times OFF_INTGP-($-$$) nop
-
-intGeneralProtection:
-	pop eax ; pop the error code
-	mov ax, ds
-	cmp ax, RO_SEG_PROT ; see if this handler was called for a write on RO segment
-	jne error
-	mov ax, D1_SEG_PROT
-	mov ds, ax
-	mov eax, GP_HANDLER_SIG
-	iretd
 
 LPTports:
 	dw   0x3BC

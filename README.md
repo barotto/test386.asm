@@ -73,7 +73,7 @@ An inportant piece of information, useful as a diagnostic guide, is the
 intermediate source-listing file **<tt>test386.lst</tt>**, that is produced by
 NASM during assembly (assuming it's enabled with the <tt>-l</tt> switch).
 Once you determine the EIP value at which a problem arised, look it up in
-<tt>test386.lst</tt>, on the leftmost column; you'll have a clearer picture of
+<tt>test386.lst</tt>, on the second column; you'll have a clearer picture of
 what the program was trying to do.
 
 This is the list of tests with their diagnostic code:

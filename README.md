@@ -8,16 +8,27 @@ test386.asm communicates with the external world through the diagnostic POST I/O
 port and the parallel and/or serial ports. You'll need to configure the
 addresses of these ports for the system you're testing.
 
+**WARNING**: this program is designed for emulators and was never tested on real
+hardware. Use at your own risk.
+
+## Project status
+
 Please note that in the current version, test386.asm is still **incomplete** and
 is not able to test every functionality of a CPU. It will probably not detect
 that bug that is keeping you up at night, sorry.
 
 For the full list of tested opcodes see **<tt>intel-opcodes.ods</tt>**.
 Those opcodes that are tested have the relevant diagnostic code in the "test in
-real mode" and/or "test in prot. mode" columns.
+real mode" and/or "test in prot. mode" columns.  
+Besides the specific opcodes reported in the opcodes list file, other aspects of
+the x86 architecture are not presently tested, such as:
 
-**WARNING**: this program is designed for emulators and was never tested on real
-hardware. Use at your own risk.
+  - virtual-8086 mode
+  - task management
+  - user mode (ring 3) operations
+  
+Also, even if the program can run on any x86 32-bit compatible CPU, its testing
+routines are limited to the functionality of the intel 80386 processor family.
 
 ## How to assemble
 
@@ -138,11 +149,11 @@ Every line of <tt>test386-EE-reference.txt</tt> is composed of:
   - EDX value before and after execution; it's the value of the source operand,
   even if it's not EDX; for shifts and rotates it's the amount; for arithmetic
   ops with an immediate it's the value of the immediate
-  - PS value before and after execution, it's the processor status register
-  value but only for the flags defined for the operation; undefined flags are
-  masked out
+  - PS value before and after execution; it's the value of the processor status
+  register, but only for the flags defined for the operation; undefined flags
+  are masked out
 
-Again, use <tt>test386.lst</tt> and your emulator's logs as a guide to determine
+Use <tt>test386.lst</tt> and your emulator's logs as a guide to determine
 instruction and cause of any possible difference.
 
 Remember that test386.asm is open-source. Take advantage of this and read the
@@ -154,8 +165,8 @@ you guessed it, is in <tt>src/test386.asm</tt>.
 The execution of test386.asm is deterministic. This means that, at POST FFh, the
 program results in the same RAM content every time it's executed.
 
-If you have a known working emulator that you trust (possibly open-source), you
-can compare its memory dump with yours.
+If you have a known working emulator that you trust (preferably open-source),
+you can compare its memory dump with yours.
 
 In the following example I'll use **Bochs** as a reference.  
 **Beware**: this is just an example, I cannot guarantee that Bochs is bug free.
@@ -198,32 +209,20 @@ emulator with Bochs):
 000023C4 27 67
 ```
 
-First column: the byte offset (0-based)  
+First column: the byte offset  
 Second column: the value in my-640k-memdump.bin  
 Third column: the value in bochs-640k-memdump.bin
 
-To roughly determine what's the memory area used for, this is the current memory
-map of test386.asm:
+To roughly determine what's the memory area used for, compare your offsets with
+the current memory map of test386.asm, reported at the top of the 
+<tt>src/test386.asm</tt> file.
 
-```
-;
-; First 640K of memory:
-;  00000-003FF real mode IDT
-;  00400-004FF protected mode IDT
-;  00500-00FFF protected mode LDT (the GDT is in ROM)
-;  01000-01FFF page directory
-;  02000-02FFF page table
-;  10000-1FFFF stack
-;  20000-9FFFF tests area
-;
-```
+In this example, there's a problem in the way the emulator updates a PTE and in
+particular the Dirty bit.
 
-In this example, there's a problem in the way the emulator updates a PTE.
-In particular the Dirty bit.
-
-To see what's going on, use the emulator's memory traps facility and define a
-read/write trap (dword at 0x00002008).  
-Doing this you'll quickly see who's doing what and where.  
+To see what's going on, use your emulator's memory traps functionality and
+define a read/write trap, in this example at dword 0x2008.  
+Doing so you'll quickly see who's doing what and where.  
 Again, use the EIP that you determined with the trap to look up the instruction
 in <tt>test386.lst</tt>
 

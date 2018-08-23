@@ -856,9 +856,7 @@ postD:
 	mov ax, D1_SEG_PROT
 	mov ds, ax
 	xor eax, eax
-	arpl [0x20000], bx      ; value has not changed, arpl should not write to memory
-	cmp eax, GP_HANDLER_SIG ; test if #GP handler was called
-	je error
+	arpl [0x20000], bx ; value has not changed, arpl should not write to memory
 	; make DS writeable again
 	updLDTDescAcc D1_SEG_PROT,ACC_TYPE_DATA_W|ACC_PRESENT
 	mov ax, D1_SEG_PROT

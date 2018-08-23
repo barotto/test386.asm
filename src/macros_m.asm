@@ -11,11 +11,23 @@
 ; Initializes an interrupt gate in system memory.
 ; This is the body of procedures used in 16 and 32-bit code segments.
 ;
+;    7                             0 7                             0
+;   ╔═══════════════════════════════╤═══════════════════════════════╗
+; +7║                          OFFSET 31-16                         ║+6
+;   ╟───┬───────┬───┬───────────────┬───────────────────────────────╢
+; +5║ P │  DPL  │ 0 │ T   1   1   I │            UNUSED             ║+4
+;   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
+; +3║                           SELECTOR                            ║+2
+;   ╟───────────────────────────────┴───────────────────────────────╢
+; +1║                          OFFSET 15-0                          ║ 0
+;   ╚═══════════════════════════════╧═══════════════════════════════╝
+;    15                                                            0
+;
 ; EAX vector
 ; ECX offset
 ; DS:EBX pointer to IDT
 ;
-%macro initIntGateMem 0
+%macro initIntGate 0
 	shl    eax, 3
 	add    ebx, eax
 	mov    word [ebx], cx
@@ -27,14 +39,14 @@
 %endmacro
 
 ;
-; Initializes a code/data segment in system memory.
+; Set a descriptor in system memory.
 ; This is the body of procedures used in 16 and 32-bit code segments.
 ;
 ;    7                             0 7                             0
 ;   ╔═══════════════════════════════╤═══╤═══╤═══╤═══╤═══════════════╗
 ; +7║            BASE 31-24         │ G │B/D│ 0 │AVL│  LIMIT 19-16  ║+6
 ;   ╟───┬───────┬───┬───────────┬───┼───┴───┴───┴───┴───┴───┴───┴───╢
-; +5║ P │  DPL  │ 1 │   TYPE    │ A │          BASE 23-16           ║+4
+; +5║ P │  DPL  │ S │    TYPE    (A)│          BASE 23-16           ║+4
 ;   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
 ; +3║                           BASE 15-0                           ║+2
 ;   ╟───────────────────────────────┴───────────────────────────────╢
@@ -47,9 +59,9 @@
 ; ESI base
 ; EDI limit
 ; DL ext nibble (upper 4 bits)
-; DH acc byte (P|DPL|1|TYPE|A)
+; DH acc byte (P|DPL|S|TYPE|A)
 ;
-%macro initSegDescMem 0
+%macro initDescriptor 0
 	and    eax, 0xFFF8
 	add    ebx, eax
 	mov    word [ebx], di   ; LIMIT 15-0

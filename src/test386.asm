@@ -69,9 +69,11 @@
 ; memory map:
 ;  00000-003FF real mode IDT
 ;  00400-004FF protected mode IDT
-;  00500-00FFF protected mode LDT (GDT is in ROM)
+;  00500-0077F protected mode GDT
+;  00800-00FFF protected mode LDT
 ;  01000-01FFF page directory
 ;  02000-02FFF page table
+;  03000-03FFF TSS
 ;  10000-1FFFF stack
 ;  20000-9FFFF tests
 ;
@@ -86,6 +88,7 @@ TEST_BASE  equ 0x20000
 C_SEG_REAL   equ 0xf000
 S_SEG_REAL   equ 0x1000
 IDT_SEG_REAL equ 0x0040
+GDT_SEG_REAL equ 0x0050
 %assign D1_SEG_REAL TEST_BASE1 >> 4
 %assign D2_SEG_REAL TEST_BASE2 >> 4
 
@@ -99,7 +102,8 @@ OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
-
+;PF_HANDLER_SIG    equ 0x50465046
+;BOUND_HANDLER_SIG equ 0x626f756e
 
 header:
 	db COPYRIGHT
@@ -223,52 +227,72 @@ cpuTest:
 ;	Protected mode tests
 ; ==============================================================================
 
-	jmp initPages
+	POST 9
+	jmp initGDT
+
+ESP_PROT   equ 0x0000FFFF
+ESP_U_PROT equ 0x00007FFF
 
 %include "protected_m.asm"
 
-ESP_PROT equ 0x0000ffff
 
+;;; support for ROM based GDT (currently unused)
 romGDT:
+romGDTEnd:
+romGDTaddr:
+	dw romGDTEnd - romGDT - 1 ; 16-bit limit
+	dw romGDT, 0x000f         ; 32-bit base address
+;;;
+
+ptrGDTreal: ; pointer to the pmode GDT for real mode code
+	dd 0             ; 32-bit offset
+	dw GDT_SEG_REAL  ; 16-bit segment selector
+ptrIDTreal: ; pointer to the pmode IDT for real mode code
+	dd 0
+	dw IDT_SEG_REAL
+
+initGDT:
 	; the first descriptor in the GDT is always a dud (the null selector)
 	defGDTDesc NULL
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc LDT_SEG_PROT,  0x00000500,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
-	defGDTDesc LDT_DSEG_PROT, 0x00000500,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc GDT_SEG_PROT,  0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc LDT_SEG_PROT,  0x00000800,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PDT_SEG_PROT,  0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-romGDTEnd:
+	defGDTDesc SU_SEG_PROT32, 0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 
-romGDTaddr:
-	dw romGDTEnd - romGDT - 1 ; 16-bit limit
-	dw romGDT, 0x000f         ; 32-bit base address
-memIDTptrReal:
+
+	jmp initIDT
+
+ptrIDTprot: ; pointer to the IDT for pmode
+	dd 0             ; 32-bit offset
+	dw IDT_SEG_PROT  ; 16-bit segment selector
+ptrGDTprot: ; pointer to the GDT for pmode
 	dd 0
-	dw IDT_SEG_REAL
-memIDTptrProt:
+	dw GDT_SEG_PROT
+ptrLDTprot: ; pointer to the LDT for pmode
 	dd 0
-	dw IDT_SEG_PROT
-memIDTaddrProt:
-	dw 0xFF             ; 16-bit limit
-	dd IDT_SEG_REAL << 4 ; 32-bit base address
-memLDTptrProt:
-	dd 0            ; 32-bit offset
-	dw LDT_DSEG_PROT ; 16-bit segment selector
-memSSptrProt:
+	dw LDT_DSEG_PROT
+ptrPTprot: ; pointer to the Page Table for pmode
+	dd 0
+	dw PT_SEG_PROT
+ptrSSprot: ; pointer to the stack for pmode
 	dd ESP_PROT
 	dw S_SEG_PROT32
+addrProtIDT: ; address of pmode IDT to be used with lidt
+	dw 0xFF              ; 16-bit limit
+	dd IDT_SEG_REAL << 4 ; 32-bit base address
+addrGDT: ; address of GDT to be used with lgdt
+	dw 0x2FF
+	dd GDT_SEG_REAL << 4
 
-addrIDTReal:
-	dw 0x3FF      ; 16-bit limit of real-mode IDT
-	dd 0x00000000 ; 32-bit base address of real-mode IDT
-
-;
 ; Initializes an interrupt gate in system memory in real mode
-;
-initIntGateMemReal:
+initIntGateReal:
 	pushad
 	pushf
 	initIntGateMem
@@ -276,19 +300,30 @@ initIntGateMemReal:
 	popad
 	ret
 
+; Initializes a descriptor in system memory in real mode
+initDescriptorReal:
+	pushad
+	pushf
+	initDescriptorMem
+	popf
+	popad
+	ret
+
+initIDT:
+	initProtModeIDT
+
 initPages:
 ;
 ; pages:
-;  00000-00FFF   1  1000h   4K IDTs
+;  00000-00FFF   1  1000h   4K IDTs, GDT and LDT
 ;  01000-01FFF   1  1000h   4K page directory
 ;  02000-02FFF   1  1000h   4K page table
-;  03000-0FFFF  13  d000h  52K free
+;  03000-03FFF   1  1000h   4K task switch segments
+;  04000-0FFFF  12  d000h  48K free
 ;  10000-1FFFF  16 10000h  64K stack
 ;  20000-9EFFF 127 7f000h 508K tests
-;  9F000-9FFFF   1  1000h   4K non present page (PTE 9Fh)
-
+;  9F000-9FFFF   1  1000h   4K used for page faults (PTE 9Fh)
 ;
-
 PAGE_DIR_ADDR equ 0x1000
 PAGE_DIR_SIZE equ 0x1000
 PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
@@ -302,7 +337,6 @@ BOUND_HANDLER_SIG equ 0x626f756e
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
 ;   corresponding to physical address 0x1000.
 ;
-	POST 9
 	mov   esi, PAGE_DIR_ADDR
 	mov   eax, esi
 	shr   eax, 4
@@ -318,12 +352,14 @@ BOUND_HANDLER_SIG equ 0x626f756e
 	mov   ecx, 1024-1 ; ECX == number of (remaining) PDEs to write
 	xor   eax, eax    ; fill remaining PDEs with 0
 	rep   stosd
+
 ;
 ;   Build a page table at EDI with 256 (out of 1024) valid PTEs, mapping the first 1MB
 ;   as linear == physical.
 ;
 	mov   eax, PTE_USER | PTE_READWRITE | PTE_PRESENT
 	mov   ecx, 256 ; ECX == number of PTEs to write
+
 initPT:
 	stosd
 	add   eax, 0x1000
@@ -336,14 +372,11 @@ initPT:
 	add   edi, PAGE_DIR_SIZE ; edi <- PAGE_DIR_SIZE + (NOT_PRESENT_PTE * 4)
 	mov   eax, NOT_PRESENT_LIN | PTE_USER | PTE_READWRITE
 	stosd
-;
-;   Enable protected mode
-;
-	initProtModeIDT
 
+switchToProtMode:
 	cli ; make sure interrupts are off now, since we've not initialized the IDT yet
-	o32 lidt [cs:memIDTaddrProt]
-	o32 lgdt [cs:romGDTaddr]
+	o32 lidt [cs:addrProtIDT]
+	o32 lgdt [cs:addrGDT]
 	mov    cr3, esi
 	mov    eax, cr0
 	or     eax, CR0_MSW_PE | CR0_PG
@@ -351,11 +384,11 @@ initPT:
 	jmp    C_SEG_PROT32:toProt32 ; jump to flush the prefetch queue
 toProt32:
 	bits 32
+	jmp    initLDT
 
-	jmp    protLDTsetup
 %include "protected_p.asm"
 
-protLDTsetup:
+initLDT:
 	defLDTDesc D_SEG_PROT16,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
@@ -369,6 +402,9 @@ protLDTsetup:
 
 	mov  ax, LDT_SEG_PROT
 	lldt ax
+
+
+%include "protected_ring3_m.asm"
 
 protTests:
 ;

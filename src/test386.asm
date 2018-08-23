@@ -102,8 +102,8 @@ OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
 OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
-;PF_HANDLER_SIG    equ 0x50465046
-;BOUND_HANDLER_SIG equ 0x626f756e
+PF_HANDLER_SIG    equ 0x50465046
+BOUND_HANDLER_SIG equ 0x626f756e
 
 header:
 	db COPYRIGHT
@@ -327,11 +327,9 @@ initPages:
 PAGE_DIR_ADDR equ 0x1000
 PAGE_DIR_SIZE equ 0x1000
 PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
-NOT_PRESENT_LIN equ 0x9F000 ; linear address of the not present page (#NP test)
-NOT_PRESENT_PTE equ NOT_PRESENT_LIN>>12 ; page table entry (#NP test)
-NOT_PRESENT_OFF equ NOT_PRESENT_LIN-TEST_BASE ; offset relative to DESG base (#NP test)
-PF_HANDLER_SIG    equ 0x50465046
-BOUND_HANDLER_SIG equ 0x626f756e
+TESTPAGE_LIN equ 0x9F000 ; linear address of the test page (page fault tests)
+TESTPAGE_PTE equ TESTPAGE_LIN>>12 ; page table entry
+TESTPAGE_OFF equ TESTPAGE_LIN-TEST_BASE ; offset relative to DESG base
 
 ;   Now we want to build a page directory and a page table. We need two pages of
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
@@ -367,10 +365,10 @@ initPT:
 	mov   ecx, 1024-256 ; ECX == number of (remaining) PTEs to write
 	xor   eax, eax
 	rep   stosd
-	mov   edi, NOT_PRESENT_PTE ; mark PTE as not present
+	mov   edi, TESTPAGE_PTE ; mark PTE as not present
 	shl   edi, 2
-	add   edi, PAGE_DIR_SIZE ; edi <- PAGE_DIR_SIZE + (NOT_PRESENT_PTE * 4)
-	mov   eax, NOT_PRESENT_LIN | PTE_USER | PTE_READWRITE
+	add   edi, PAGE_DIR_SIZE ; edi <- PAGE_DIR_SIZE + (TESTPAGE_PTE * 4)
+	mov   eax, TESTPAGE_LIN | PTE_USER | PTE_READWRITE
 	stosd
 
 switchToProtMode:
@@ -738,9 +736,15 @@ postD:
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
 	mov ax, D_SEG_PROT32
 	mov ds, ax
-	mov eax, [NOT_PRESENT_OFF] ; generate a "not present" page fault
-	cmp eax, PF_HANDLER_SIG    ; the page fault handler should have put its signature in memory
+
+	xor eax, eax
+	mov cr2, eax ; reset CR2 to test its value in the page faults handler
+	updPTEFlags TESTPAGE_PTE, PTE_USER | PTE_READWRITE ; mark PTE as not present
+	mov eax, PF_ERR_NOTPRESENT|PF_ERR_READ|PF_ERR_SUPER ; EAX = expected error code
+	mov eax, [TESTPAGE_OFF]  ; generate a "not present" page fault
+	cmp eax, PF_HANDLER_SIG  ; the page fault handler should have put its signature in memory
 	jne error
+
 	setProtModeIntGate 14, OFF_INTDEFAULT
 	mov ax, D1_SEG_PROT
 	mov ds, ax
@@ -1226,30 +1230,31 @@ intDivRet:
 	times OFF_INTPAGEFAULT-($-$$) nop
 
 intPageFault:
-	; check the error code, it must be 0
-	pop   eax
-	cmp   eax, 0
-	jnz error
-	; check CR2 register, it must contain the linear address NOT_PRESENT_LIN
-	mov   eax, cr2
-	cmp   eax, NOT_PRESENT_LIN
+	; compare the expected error code in EAX with the one pushed on the stack
+	pop   ebx
+	cmp   eax, ebx
 	jne   error
-	; mark the PTE as present
-	mov   bx, ds ; save DS
-	mov   ax, PT_SEG_PROT
-	mov   ds, ax
-	mov   eax, NOT_PRESENT_PTE ; mark PTE as present
-	shl   eax, 2 ; eax <- (NOT_PRESENT_PTE * 4)
-	mov   edx, [eax]
-	or    edx, PTE_PRESENT
-	mov   [eax], edx
-	mov   eax, PAGE_DIR_ADDR
-	mov   cr3, eax ; flush the page translation cache
-	; mark the memory location at NOT_PRESENT_LIN with the handler signature
-	mov   ds, bx ; restore DS
-	mov   eax, PF_HANDLER_SIG
-	mov   [NOT_PRESENT_OFF], eax
+	; check CR2 register, it must contain the linear address TESTPAGE_LIN
+	mov   eax, cr2
+	cmp   eax, TESTPAGE_LIN
+	jne   error
+	test  ebx, PTE_PRESENT_BIT
+	jz   .not_present
+	test  ebx, PTE_READWRITE_BIT
+	jnz  .write
+	jmp   error
+.not_present:
+	; not present handler:
+	setPTEFlag  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
+	mov   [TESTPAGE_OFF], dword PF_HANDLER_SIG ; put handler's signature in memory
 	xor   eax, eax
+	jmp  .exit
+.write:
+	; read-only handler:
+	setPTEFlag  TESTPAGE_PTE, PTE_READWRITE_BIT, PTE_READWRITE ; mark the PTE as r/w
+	mov   eax, PF_HANDLER_SIG ; put handler's signature in eax
+	jmp  .exit
+.exit:
 	iretd
 
 	times OFF_INTBOUND-($-$$) nop

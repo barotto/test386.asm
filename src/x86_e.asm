@@ -24,6 +24,7 @@ ACC_TYPE_CODE_R      equ 0x1a00
 ACC_TYPE_DATA_R      equ 0x1000
 ACC_TYPE_DATA_W      equ 0x1200
 ACC_TYPE_LDT         equ 0x0200
+ACC_TYPE_TSS         equ 0x0900
 
 ACC_DPL_0 equ 0x0000
 ACC_DPL_1 equ 0x2000
@@ -41,6 +42,21 @@ PTE_ACCESSED  equ 0x00000020 ; page has been accessed
 PTE_USER      equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
 PTE_READWRITE equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
 PTE_PRESENT   equ 0x00000001 ; set for present page, clear for not-present page
+
+PTE_PRESENT_BIT   equ 0000001b
+PTE_READWRITE_BIT equ 0000010b
+PTE_USER_BIT      equ 0000100b
+PTE_ACCESSED_BIT  equ 0100000b
+PTE_DIRTY_BIT     equ 1000000b
+
+
+PF_ERR_PRESENT    equ 001b
+PF_ERR_NOTPRESENT equ 000b
+PF_ERR_READ       equ 000b
+PF_ERR_WRITE      equ 010b
+PF_ERR_SUPER      equ 000b
+PF_ERR_USER       equ 100b
+
 
 EX_DE equ 0
 EX_DB equ 1

@@ -401,9 +401,6 @@ initLDT:
 	mov  ax, LDT_SEG_PROT
 	lldt ax
 
-
-%include "protected_ring3_m.asm"
-
 protTests:
 ;
 ;   Test the stack

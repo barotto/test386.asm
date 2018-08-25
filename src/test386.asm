@@ -295,16 +295,7 @@ addrGDT: ; address of GDT to be used with lgdt
 initIntGateReal:
 	pushad
 	pushf
-	initIntGateMem
-	popf
-	popad
-	ret
-
-; Initializes a descriptor in system memory in real mode
-initDescriptorReal:
-	pushad
-	pushf
-	initDescriptorMem
+	initIntGate
 	popf
 	popad
 	ret

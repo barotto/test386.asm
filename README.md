@@ -121,7 +121,8 @@ This is the list of tests with their diagnostic code:
 
 \* test <tt>0xE0</tt> needs to be enabled via the TEST_UNDEF equ, and 
 the proper CPU family needs to be specified with the CPU_FAMILY equ (currently
-only 80386 supported).
+only 80386 supported). This test will fail, unless your emulator is a faithful
+replica of an Intel 80386.
 
 \** test <tt>0xEE</tt> always completes successfully. It will print its
 computational ASCII results to the configured output ports.
@@ -167,6 +168,10 @@ program results in the same RAM content every time it's executed.
 
 If you have a known working emulator that you trust (preferably open-source),
 you can compare its memory dump with yours.
+
+**Note**: unless you know what you're looking for, test 0xE0 (Undefined
+behaviours and bugs) should be disabled before comparing memory dumps, setting
+TEST_UNDEF equ to 0.
 
 In the following example I'll use **Bochs** as a reference.  
 **Beware**: this is just an example, I cannot guarantee that Bochs is bug free.

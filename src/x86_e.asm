@@ -17,7 +17,8 @@ PS_SHIFTS_R equ (PS_CF | PS_SF | PS_ZF | PS_PF)
 CR0_MSW_PE  equ 0x0001
 CR0_PG      equ 0x80000000	; set if paging enabled
 
-ACC_TYPE_GATE386_INT equ 0x0E00
+ACC_TYPE_GATE386_INT  equ 0x0E00
+ACC_TYPE_GATE386_CALL equ 0x0C00
 ACC_TYPE_SEG         equ 0x1000
 ACC_PRESENT          equ 0x8000
 ACC_TYPE_CODE_R      equ 0x1a00

@@ -97,7 +97,7 @@ ESP_REAL    equ 0xffff
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
 ;
-OFF_ERROR        equ 0xc000
+OFF_ERROR        equ 0xd000
 OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
@@ -230,8 +230,8 @@ cpuTest:
 	POST 9
 	jmp initGDT
 
-ESP_PROT   equ 0x0000FFFF
-ESP_U_PROT equ 0x00007FFF
+ESP_R0_PROT equ 0x0000FFFF
+ESP_R3_PROT equ 0x00007FFF
 
 %include "protected_m.asm"
 
@@ -258,23 +258,33 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc GDT_SEG_PROT,  0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc GDT_DSEG_PROT, 0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000800,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PDT_SEG_PROT,  0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-
+	defGDTDesc TSS_PROT,      0x00003000,0x00003fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_DSEG_PROT, 0x00003000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 
 	jmp initIDT
 
 ptrIDTprot: ; pointer to the IDT for pmode
 	dd 0             ; 32-bit offset
 	dw IDT_SEG_PROT  ; 16-bit segment selector
-ptrGDTprot: ; pointer to the GDT for pmode
+ptrIDTUprot: ; pointer to the IDT for pmode
+	dd 0             ; 32-bit offset
+	dw IDTU_SEG_PROT  ; 16-bit segment selector
+ptrGDTprot: ; pointer to the GDT for pmode (kernel mode data segment)
 	dd 0
-	dw GDT_SEG_PROT
+	dw GDT_DSEG_PROT
+ptrGDTUprot: ; pointer to the GDT for pmode (user mode data segment)
+	dd 0
+	dw GDTU_DSEG_PROT
 ptrLDTprot: ; pointer to the LDT for pmode
 	dd 0
 	dw LDT_DSEG_PROT
@@ -282,8 +292,11 @@ ptrPTprot: ; pointer to the Page Table for pmode
 	dd 0
 	dw PT_SEG_PROT
 ptrSSprot: ; pointer to the stack for pmode
-	dd ESP_PROT
+	dd ESP_R0_PROT
 	dw S_SEG_PROT32
+ptrTSSprot: ; pointer to the task state segment
+	dd 0
+	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
 	dw 0xFF              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
@@ -294,23 +307,22 @@ addrGDT: ; address of GDT to be used with lgdt
 ; Initializes an interrupt gate in system memory in real mode
 initIntGateReal:
 	pushad
-	pushf
-	initIntGateMem
-	popf
-	popad
-	ret
-
-; Initializes a descriptor in system memory in real mode
-initDescriptorReal:
-	pushad
-	pushf
-	initDescriptorMem
-	popf
+	initIntGate
 	popad
 	ret
 
 initIDT:
-	initProtModeIDT
+	lds    ebx, [cs:ptrIDTreal]
+	mov    esi, C_SEG_PROT32
+	mov    edi, OFF_INTDEFAULT
+	mov    dx,  ACC_DPL_0
+%assign vector 0
+%rep    0x15
+	mov    eax, vector
+	call   initIntGateReal
+%assign vector vector+1
+%endrep
+
 
 initPages:
 ;
@@ -400,6 +412,12 @@ initLDT:
 
 	mov  ax, LDT_SEG_PROT
 	lldt ax
+	mov  ax, TSS_PROT
+	ltr  ax
+	jmp  protTests
+
+%include "tss_p.asm"
+%include "protected_rings_p.asm"
 
 protTests:
 ;
@@ -1201,6 +1219,10 @@ testDone:
 	times	OFF_ERROR-($-$$) nop
 
 error:
+	mov ax, cs
+	test ax, 7
+.ring3: jnz .ring3
+	; CLI and HLT are privileged instructions
 	cli
 	hlt
 	jmp error

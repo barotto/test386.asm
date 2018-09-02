@@ -15,7 +15,7 @@
 ;   ╔═══════════════════════════════╤═══════════════════════════════╗
 ; +7║                          OFFSET 31-16                         ║+6
 ;   ╟───┬───────┬───┬───────────────┬───────────────────────────────╢
-; +5║ P │  DPL  │ 0 │ T   1   1   I │            UNUSED             ║+4
+; +5║ P │  DPL  │ 0 │ 1   1   1   0 │            UNUSED             ║+4
 ;   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
 ; +3║                           SELECTOR                            ║+2
 ;   ╟───────────────────────────────┴───────────────────────────────╢
@@ -23,19 +23,21 @@
 ;   ╚═══════════════════════════════╧═══════════════════════════════╝
 ;    15                                                            0
 ;
-; EAX vector
-; ECX offset
 ; DS:EBX pointer to IDT
+; EAX vector
+; ESI selector
+; EDI offset
+; DX DPL (use ACC_DPL_* equs)
 ;
 %macro initIntGate 0
 	shl    eax, 3
 	add    ebx, eax
-	mov    word [ebx], cx
-	mov    dx, C_SEG_PROT32
-	mov    word [ebx+2], dx
-	mov    word [ebx+4], ACC_TYPE_GATE386_INT | ACC_PRESENT
-	shr    ecx, 16
-	mov    word [ebx+6], cx
+	mov    word [ebx], di ; OFFSET 15-0
+	mov    word [ebx+2], si ; SELECTOR
+	or     dx, ACC_TYPE_GATE386_INT | ACC_PRESENT
+	mov    word [ebx+4], dx
+	shr    edi, 16
+	mov    word [ebx+6], di ; OFFSET 31-16
 %endmacro
 
 ;

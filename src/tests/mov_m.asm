@@ -138,11 +138,12 @@
 	; #GP(selector) If the DS, ES, FS, or GS register is being loaded and the segment pointed to is not a data or readable code segment.
 	mov ax, SYS_SEG_PROT
 	protModeFaultTest EX_GP, SYS_SEG_PROT, mov %1,ax
-	; TODO
 	; #GP(selector)
 	; If the DS, ES, FS, or GS register is being loaded and the segment pointed to is a data or nonconforming code segment, but both the RPL and the CPL are greater than the DPL.
-	; need to change CPL to >0 to test (must use iretd)
-
+	call switchToRing3 ; CPL=3
+	mov ax, DUMMY_SEG_PROT|3 ; RPL=3,DPL=0
+	protModeFaultTest EX_GP, DUMMY_SEG_PROT, mov %1,ax
+	call switchToRing0
 	%endif
 	%endif
 

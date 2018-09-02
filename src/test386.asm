@@ -227,7 +227,7 @@ cpuTest:
 ;	Protected mode tests
 ; ==============================================================================
 
-	POST 9
+	POST 8
 	jmp initGDT
 
 ESP_R0_PROT equ 0x0000FFFF
@@ -425,7 +425,7 @@ protTests:
 ;
 %include "tests/stack_m.asm"
 
-	POST A
+	POST 9
 ;
 ;   For the next tests, with a 16-bit data segment in SS, we
 ;   expect all pushes/pops will occur at SP rather than ESP.
@@ -510,6 +510,44 @@ protTests:
 	loadProtModeStack
 
 	advTestSegProt
+
+;
+;   Test user mode (ring 3) switching
+;
+	POST A
+	call   clearTSS
+	mov    ax, D_SEG_PROT32
+	mov    ds, ax
+	mov    es, ax
+	mov    fs, ax
+	mov    gs, ax
+	call   switchToRing3
+	; CS must be CU_SEG_PROT32|3 (CPL=3)
+	mov    ax, cs
+	cmp    ax, CU_SEG_PROT32|3
+	jne    error
+	; data segments must be NULL
+	mov    ax, ds
+	cmp    ax, 0
+	jne    error
+	mov    ax, es
+	cmp    ax, 0
+	jne    error
+	mov    ax, fs
+	cmp    ax, 0
+	jne    error
+	mov    ax, gs
+	cmp    ax, 0
+	jne    error
+	; test some privileged ops
+	protModeFaultTest EX_GP, 0, cli
+	protModeFaultTest EX_GP, 0, hlt
+	; switch back to ring 0
+	call switchToRing0
+	; CS must be C_SEG_PROT32|0 (CPL=0)
+	mov    ax, cs
+	cmp    ax, C_SEG_PROT32
+	jne    error
 
 ;
 ;   Test of moving segment registers in protected mode

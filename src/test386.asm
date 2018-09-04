@@ -401,6 +401,7 @@ toProt32:
 initLDT:
 	defLDTDesc D_SEG_PROT16,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DU_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
@@ -785,18 +786,18 @@ postD:
 ;
 ;	Verify page faults
 ;
+%include "tests/paging_m.asm"
+
 	POST 11
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
-	mov ax, D_SEG_PROT32
-	mov ds, ax
 
-	xor eax, eax
-	mov cr2, eax ; reset CR2 to test its value in the page faults handler
-	updPTEFlags TESTPAGE_PTE, PTE_USER | PTE_READWRITE ; mark PTE as not present
-	mov eax, PF_ERR_NOTPRESENT|PF_ERR_READ|PF_ERR_SUPER ; EAX = expected error code
-	mov eax, [TESTPAGE_OFF]  ; generate a "not present" page fault
-	cmp eax, PF_HANDLER_SIG  ; the page fault handler should have put its signature in memory
-	jne error
+	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_READ |PF_SUPER
+	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_WRITE|PF_SUPER
+	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_READ |PF_USER
+	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_WRITE|PF_USER
+	testPageFault PTE_PRESENT|PTE_USER|PTE_READONLY,      PF_PROTECTION|PF_WRITE|PF_USER
+	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_READ |PF_USER
+	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_WRITE|PF_USER
 
 	setProtModeIntGate 14, OFF_INTDEFAULT
 	mov ax, D1_SEG_PROT
@@ -1289,26 +1290,32 @@ intPageFault:
 	pop   ebx
 	cmp   eax, ebx
 	jne   error
+	; this handler is expected to run in ring 0
+	testCPL 0
 	; check CR2 register, it must contain the linear address TESTPAGE_LIN
 	mov   eax, cr2
 	cmp   eax, TESTPAGE_LIN
 	jne   error
 	test  ebx, PTE_PRESENT_BIT
 	jz   .not_present
-	test  ebx, PTE_READWRITE_BIT
-	jnz  .write
-	jmp   error
+	test  ebx, PTE_USER_BIT
+	jnz  .user
+	jmp   error ; protection errors in supervisor mode can't happen
 .not_present:
-	; not present handler:
 	setPTEFlag  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
+	jmp  .check_rw
+.user:
+	setPTEFlag  TESTPAGE_PTE, PTE_USER_BIT, PTE_USER ; mark the PTE for user
+.check_rw:
+	test  ebx, PTE_WRITE_BIT
+	jnz  .write
+.read:
 	mov   [TESTPAGE_OFF], dword PF_HANDLER_SIG ; put handler's signature in memory
 	xor   eax, eax
 	jmp  .exit
 .write:
-	; read-only handler:
-	setPTEFlag  TESTPAGE_PTE, PTE_READWRITE_BIT, PTE_READWRITE ; mark the PTE as r/w
+	setPTEFlag  TESTPAGE_PTE, PTE_WRITE_BIT, PTE_READWRITE ; mark the PTE for write
 	mov   eax, PF_HANDLER_SIG ; put handler's signature in eax
-	jmp  .exit
 .exit:
 	iretd
 

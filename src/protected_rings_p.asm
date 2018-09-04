@@ -1,3 +1,16 @@
+;
+; Tests the Current Privilege Level value
+;
+; %1 the value (0-3) to compare to; jumps to error if not equal.
+;
+%macro testCPL 1
+	mov  ax, cs
+	and  ax, 3
+	cmp  ax, %1
+	jne  error
+%endmacro
+
+
 ; Switches from Ring 0 to Ring 3
 ;
 ; After calling this procedure consider all the registers and flags as trashed.
@@ -15,6 +28,7 @@ switchToRing3:
 	; - a 32bit code descriptor in GDT with DPL 3
 	; - a 32bit data descriptor in GDT with DPL 3 (for the new stack)
 	; - to put the ring 0 stack in TSS.SS0 and TSS.ESP0
+	testCPL 0 ; we must be in ring 0
 	pop    edx ; read the return offset
 	mov    ax, ds
 	lds    ebx, [cs:ptrTSSprot]
@@ -45,6 +59,7 @@ switchToRing3:
 ; After calling this procedure consider all the registers and flags as trashed.
 ;
 switchToRing0:
+	testCPL 3 ; we must be in ring 3
 	; In order to swich to kernel mode (ring 0) we'll use a Call Gate.
 	; A placeholder for a Call Gate is already present in the GDT.
 	pop  ecx ; read the return offset

@@ -406,7 +406,7 @@ initLDT:
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defLDTDesc RO_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
-	defLDTDesc DUMMY_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DTEST_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc DPL1_SEG_PROT,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
 	defLDTDesc NP_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W
 	defLDTDesc SYS_SEG_PROT,   TEST_BASE, 0x000fffff,ACC_PRESENT
@@ -811,16 +811,33 @@ postD:
 	mov ax, RO_SEG_PROT ; write protect DS
 	mov ds, ax
 	protModeFaultTest EX_GP, 0, mov [0],eax
-	mov ax, D1_SEG_PROT ; restore DS
-	mov ds, ax
 	; #GP(0) If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-	protModeFaultTest EX_GP, 0, mov eax,[-1] ; check on read
-	protModeFaultTest EX_GP, 0, mov [-1],eax ; check on write
+	; use byte granular DS
+	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x0009ffff, ACC_TYPE_DATA_W|ACC_PRESENT
+	mov ax, DTEST_SEG_PROT
+	mov ds, ax
+	protModeFaultTest EX_GP, 0, mov eax,[0x9fffd] ; check on read
+	protModeFaultTest EX_GP, 0, mov [0x9fffd],eax ; check on write
+	mov eax,[0x9fffc] ; this should be ok
+	mov [0x9fffc],eax ; this should be ok
+	protModeFaultTest EX_GP, 0, mov eax,[-1] ; check on read (test for overflows)
+	protModeFaultTest EX_GP, 0, mov [-1],eax ; check on write (test for overflows)
+	; use page granular DS
+	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x0000009f, ACC_TYPE_DATA_W|ACC_PRESENT, EXT_PAGE
+	mov ax, DTEST_SEG_PROT
+	mov ds, ax
+	protModeFaultTest EX_GP, 0, mov eax,[0x9fffd] ; check on read
+	protModeFaultTest EX_GP, 0, mov [0x9fffd],eax ; check on write
+	mov eax,[0x9fffc] ; this should be ok
+	mov [0x9fffc],eax ; this should be ok
 	; #SS(0) If a memory operand effective address is outside the SS segment limit.
 	protModeFaultTest EX_SS, 0, mov eax,[ss:-1] ; check on read
 	protModeFaultTest EX_SS, 0, mov [ss:-1],eax ; check on write
 	; #UD If the LOCK prefix is used.
 	protModeFaultTest EX_UD, 0, lock mov [0],eax
+
+	mov ax, D1_SEG_PROT
+	mov ds, ax
 
 ;
 ;   Verify Bit Scan operations
@@ -1259,8 +1276,10 @@ testDone:
 
 error:
 	mov ax, cs
-	test ax, 7
-.ring3: jnz .ring3
+	; when in real mode, the jnz will be decoded together with test as
+	; "test eax,0xfe750007" (66A9070075FE)
+	test ax, 7     ; 66 A9 07 00
+.ring3: jnz .ring3 ; 75 FE
 	; CLI and HLT are privileged instructions
 	cli
 	hlt

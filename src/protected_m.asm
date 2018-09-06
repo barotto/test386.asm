@@ -69,6 +69,24 @@
 %endmacro
 
 ;
+;   Updates a LDT descriptor, given a name (%1), base (%2), limit (%3), type (%4), and ext (%5)
+;
+%macro updLDTDesc 1-5 0,0,0,0
+	pushad
+	mov  ax, ds
+	push ax
+	lds  ebx, [cs:ptrLDTprot]
+	mov  eax, %1
+	mov  esi, %2
+	mov  edi, %3
+	mov  dx,  %4|%5
+	call initDescriptorProt
+	pop  ax
+	mov  ds, ax
+	popad
+%endmacro
+
+;
 ; Updates the access byte of a descriptor in the LDT
 ; %1 LDT selector
 ; %2 access byte new value (ACC_* or'd equs)

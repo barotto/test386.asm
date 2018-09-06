@@ -4,6 +4,10 @@ initIntGateProt:
 	initIntGate
 	ret
 
+initDescriptorProt:
+	initDescriptor
+	ret
+
 ;
 ; Defines a Call Gate in GDT
 ;

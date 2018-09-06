@@ -99,7 +99,7 @@
 	protModeFaultTest EX_UD, 0, mov %1,[0] ; test for #UD
 	%else
 	mov    cx, ds ; save current DS in CX
-	mov    ax, DUMMY_SEG_PROT
+	mov    ax, DTEST_SEG_PROT
 	mov    %1, ax
 	%if %1 = ds
 	mov    es, cx
@@ -141,8 +141,8 @@
 	; #GP(selector)
 	; If the DS, ES, FS, or GS register is being loaded and the segment pointed to is a data or nonconforming code segment, but both the RPL and the CPL are greater than the DPL.
 	call switchToRing3 ; CPL=3
-	mov ax, DUMMY_SEG_PROT|3 ; RPL=3,DPL=0
-	protModeFaultTest EX_GP, DUMMY_SEG_PROT, mov %1,ax
+	mov ax, DTEST_SEG_PROT|3 ; RPL=3,DPL=0
+	protModeFaultTest EX_GP, DTEST_SEG_PROT, mov %1,ax
 	call switchToRing0
 	%endif
 	%endif

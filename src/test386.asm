@@ -784,13 +784,12 @@ postD:
 	advTestSegProt
 
 ;
-;	Verify page faults
+;	Verify page faults and PTE bits
 ;
 %include "tests/paging_m.asm"
 
 	POST 11
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
-
 	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_READ |PF_SUPER
 	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_WRITE|PF_SUPER
 	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_READ |PF_USER
@@ -798,11 +797,37 @@ postD:
 	testPageFault PTE_PRESENT|PTE_USER|PTE_READONLY,      PF_PROTECTION|PF_WRITE|PF_USER
 	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_READ |PF_USER
 	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_WRITE|PF_USER
-
 	setProtModeIntGate 14, OFF_INTDEFAULT
+
+	mov ax, D_SEG_PROT32
+	mov ds, ax
+	; test Accessed bit after a read
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov eax, [TESTPAGE_OFF]
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_ACCESSED
+	jz error
+	; test Dirty bit after a write
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov [TESTPAGE_OFF], eax
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_DIRTY
+	jz error
+	; test Accessed and Dirty bits after a read-write
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov eax, [TESTPAGE_OFF]
+	mov [TESTPAGE_OFF], eax
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_ACCESSED
+	jz error
+	test eax, PTE_DIRTY
+	jz error
+
 	mov ax, D1_SEG_PROT
 	mov ds, ax
-
 ;
 ;   Verify other memory access faults
 ;

@@ -107,7 +107,7 @@ This is the list of tests with their diagnostic code:
 | 0x0E | 32-bit addressing modes (LEA)                                      |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
-| 0x11 | Page faults                                                        |
+| 0x11 | Page faults and PTE bits                                           |
 | 0x12 | Other memory access faults                                         |
 | 0x13 | Bit Scan operations                                                |
 | 0x14 | Bit Test operations                                                |

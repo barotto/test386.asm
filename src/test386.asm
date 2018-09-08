@@ -1340,6 +1340,10 @@ intPageFault:
 	mov   eax, cr2
 	cmp   eax, TESTPAGE_LIN
 	jne   error
+	mov   eax, TESTPAGE_PTE
+	call  getPTE
+	test  eax, PTE_ACCESSED|PTE_DIRTY ; A and D bits should be 0
+	jnz   error
 	test  ebx, PTE_PRESENT_BIT
 	jz   .not_present
 	test  ebx, PTE_USER_BIT

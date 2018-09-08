@@ -244,7 +244,7 @@
 	jmp    error
 %%continue:
 	protModeExcCheck %1, %2, %%test
-	setProtModeIntGate %1, OFF_INTDEFAULT, ACC_DPL_0
+	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
 ;

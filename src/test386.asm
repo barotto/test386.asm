@@ -94,16 +94,6 @@ GDT_SEG_REAL equ 0x0050
 
 ESP_REAL    equ 0xffff
 
-;
-;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
-;
-OFF_ERROR        equ 0xd000
-OFF_INTDEFAULT   equ OFF_ERROR
-OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
-OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
-OFF_INTBOUND     equ OFF_INTPAGEFAULT+0x200
-PF_HANDLER_SIG    equ 0x50465046
-BOUND_HANDLER_SIG equ 0x626f756e
 
 header:
 	db COPYRIGHT
@@ -314,7 +304,7 @@ initIntGateReal:
 initIDT:
 	lds    ebx, [cs:ptrIDTreal]
 	mov    esi, C_SEG_PROT32
-	mov    edi, OFF_INTDEFAULT
+	mov    edi, DefaultExcHandler
 	mov    dx,  ACC_DPL_0
 %assign vector 0
 %rep    0x15
@@ -786,10 +776,13 @@ postD:
 ;
 ;	Verify page faults and PTE bits
 ;
+	jmp post11
 %include "tests/paging_m.asm"
+%include "tests/paging_p.asm"
 
+post11:
 	POST 11
-	setProtModeIntGate 14, OFF_INTPAGEFAULT
+	setProtModeIntGate EX_PF, PageFaultHandler
 	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_READ |PF_SUPER
 	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_WRITE|PF_SUPER
 	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_READ |PF_USER
@@ -797,7 +790,7 @@ postD:
 	testPageFault PTE_PRESENT|PTE_USER|PTE_READONLY,      PF_PROTECTION|PF_WRITE|PF_USER
 	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_READ |PF_USER
 	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_WRITE|PF_USER
-	setProtModeIntGate 14, OFF_INTDEFAULT
+	setProtModeIntGate EX_PF, DefaultExcHandler
 
 	mov ax, D_SEG_PROT32
 	mov ds, ax
@@ -972,7 +965,7 @@ postD:
 ;	BOUND
 ;
 	POST 18
-	setProtModeIntGate 5, OFF_INTBOUND
+	setProtModeIntGate EX_BR, BoundExcHandler
 	xor eax, eax
 	mov ebx, 0x10100
 	mov word [0x20000], 0x0010
@@ -994,15 +987,23 @@ postD:
 	o32 bound ebx, [0x20004]
 	cmp eax, BOUND_HANDLER_SIG
 	jne error
-	setProtModeIntGate 5, OFF_INTDEFAULT
+	setProtModeIntGate EX_BR, DefaultExcHandler
 
 	advTestSegProt
+	jmp post19
+
+BoundExcHandler:
+	mov word [0x20002], 0x0100
+	mov dword [0x20008], 0x10100
+	BOUND_HANDLER_SIG equ 0x626f756e
+	mov eax, BOUND_HANDLER_SIG
+	iretd
 
 ;
 ;   XCHG
 ;
 %include "tests/xchg_m.asm"
-
+post19:
 	POST 19
 
 	testXchg ax,cx ; 66 91
@@ -1236,7 +1237,7 @@ bcdTests:
 	testBCD   aam, 0x12340547, PS_AF,         PS_PF | PS_ZF | PS_SF
 	testBCD   aad, 0x12340407, PS_AF,         PS_PF | PS_ZF | PS_SF
 
-	setProtModeIntGate 0, OFF_INTDIVERR
+	setProtModeIntGate EX_DE, DivExcHandler
 	cld
 	mov    esi, tableOps   ; ESI -> tableOps entry
 
@@ -1293,26 +1294,9 @@ testSrc:
 	jmp  testOps
 
 testDone:
-	jmp testsDone
+	jmp postFF
 
-%include "tests/arith-logic_d.asm"
-
-	times	OFF_ERROR-($-$$) nop
-
-error:
-	mov ax, cs
-	; when in real mode, the jnz will be decoded together with test as
-	; "test eax,0xfe750007" (66A9070075FE)
-	test ax, 7     ; 66 A9 07 00
-.ring3: jnz .ring3 ; 75 FE
-	; CLI and HLT are privileged instructions
-	cli
-	hlt
-	jmp error
-
-	times OFF_INTDIVERR-($-$$) nop
-
-intDivErr:
+DivExcHandler:
 	push esi
 	mov  esi,strDE
 	call printStr
@@ -1322,58 +1306,36 @@ intDivErr:
 ;   faulting instruction instead of the RET we conveniently placed after it.  So, instead of trying to calculate where
 ;   that RET is, we simply set EIP on the stack to point to our own RET.
 ;
-	mov  dword [esp], intDivRet
+	mov  dword [esp], DivExcHandlerRet
 	iretd
-intDivRet:
+DivExcHandlerRet:
 	ret
 
-	times OFF_INTPAGEFAULT-($-$$) nop
+%include "tests/arith-logic_d.asm"
 
-intPageFault:
-	; compare the expected error code in EAX with the one pushed on the stack
-	pop   ebx
-	cmp   eax, ebx
-	jne   error
-	; this handler is expected to run in ring 0
-	testCPL 0
-	; check CR2 register, it must contain the linear address TESTPAGE_LIN
-	mov   eax, cr2
-	cmp   eax, TESTPAGE_LIN
-	jne   error
-	mov   eax, TESTPAGE_PTE
-	call  getPTE
-	test  eax, PTE_ACCESSED|PTE_DIRTY ; A and D bits should be 0
-	jnz   error
-	test  ebx, PTE_PRESENT_BIT
-	jz   .not_present
-	test  ebx, PTE_USER_BIT
-	jnz  .user
-	jmp   error ; protection errors in supervisor mode can't happen
-.not_present:
-	setPTEFlag  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
-	jmp  .check_rw
-.user:
-	setPTEFlag  TESTPAGE_PTE, PTE_USER_BIT, PTE_USER ; mark the PTE for user
-.check_rw:
-	test  ebx, PTE_WRITE_BIT
-	jnz  .write
-.read:
-	mov   [TESTPAGE_OFF], dword PF_HANDLER_SIG ; put handler's signature in memory
-	xor   eax, eax
-	jmp  .exit
-.write:
-	setPTEFlag  TESTPAGE_PTE, PTE_WRITE_BIT, PTE_READWRITE ; mark the PTE for write
-	mov   eax, PF_HANDLER_SIG ; put handler's signature in eax
-.exit:
-	iretd
+;
+; Testing finished. STOP.
+;
+postFF:
+	POST FF
+	cli
+	hlt
+	jmp postFF
 
-	times OFF_INTBOUND-($-$$) nop
-
-intBound:
-	mov word [0x20002], 0x0100
-	mov dword [0x20008], 0x10100
-	mov eax, BOUND_HANDLER_SIG
-	iretd
+;
+; Default exception handler and error routine
+;
+DefaultExcHandler:
+error:
+	; CLI and HLT are privileged instructions, don't use them in ring3
+	mov ax, cs
+	; when in real mode, the jnz will be decoded together with test as
+	; "test eax,0xfe750007" (66A9070075FE)
+	test ax, 7     ; 66 A9 07 00
+.ring3: jnz .ring3 ; 75 FE
+	cli
+	hlt
+	jmp error
 
 
 LPTports:
@@ -1390,15 +1352,6 @@ signedWord:
 	db   0x80
 signedByte:
 	db   0x80
-
-testsDone:
-;
-; Testing finished. STOP.
-;
-	POST FF
-	cli
-	hlt
-	jmp testsDone
 
 ;
 ;   Fill the remaining space with NOPs until we get to target offset 0xFFF0.

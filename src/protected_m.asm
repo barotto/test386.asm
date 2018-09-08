@@ -69,6 +69,24 @@
 %endmacro
 
 ;
+;   Updates a LDT descriptor, given a name (%1), base (%2), limit (%3), type (%4), and ext (%5)
+;
+%macro updLDTDesc 1-5 0,0,0,0
+	pushad
+	mov  ax, ds
+	push ax
+	lds  ebx, [cs:ptrLDTprot]
+	mov  eax, %1
+	mov  esi, %2
+	mov  edi, %3
+	mov  dx,  %4|%5
+	call initDescriptorProt
+	pop  ax
+	mov  ds, ax
+	popad
+%endmacro
+
+;
 ; Updates the access byte of a descriptor in the LDT
 ; %1 LDT selector
 ; %2 access byte new value (ACC_* or'd equs)
@@ -94,6 +112,23 @@
 	mov  word [ebx+2], (%2)&0xFFFF     ; BASE 15-0
 	mov  byte [ebx+4], ((%2)>>16)&0xFF ; BASE 23-16
 	mov  byte [ebx+7], ((%2)>>24)&0xFF ; BASE 31-24
+%endmacro
+
+;
+; Updates the values of a GDT's entry with a Call Gate
+; %1 GDT selector
+; %2 destination selector
+; %3 destination offset
+; %4 word count
+; %5 DPL
+;
+%macro updCallGate 1-5 0,0,0,0
+	lfs  ebx, [cs:ptrGDTprot]
+	mov  eax, %1
+	mov  esi, %2
+	mov  edi, %3
+	mov  dx,  %4|%5
+	call initCallGate
 %endmacro
 
 ;
@@ -137,33 +172,6 @@
 	popad
 %endmacro
 
-;
-; Initializes an interrupt gate in system memory
-;
-; %1 vector
-; %2 offset
-;
-; Uses EAX, ECX
-;
-%macro protModeExcInitReal 2
-; executes in real mode
-	mov    eax, %1
-	mov    ecx, %2
-	call   initIntGateReal
-%endmacro
-%macro protModeExcInitProt 2
-; executes in protected mode
-	mov    eax, %1
-	mov    ecx, %2
-	call   initIntGateProt
-%endmacro
-
-;
-; Loads DS:EBX with a pointer to the prot mode IDT
-;
-%macro loadProtModeIDTptr 0
-	lds    ebx, [cs:ptrIDTprot]
-%endmacro
 
 ;
 ; Loads SS:ESP with a pointer to the prot mode stack
@@ -172,48 +180,51 @@
 	lss    esp, [cs:ptrSSprot]
 %endmacro
 
-;
-; Initializes the protected mode IDT in memory
-;
-; This macro executes in real mode.
-;
-%macro initProtModeIDT 0
-	lds    ebx, [cs:ptrIDTreal]
-
-	protModeExcInitReal  0, OFF_INTDEFAULT
-	protModeExcInitReal  1, OFF_INTDEFAULT
-	protModeExcInitReal  2, OFF_INTDEFAULT
-	protModeExcInitReal  3, OFF_INTDEFAULT
-	protModeExcInitReal  4, OFF_INTDEFAULT
-	protModeExcInitReal  5, OFF_INTDEFAULT
-	protModeExcInitReal  6, OFF_INTDEFAULT
-	protModeExcInitReal  7, OFF_INTDEFAULT
-	protModeExcInitReal  8, OFF_INTDEFAULT
-	protModeExcInitReal  9, OFF_INTDEFAULT
-	protModeExcInitReal 10, OFF_INTDEFAULT
-	protModeExcInitReal 11, OFF_INTDEFAULT
-	protModeExcInitReal 12, OFF_INTDEFAULT
-	protModeExcInitReal 13, OFF_INTDEFAULT
-	protModeExcInitReal 14, OFF_INTDEFAULT
-	protModeExcInitReal 15, OFF_INTDEFAULT
-	protModeExcInitReal 16, OFF_INTDEFAULT
-%endmacro
 
 ;
 ; Set a int gate on the IDT in protected mode
 ;
 ; %1: vector
 ; %2: offset
+; %3: DPL, use ACC_DPL_* equs (optional)
 ;
-; Uses EAX, ECX, DS, EBX
 ; the stack must be initialized
 ;
-%macro setProtModeIntGate 2
+%macro setProtModeIntGate 2-3 -1
 	pushad
-	mov dx, ds  ; save ds
-	loadProtModeIDTptr
-	protModeExcInitProt %1, %2
-	mov ds, dx  ; restore ds
+	pushf
+	mov  ax, ds  ; save ds
+	push ax
+	mov  eax, %1
+	mov  edi, %2
+	%if %3 != -1
+	mov  dx, %3
+	%else
+	mov  dx, cs
+	and  dx, 7
+	shl  dx, 13
+	%endif
+	cmp  dx, ACC_DPL_0
+	jne %%dpl3
+%%dpl0:
+	mov  esi, C_SEG_PROT32
+	jmp %%cont
+%%dpl3:
+	mov  esi, CU_SEG_PROT32
+%%cont:
+	mov  cx, cs
+	test cx, 7
+	jnz %%ring3
+%%ring0:
+	lds  ebx, [cs:ptrIDTprot]
+	jmp %%call
+%%ring3:
+	lds  ebx, [cs:ptrIDTUprot]
+%%call:
+	call initIntGateProt
+	pop  ax
+	mov  ds, ax  ; restore ds
+	popf
 	popad
 %endmacro
 
@@ -233,7 +244,7 @@
 	jmp    error
 %%continue:
 	protModeExcCheck %1, %2, %%test
-	setProtModeIntGate %1, OFF_INTDEFAULT
+	setProtModeIntGate %1, OFF_INTDEFAULT, ACC_DPL_0
 %endmacro
 
 ;
@@ -251,8 +262,17 @@
 	%else
 	%assign exc_errcode 0
 	%endif
+	mov    bx, cs
+	test   bx, 7
+	jnz %%ring3
+%%ring0:
 	cmp    [ss:esp+exc_errcode+4], dword C_SEG_PROT32
 	jne    error
+	jmp %%continue
+%%ring3:
+	cmp    [ss:esp+exc_errcode+4], dword CU_SEG_PROT32|3
+	jne    error
+%%continue:
 	cmp    [ss:esp+exc_errcode], dword %3
 	jne    error
 	add    esp, 12+exc_errcode

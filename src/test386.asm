@@ -97,7 +97,7 @@ ESP_REAL    equ 0xffff
 ;
 ;   We set our exception handlers at fixed addresses to simplify interrupt gate descriptor initialization.
 ;
-OFF_ERROR        equ 0xc000
+OFF_ERROR        equ 0xd000
 OFF_INTDEFAULT   equ OFF_ERROR
 OFF_INTDIVERR    equ OFF_INTDEFAULT+0x200
 OFF_INTPAGEFAULT equ OFF_INTDIVERR+0x200
@@ -227,11 +227,11 @@ cpuTest:
 ;	Protected mode tests
 ; ==============================================================================
 
-	POST 9
+	POST 8
 	jmp initGDT
 
-ESP_PROT   equ 0x0000FFFF
-ESP_U_PROT equ 0x00007FFF
+ESP_R0_PROT equ 0x0000FFFF
+ESP_R3_PROT equ 0x00007FFF
 
 %include "protected_m.asm"
 
@@ -258,23 +258,33 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc GDT_SEG_PROT,  0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x000004ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc GDT_DSEG_PROT, 0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000800,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PDT_SEG_PROT,  0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-
+	defGDTDesc TSS_PROT,      0x00003000,0x00003fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_DSEG_PROT, 0x00003000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 
 	jmp initIDT
 
 ptrIDTprot: ; pointer to the IDT for pmode
 	dd 0             ; 32-bit offset
 	dw IDT_SEG_PROT  ; 16-bit segment selector
-ptrGDTprot: ; pointer to the GDT for pmode
+ptrIDTUprot: ; pointer to the IDT for pmode
+	dd 0             ; 32-bit offset
+	dw IDTU_SEG_PROT  ; 16-bit segment selector
+ptrGDTprot: ; pointer to the GDT for pmode (kernel mode data segment)
 	dd 0
-	dw GDT_SEG_PROT
+	dw GDT_DSEG_PROT
+ptrGDTUprot: ; pointer to the GDT for pmode (user mode data segment)
+	dd 0
+	dw GDTU_DSEG_PROT
 ptrLDTprot: ; pointer to the LDT for pmode
 	dd 0
 	dw LDT_DSEG_PROT
@@ -282,8 +292,11 @@ ptrPTprot: ; pointer to the Page Table for pmode
 	dd 0
 	dw PT_SEG_PROT
 ptrSSprot: ; pointer to the stack for pmode
-	dd ESP_PROT
+	dd ESP_R0_PROT
 	dw S_SEG_PROT32
+ptrTSSprot: ; pointer to the task state segment
+	dd 0
+	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
 	dw 0xFF              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
@@ -294,14 +307,22 @@ addrGDT: ; address of GDT to be used with lgdt
 ; Initializes an interrupt gate in system memory in real mode
 initIntGateReal:
 	pushad
-	pushf
 	initIntGate
-	popf
 	popad
 	ret
 
 initIDT:
-	initProtModeIDT
+	lds    ebx, [cs:ptrIDTreal]
+	mov    esi, C_SEG_PROT32
+	mov    edi, OFF_INTDEFAULT
+	mov    dx,  ACC_DPL_0
+%assign vector 0
+%rep    0x15
+	mov    eax, vector
+	call   initIntGateReal
+%assign vector vector+1
+%endrep
+
 
 initPages:
 ;
@@ -380,17 +401,24 @@ toProt32:
 initLDT:
 	defLDTDesc D_SEG_PROT16,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DU_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defLDTDesc RO_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
-	defLDTDesc DUMMY_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDesc DTEST_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc DPL1_SEG_PROT,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
 	defLDTDesc NP_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W
 	defLDTDesc SYS_SEG_PROT,   TEST_BASE, 0x000fffff,ACC_PRESENT
 
 	mov  ax, LDT_SEG_PROT
 	lldt ax
+	mov  ax, TSS_PROT
+	ltr  ax
+	jmp  protTests
+
+%include "tss_p.asm"
+%include "protected_rings_p.asm"
 
 protTests:
 ;
@@ -398,7 +426,7 @@ protTests:
 ;
 %include "tests/stack_m.asm"
 
-	POST A
+	POST 9
 ;
 ;   For the next tests, with a 16-bit data segment in SS, we
 ;   expect all pushes/pops will occur at SP rather than ESP.
@@ -483,6 +511,44 @@ protTests:
 	loadProtModeStack
 
 	advTestSegProt
+
+;
+;   Test user mode (ring 3) switching
+;
+	POST A
+	call   clearTSS
+	mov    ax, D_SEG_PROT32
+	mov    ds, ax
+	mov    es, ax
+	mov    fs, ax
+	mov    gs, ax
+	call   switchToRing3
+	; CS must be CU_SEG_PROT32|3 (CPL=3)
+	mov    ax, cs
+	cmp    ax, CU_SEG_PROT32|3
+	jne    error
+	; data segments must be NULL
+	mov    ax, ds
+	cmp    ax, 0
+	jne    error
+	mov    ax, es
+	cmp    ax, 0
+	jne    error
+	mov    ax, fs
+	cmp    ax, 0
+	jne    error
+	mov    ax, gs
+	cmp    ax, 0
+	jne    error
+	; test some privileged ops
+	protModeFaultTest EX_GP, 0, cli
+	protModeFaultTest EX_GP, 0, hlt
+	; switch back to ring 0
+	call switchToRing0
+	; CS must be C_SEG_PROT32|0 (CPL=0)
+	mov    ax, cs
+	cmp    ax, C_SEG_PROT32
+	jne    error
 
 ;
 ;   Test of moving segment registers in protected mode
@@ -718,25 +784,50 @@ postD:
 	advTestSegProt
 
 ;
-;	Verify page faults
+;	Verify page faults and PTE bits
 ;
+%include "tests/paging_m.asm"
+
 	POST 11
 	setProtModeIntGate 14, OFF_INTPAGEFAULT
+	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_READ |PF_SUPER
+	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_WRITE|PF_SUPER
+	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_READ |PF_USER
+	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_WRITE|PF_USER
+	testPageFault PTE_PRESENT|PTE_USER|PTE_READONLY,      PF_PROTECTION|PF_WRITE|PF_USER
+	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_READ |PF_USER
+	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_WRITE|PF_USER
+	setProtModeIntGate 14, OFF_INTDEFAULT
+
 	mov ax, D_SEG_PROT32
 	mov ds, ax
+	; test Accessed bit after a read
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov eax, [TESTPAGE_OFF]
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_ACCESSED
+	jz error
+	; test Dirty bit after a write
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov [TESTPAGE_OFF], eax
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_DIRTY
+	jz error
+	; test Accessed and Dirty bits after a read-write
+	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	mov eax, [TESTPAGE_OFF]
+	mov [TESTPAGE_OFF], eax
+	mov eax, TESTPAGE_PTE
+	call getPTE
+	test eax, PTE_ACCESSED
+	jz error
+	test eax, PTE_DIRTY
+	jz error
 
-	xor eax, eax
-	mov cr2, eax ; reset CR2 to test its value in the page faults handler
-	updPTEFlags TESTPAGE_PTE, PTE_USER | PTE_READWRITE ; mark PTE as not present
-	mov eax, PF_ERR_NOTPRESENT|PF_ERR_READ|PF_ERR_SUPER ; EAX = expected error code
-	mov eax, [TESTPAGE_OFF]  ; generate a "not present" page fault
-	cmp eax, PF_HANDLER_SIG  ; the page fault handler should have put its signature in memory
-	jne error
-
-	setProtModeIntGate 14, OFF_INTDEFAULT
 	mov ax, D1_SEG_PROT
 	mov ds, ax
-
 ;
 ;   Verify other memory access faults
 ;
@@ -745,16 +836,33 @@ postD:
 	mov ax, RO_SEG_PROT ; write protect DS
 	mov ds, ax
 	protModeFaultTest EX_GP, 0, mov [0],eax
-	mov ax, D1_SEG_PROT ; restore DS
-	mov ds, ax
 	; #GP(0) If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-	protModeFaultTest EX_GP, 0, mov eax,[-1] ; check on read
-	protModeFaultTest EX_GP, 0, mov [-1],eax ; check on write
+	; use byte granular DS
+	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x0009ffff, ACC_TYPE_DATA_W|ACC_PRESENT
+	mov ax, DTEST_SEG_PROT
+	mov ds, ax
+	protModeFaultTest EX_GP, 0, mov eax,[0x9fffd] ; check on read
+	protModeFaultTest EX_GP, 0, mov [0x9fffd],eax ; check on write
+	mov eax,[0x9fffc] ; this should be ok
+	mov [0x9fffc],eax ; this should be ok
+	protModeFaultTest EX_GP, 0, mov eax,[-1] ; check on read (test for overflows)
+	protModeFaultTest EX_GP, 0, mov [-1],eax ; check on write (test for overflows)
+	; use page granular DS
+	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x0000009f, ACC_TYPE_DATA_W|ACC_PRESENT, EXT_PAGE
+	mov ax, DTEST_SEG_PROT
+	mov ds, ax
+	protModeFaultTest EX_GP, 0, mov eax,[0x9fffd] ; check on read
+	protModeFaultTest EX_GP, 0, mov [0x9fffd],eax ; check on write
+	mov eax,[0x9fffc] ; this should be ok
+	mov [0x9fffc],eax ; this should be ok
 	; #SS(0) If a memory operand effective address is outside the SS segment limit.
 	protModeFaultTest EX_SS, 0, mov eax,[ss:-1] ; check on read
 	protModeFaultTest EX_SS, 0, mov [ss:-1],eax ; check on write
 	; #UD If the LOCK prefix is used.
 	protModeFaultTest EX_UD, 0, lock mov [0],eax
+
+	mov ax, D1_SEG_PROT
+	mov ds, ax
 
 ;
 ;   Verify Bit Scan operations
@@ -1192,6 +1300,12 @@ testDone:
 	times	OFF_ERROR-($-$$) nop
 
 error:
+	mov ax, cs
+	; when in real mode, the jnz will be decoded together with test as
+	; "test eax,0xfe750007" (66A9070075FE)
+	test ax, 7     ; 66 A9 07 00
+.ring3: jnz .ring3 ; 75 FE
+	; CLI and HLT are privileged instructions
 	cli
 	hlt
 	jmp error
@@ -1220,26 +1334,36 @@ intPageFault:
 	pop   ebx
 	cmp   eax, ebx
 	jne   error
+	; this handler is expected to run in ring 0
+	testCPL 0
 	; check CR2 register, it must contain the linear address TESTPAGE_LIN
 	mov   eax, cr2
 	cmp   eax, TESTPAGE_LIN
 	jne   error
+	mov   eax, TESTPAGE_PTE
+	call  getPTE
+	test  eax, PTE_ACCESSED|PTE_DIRTY ; A and D bits should be 0
+	jnz   error
 	test  ebx, PTE_PRESENT_BIT
 	jz   .not_present
-	test  ebx, PTE_READWRITE_BIT
-	jnz  .write
-	jmp   error
+	test  ebx, PTE_USER_BIT
+	jnz  .user
+	jmp   error ; protection errors in supervisor mode can't happen
 .not_present:
-	; not present handler:
 	setPTEFlag  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
+	jmp  .check_rw
+.user:
+	setPTEFlag  TESTPAGE_PTE, PTE_USER_BIT, PTE_USER ; mark the PTE for user
+.check_rw:
+	test  ebx, PTE_WRITE_BIT
+	jnz  .write
+.read:
 	mov   [TESTPAGE_OFF], dword PF_HANDLER_SIG ; put handler's signature in memory
 	xor   eax, eax
 	jmp  .exit
 .write:
-	; read-only handler:
-	setPTEFlag  TESTPAGE_PTE, PTE_READWRITE_BIT, PTE_READWRITE ; mark the PTE as r/w
+	setPTEFlag  TESTPAGE_PTE, PTE_WRITE_BIT, PTE_READWRITE ; mark the PTE for write
 	mov   eax, PF_HANDLER_SIG ; put handler's signature in eax
-	jmp  .exit
 .exit:
 	iretd
 

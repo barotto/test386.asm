@@ -17,7 +17,8 @@ PS_SHIFTS_R equ (PS_CF | PS_SF | PS_ZF | PS_PF)
 CR0_MSW_PE  equ 0x0001
 CR0_PG      equ 0x80000000	; set if paging enabled
 
-ACC_TYPE_GATE386_INT equ 0x0E00
+ACC_TYPE_GATE386_INT  equ 0x0E00
+ACC_TYPE_GATE386_CALL equ 0x0C00
 ACC_TYPE_SEG         equ 0x1000
 ACC_PRESENT          equ 0x8000
 ACC_TYPE_CODE_R      equ 0x1a00
@@ -36,26 +37,29 @@ EXT_16BIT equ EXT_NONE
 EXT_32BIT equ 0x0040 ; size bit
 EXT_PAGE  equ 0x0080 ; granularity bit
 
-PTE_FRAME     equ 0xfffff000
-PTE_DIRTY     equ 0x00000040 ; page has been modified
-PTE_ACCESSED  equ 0x00000020 ; page has been accessed
-PTE_USER      equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
-PTE_READWRITE equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
-PTE_PRESENT   equ 0x00000001 ; set for present page, clear for not-present page
+PTE_FRAME      equ 0xfffff000
+PTE_DIRTY      equ 0x00000040 ; page has been modified
+PTE_ACCESSED   equ 0x00000020 ; page has been accessed
+PTE_USER       equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
+PTE_SUPER      equ 0x00000000
+PTE_READWRITE  equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
+PTE_READONLY   equ 0x00000000
+PTE_PRESENT    equ 0x00000001 ; set for present page, clear for not-present page
+PTE_NOTPRESENT equ 0x00000000
 
 PTE_PRESENT_BIT   equ 0000001b
-PTE_READWRITE_BIT equ 0000010b
+PTE_WRITE_BIT     equ 0000010b
 PTE_USER_BIT      equ 0000100b
 PTE_ACCESSED_BIT  equ 0100000b
 PTE_DIRTY_BIT     equ 1000000b
 
 
-PF_ERR_PRESENT    equ 001b
-PF_ERR_NOTPRESENT equ 000b
-PF_ERR_READ       equ 000b
-PF_ERR_WRITE      equ 010b
-PF_ERR_SUPER      equ 000b
-PF_ERR_USER       equ 100b
+PF_NOTPRESENT equ 000b ; not present error
+PF_PROTECTION equ 001b ; page protection error
+PF_READ       equ 000b ; read access error
+PF_WRITE      equ 010b ; write access error
+PF_SUPER      equ 000b ; fault occurred in suprvisor mode
+PF_USER       equ 100b ; fault occurred in user mode
 
 
 EX_DE equ 0

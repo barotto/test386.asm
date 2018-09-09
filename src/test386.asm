@@ -253,7 +253,7 @@ initGDT:
 	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000800,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc PDT_SEG_PROT,  0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PD_SEG_PROT,   0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
@@ -278,6 +278,9 @@ ptrGDTUprot: ; pointer to the GDT for pmode (user mode data segment)
 ptrLDTprot: ; pointer to the LDT for pmode
 	dd 0
 	dw LDT_DSEG_PROT
+ptrPDprot: ; pointer to the Page Directory for pmode
+	dd 0
+	dw PD_SEG_PROT
 ptrPTprot: ; pointer to the Page Table for pmode
 	dd 0
 	dw PT_SEG_PROT
@@ -313,8 +316,9 @@ initIDT:
 %assign vector vector+1
 %endrep
 
+	jmp initPaging
 
-initPages:
+initPaging:
 ;
 ; pages:
 ;  00000-00FFF   1  1000h   4K IDTs, GDT and LDT
@@ -329,9 +333,6 @@ initPages:
 PAGE_DIR_ADDR equ 0x1000
 PAGE_DIR_SIZE equ 0x1000
 PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
-TESTPAGE_LIN equ 0x9F000 ; linear address of the test page (page fault tests)
-TESTPAGE_PTE equ TESTPAGE_LIN>>12 ; page table entry
-TESTPAGE_OFF equ TESTPAGE_LIN-TEST_BASE ; offset relative to DESG base
 
 ;   Now we want to build a page directory and a page table. We need two pages of
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
@@ -352,26 +353,19 @@ TESTPAGE_OFF equ TESTPAGE_LIN-TEST_BASE ; offset relative to DESG base
 	mov   ecx, 1024-1 ; ECX == number of (remaining) PDEs to write
 	xor   eax, eax    ; fill remaining PDEs with 0
 	rep   stosd
-
 ;
 ;   Build a page table at EDI with 256 (out of 1024) valid PTEs, mapping the first 1MB
 ;   as linear == physical.
 ;
 	mov   eax, PTE_USER | PTE_READWRITE | PTE_PRESENT
 	mov   ecx, 256 ; ECX == number of PTEs to write
-
-initPT:
+.initPT:
 	stosd
 	add   eax, 0x1000
-	loop  initPT
+	loop  .initPT
 	mov   ecx, 1024-256 ; ECX == number of (remaining) PTEs to write
 	xor   eax, eax
 	rep   stosd
-	mov   edi, TESTPAGE_PTE ; mark PTE as not present
-	shl   edi, 2
-	add   edi, PAGE_DIR_SIZE ; edi <- PAGE_DIR_SIZE + (TESTPAGE_PTE * 4)
-	mov   eax, TESTPAGE_LIN | PTE_USER | PTE_READWRITE
-	stosd
 
 switchToProtMode:
 	cli ; make sure interrupts are off now, since we've not initialized the IDT yet
@@ -795,21 +789,21 @@ post11:
 	mov ax, D_SEG_PROT32
 	mov ds, ax
 	; test Accessed bit after a read
-	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
 	mov eax, [TESTPAGE_OFF]
 	mov eax, TESTPAGE_PTE
 	call getPTE
 	test eax, PTE_ACCESSED
 	jz error
 	; test Dirty bit after a write
-	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
 	mov [TESTPAGE_OFF], eax
 	mov eax, TESTPAGE_PTE
 	call getPTE
 	test eax, PTE_DIRTY
 	jz error
 	; test Accessed and Dirty bits after a read-write
-	updPTEFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
+	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
 	mov eax, [TESTPAGE_OFF]
 	mov [TESTPAGE_OFF], eax
 	mov eax, TESTPAGE_PTE

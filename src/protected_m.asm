@@ -131,46 +131,7 @@
 	call initCallGate
 %endmacro
 
-;
-; Updates a PTE's flags
-; %1 PTE index
-; %2 new flags (PTE's bits 11-0)
-; Uses FS
-;
-%macro updPTEFlags 2
-	pushad
-	pushf
-	lfs  ebx, [cs:ptrPTprot]
-	mov  eax, %1
-	and  [fs:ebx + eax*4], dword PTE_FRAME
-	or   [fs:ebx + eax*4], dword %2
-	mov  eax, PAGE_DIR_ADDR
-	mov  cr3, eax ; flush the page translation cache
-	popf
-	popad
-%endmacro
 
-;
-; Updates a PTE's flag
-; %1 PTE index
-; %2 PTE flags mask
-; %3 new flag
-; Uses FS
-;
-%macro setPTEFlag 3
-	pushad
-	pushf
-	lfs  ebx, [cs:ptrPTprot]
-	mov  eax, %1
-	mov  ecx, %2
-	not  ecx
-	and  [fs:ebx + eax*4], ecx
-	or   [fs:ebx + eax*4], dword %3
-	mov  eax, PAGE_DIR_ADDR
-	mov  cr3, eax ; flush the page translation cache
-	popf
-	popad
-%endmacro
 
 
 ;

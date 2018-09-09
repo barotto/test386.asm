@@ -1,3 +1,59 @@
+TESTPAGE_LIN equ 0x9F000 ; linear address of the test page (page fault tests)
+TESTPAGE_PTE equ TESTPAGE_LIN >> 12 ; page table entry
+TESTPAGE_OFF equ TESTPAGE_LIN-TEST_BASE ; offset relative to DESG base
+
+PD_ENTRY equ 0x8000000
+
+;
+; Updates the flags of a PTE
+;
+; %1 entry index [if bit 31 = 1 then PDE, else PTE]
+; %2 new flags (bits 11-0)
+;
+; Uses FS
+;
+%macro updPageFlags 2
+	pushad
+	pushf
+	mov  eax, %1&(~PD_ENTRY)
+	mov  edx, %2
+	%if (%1 & PD_ENTRY)
+	lfs  ebx, [cs:ptrPDprot]
+	%else
+	lfs  ebx, [cs:ptrPTprot]
+	%endif
+	call updPageFlagsP
+	popf
+	popad
+%endmacro
+
+
+;
+; Given a bitmask, set the value of specific PDE/PTE flags
+;
+; %1 entry index [if bit 31 = 1 then PDE, else PTE]
+; %2 flags mask
+; %3 new flags value
+;
+; Uses FS
+;
+%macro setPageFlags 3
+	pushad
+	pushf
+	mov  eax, %1&(~PD_ENTRY)
+	mov  ecx, %2
+	mov  edx, %3
+	%if (%1 & PD_ENTRY)
+	lfs  ebx, [cs:ptrPDprot]
+	%else
+	lfs  ebx, [cs:ptrPTprot]
+	%endif
+	call setPageFlagsP
+	popf
+	popad
+%endmacro
+
+
 ;
 ; Tests if the CPU throws a page fault under the specified conditions.
 ;
@@ -19,7 +75,7 @@
 ; The CR2 register contains the 32-bit linear address that caused the fault.
 ;
 %macro testPageFault 2
-	updPTEFlags TESTPAGE_PTE, %1
+	updPageFlags TESTPAGE_PTE, %1
 	xor eax, eax
 	mov cr2, eax ; reset CR2 to test its value in the page faults handler
 	%if (%2) & PF_USER

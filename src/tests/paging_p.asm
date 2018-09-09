@@ -1,5 +1,43 @@
-PF_HANDLER_SIG equ 0x50465046
+;
+; Updates the flags of a PDE/PTE
+;
+; EAX = entry index
+; EDX = new flags (bits 11-0)
+; FS:EBX = pointer to table
+;
+; caller-saved
+;
+updPageFlagsP:
+	and  [fs:ebx + eax*4], dword PTE_FRAME
+	or   [fs:ebx + eax*4], edx
+	mov  eax, PAGE_DIR_ADDR
+	mov  cr3, eax ; flush the page translation cache
+	ret
 
+
+;
+; Given a bitmask, set the value of specific PTE flags
+;
+; EAX = entry index
+; ECX = flags mask
+; EDX = new flags value
+; FS:EBX = pointer to table
+;
+; caller-saved
+;
+setPageFlagsP:
+	not  ecx
+	and  [fs:ebx + eax*4], ecx
+	or   [fs:ebx + eax*4], edx
+	mov  eax, PAGE_DIR_ADDR
+	mov  cr3, eax ; flush the page translation cache
+	ret
+
+
+;
+; Page Fault handler
+;
+PF_HANDLER_SIG equ 0x50465046
 PageFaultHandler:
 	; compare the expected error code in EAX with the one pushed on the stack
 	pop   ebx
@@ -21,10 +59,10 @@ PageFaultHandler:
 	jnz  .user
 	jmp   error ; protection errors in supervisor mode can't happen
 .not_present:
-	setPTEFlag  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
+	setPageFlags  TESTPAGE_PTE, PTE_PRESENT_BIT, PTE_PRESENT ; mark the PTE as present
 	jmp  .check_rw
 .user:
-	setPTEFlag  TESTPAGE_PTE, PTE_USER_BIT, PTE_USER ; mark the PTE for user
+	setPageFlags  TESTPAGE_PTE, PTE_USER_BIT, PTE_USER ; mark the PTE for user
 .check_rw:
 	test  ebx, PTE_WRITE_BIT
 	jnz  .write
@@ -33,7 +71,7 @@ PageFaultHandler:
 	xor   eax, eax
 	jmp  .exit
 .write:
-	setPTEFlag  TESTPAGE_PTE, PTE_WRITE_BIT, PTE_READWRITE ; mark the PTE for write
+	setPageFlags  TESTPAGE_PTE, PTE_WRITE_BIT, PTE_READWRITE ; mark the PTE for write
 	mov   eax, PF_HANDLER_SIG ; put handler's signature in eax
 .exit:
 	iretd

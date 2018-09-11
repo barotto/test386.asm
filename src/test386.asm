@@ -72,8 +72,9 @@
 ;  00500-0077F protected mode GDT
 ;  00800-00FFF protected mode LDT
 ;  01000-01FFF page directory
-;  02000-02FFF page table
-;  03000-03FFF TSS
+;  02000-02FFF page table 0
+;  03000-03FFF page table 1
+;  04000-04FFF TSS
 ;  10000-1FFFF stack
 ;  20000-9FFFF tests
 ;
@@ -253,12 +254,12 @@ initGDT:
 	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000800,0x00000fff,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc PD_SEG_PROT,   0x00001000,0x00001fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc PT_SEG_PROT,   0x00002000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc PG_SEG_PROT,   0x00001000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x000effff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSS_PROT,      0x00003000,0x00003fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc TSS_DSEG_PROT, 0x00003000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc TSS_PROT,      0x00004000,0x00000fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 
 	jmp initIDT
@@ -280,10 +281,13 @@ ptrLDTprot: ; pointer to the LDT for pmode
 	dw LDT_DSEG_PROT
 ptrPDprot: ; pointer to the Page Directory for pmode
 	dd 0
-	dw PD_SEG_PROT
-ptrPTprot: ; pointer to the Page Table for pmode
-	dd 0
-	dw PT_SEG_PROT
+	dw PG_SEG_PROT
+ptrPT0prot: ; pointer to Page Table 0
+	dd 0x1000
+	dw PG_SEG_PROT
+ptrPT1prot: ; pointer to Page Table 1
+	dd 0x2000
+	dw PG_SEG_PROT
 ptrSSprot: ; pointer to the stack for pmode
 	dd ESP_R0_PROT
 	dw S_SEG_PROT32
@@ -323,16 +327,17 @@ initPaging:
 ; pages:
 ;  00000-00FFF   1  1000h   4K IDTs, GDT and LDT
 ;  01000-01FFF   1  1000h   4K page directory
-;  02000-02FFF   1  1000h   4K page table
-;  03000-03FFF   1  1000h   4K task switch segments
-;  04000-0FFFF  12  d000h  48K free
+;  02000-02FFF   1  1000h   4K page table 0
+;  03000-03FFF   1  1000h   4K page table 1
+;  04000-04FFF   1  1000h   4K task switch segments
+;  05000-0FFFF  11  c000h  44K free
 ;  10000-1FFFF  16 10000h  64K stack
 ;  20000-9EFFF 127 7f000h 508K tests
 ;  9F000-9FFFF   1  1000h   4K used for page faults (PTE 9Fh)
 ;
 PAGE_DIR_ADDR equ 0x1000
-PAGE_DIR_SIZE equ 0x1000
-PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
+PAGE_TBL0_ADDR equ PAGE_DIR_ADDR+0x1000
+PAGE_TBL1_ADDR equ PAGE_DIR_ADDR+0x2000
 
 ;   Now we want to build a page directory and a page table. We need two pages of
 ;   4K-aligned physical memory.  We use a hard-coded address, segment 0x100,
@@ -347,7 +352,7 @@ PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
 ;   because we're not going to access any memory outside the first 1MB.
 ;
 	cld
-	mov   eax, PAGE_TBL_ADDR | PTE_USER | PTE_READWRITE | PTE_PRESENT
+	mov   eax, PAGE_TBL0_ADDR | PTE_PRESENT | PTE_USER | PTE_WRITE
 	xor   edi, edi
 	stosd
 	mov   ecx, 1024-1 ; ECX == number of (remaining) PDEs to write
@@ -357,7 +362,7 @@ PAGE_TBL_ADDR equ PAGE_DIR_ADDR+PAGE_DIR_SIZE
 ;   Build a page table at EDI with 256 (out of 1024) valid PTEs, mapping the first 1MB
 ;   as linear == physical.
 ;
-	mov   eax, PTE_USER | PTE_READWRITE | PTE_PRESENT
+	mov   eax, PTE_PRESENT | PTE_WRITE | PTE_USER
 	mov   ecx, 256 ; ECX == number of PTEs to write
 .initPT:
 	stosd
@@ -777,41 +782,58 @@ postD:
 post11:
 	POST 11
 	setProtModeIntGate EX_PF, PageFaultHandler
-	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_READ |PF_SUPER
-	testPageFault PTE_NOTPRESENT|PTE_SUPER|PTE_READWRITE, PF_NOTPRESENT|PF_WRITE|PF_SUPER
-	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_READ |PF_USER
-	testPageFault PTE_NOTPRESENT|PTE_USER|PTE_READWRITE,  PF_NOTPRESENT|PF_WRITE|PF_USER
-	testPageFault PTE_PRESENT|PTE_USER|PTE_READONLY,      PF_PROTECTION|PF_WRITE|PF_USER
-	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_READ |PF_USER
-	testPageFault PTE_PRESENT|PTE_SUPER|PTE_READWRITE,    PF_PROTECTION|PF_WRITE|PF_USER
+	; set test data segment to DPL 3 R/W flat
+	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x000fffff, ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3, EXT_PAGE
+	; setup page table 1
+	cld
+	les   ebx, [cs:ptrPDprot]
+	mov   [es:ebx + 4], dword PAGE_TBL1_ADDR ; PDE 1 -> page table 1
+	les   ebx, [cs:ptrPT1prot]
+	mov   edi, ebx
+	xor   eax, eax
+	mov   ecx, 1024
+	rep   stosd
+	mov   [es:ebx + (TESTPAGE_PTE&0x3FF)*4], dword TESTPAGE_OFF
+
+	; TODO verify on real hardware if there actually are differences between
+	; 386/486 and later Intel CPUs for combined super/user protection
+	%if TEST_PAGING>0
+		%if TEST_PAGING<5 && BOCHS=0
+		mov   eax, paging386end-paging386
+		mov   esi, paging386
+		%else
+		mov   eax, paging586end-paging586
+		mov   esi, paging586
+		%endif
+	%else
+		mov   eax, pagingAnyEnd-pagingAny
+		mov   esi, pagingAny
+	%endif
+	mov   edx, 0
+	mov   ecx, 3
+	div   ecx
+	mov   ecx, eax
+.nextTest:
+	movzx eax, byte [cs:esi + 0]
+	movzx ebx, byte [cs:esi + 1]
+	movzx edx, byte [cs:esi + 2]
+	call  testPageFault
+	add   esi, 3
+	loop .nextTest
+
 	setProtModeIntGate EX_PF, DefaultExcHandler
 
-	mov ax, D_SEG_PROT32
-	mov ds, ax
-	; test Accessed bit after a read
-	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
-	mov eax, [TESTPAGE_OFF]
-	mov eax, TESTPAGE_PTE
-	call getPTE
-	test eax, PTE_ACCESSED
-	jz error
-	; test Dirty bit after a write
-	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
-	mov [TESTPAGE_OFF], eax
-	mov eax, TESTPAGE_PTE
-	call getPTE
-	test eax, PTE_DIRTY
-	jz error
-	; test Accessed and Dirty bits after a read-write
-	updPageFlags TESTPAGE_PTE, PTE_PRESENT|PTE_SUPER|PTE_READWRITE
-	mov eax, [TESTPAGE_OFF]
-	mov [TESTPAGE_OFF], eax
-	mov eax, TESTPAGE_PTE
-	call getPTE
-	test eax, PTE_ACCESSED
-	jz error
-	test eax, PTE_DIRTY
-	jz error
+	; test if the Dirty bit is updated after a read
+	updPageFlags TESTPAGE_PDE, PTE_SUPER_W
+	updPageFlags TESTPAGE_PTE, PTE_SUPER_W
+	mov   ax, DTEST_SEG_PROT
+	mov   ds, ax
+	mov   eax, [TESTPAGE_LIN]
+	mov   [TESTPAGE_LIN], eax
+	mov   eax, TESTPAGE_LIN
+	call  getPTE
+	test  eax, PTE_DIRTY
+	jz    error
 
 	mov ax, D1_SEG_PROT
 	mov ds, ax

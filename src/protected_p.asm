@@ -40,15 +40,3 @@ initCallGate:
 	shr    edi, 16
 	mov    word [fs:ebx+6], di ; DESTINATION OFFSET 31-16
 	ret
-
-;
-; Returns a PTE in EAX
-; EAX = PTE index
-; Uses FS
-;
-getPTE:
-	push ebx
-	lfs  ebx, [cs:ptrPTprot]
-	mov  eax, [fs:ebx + eax*4]
-	pop  ebx
-	ret

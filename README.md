@@ -107,7 +107,7 @@ This is the list of tests with their diagnostic code:
 | 0x0E | 32-bit addressing modes (LEA)                                      |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
-| 0x11 | Page faults and PTE bits                                           |
+| 0x11 | Page faults                                                        |
 | 0x12 | Other memory access faults                                         |
 | 0x13 | Bit Scan operations                                                |
 | 0x14 | Bit Test operations                                                |
@@ -123,7 +123,7 @@ This is the list of tests with their diagnostic code:
 \* test <tt>0xE0</tt> needs to be enabled via the TEST_UNDEF equ, and 
 the proper CPU family needs to be specified with the CPU_FAMILY equ (currently
 only 80386 supported). This test will fail, unless your emulator is a faithful
-replica of an Intel 80386.
+replica of an Intel 80386. Results have been verified on real hardware.
 
 \** test <tt>0xEE</tt> always completes successfully. It will print its
 computational ASCII results to the configured output ports.

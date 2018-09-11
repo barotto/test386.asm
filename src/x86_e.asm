@@ -37,30 +37,18 @@ EXT_16BIT equ EXT_NONE
 EXT_32BIT equ 0x0040 ; size bit
 EXT_PAGE  equ 0x0080 ; granularity bit
 
-PTE_FRAME      equ 0xfffff000
-PTE_DIRTY      equ 0x00000040 ; page has been modified
-PTE_ACCESSED   equ 0x00000020 ; page has been accessed
-PTE_USER       equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
-PTE_SUPER      equ 0x00000000
-PTE_READWRITE  equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
-PTE_READONLY   equ 0x00000000
-PTE_PRESENT    equ 0x00000001 ; set for present page, clear for not-present page
-PTE_NOTPRESENT equ 0x00000000
+PTE_FRAME     equ 0xfffff000
+PTE_DIRTY     equ 0x00000040 ; page has been modified
+PTE_ACCESSED  equ 0x00000020 ; page has been accessed
+PTE_USER      equ 0x00000004 ; set for user level (CPL 3), clear for supervisor level (CPL 0-2)
+PTE_WRITE     equ 0x00000002 ; set for read/write, clear for read-only (affects CPL 3 only)
+PTE_PRESENT   equ 0x00000001 ; set for present page, clear for not-present page
 
 PTE_PRESENT_BIT   equ 0000001b
 PTE_WRITE_BIT     equ 0000010b
 PTE_USER_BIT      equ 0000100b
 PTE_ACCESSED_BIT  equ 0100000b
 PTE_DIRTY_BIT     equ 1000000b
-
-
-PF_NOTPRESENT equ 000b ; not present error
-PF_PROTECTION equ 001b ; page protection error
-PF_READ       equ 000b ; read access error
-PF_WRITE      equ 010b ; write access error
-PF_SUPER      equ 000b ; fault occurred in suprvisor mode
-PF_USER       equ 100b ; fault occurred in user mode
-
 
 EX_DE equ 0
 EX_DB equ 1

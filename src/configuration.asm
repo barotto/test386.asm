@@ -27,18 +27,9 @@ OUT_PORT equ 0
 ; Possible values: 1=enable POST E0, 0=skip the tests
 TEST_UNDEF equ 0
 
-; The CPU family used when POST E0 is enabled (otherwise unused).
+; The CPU family option is used only when POST E0 is enabled.
 ; Possible values: 3=80386
 CPU_FAMILY equ 3
-
-; Intel's reference manuals for 80386 and 80486 CPUs have different behaviour
-; described for combined Page Directory and Page Table protection, compared to
-; what is described in manuals for Pentium and later processors. I'm not sure
-; if the manuals are wrong or Intel changed the protection mechanism.
-; This Equ lets you define what version of the manual is your emulator
-; following. See tests/paging_p.asm for more info.
-; Possible values: 0=skip tests, 3=386 and 486 rules, 5=Pentium and later rules
-TEST_PAGING equ 0
 
 ; The Bochs x86 PC emulator behaves differently than real hardware in the ARPL
 ; operation and fails on that specific test. Enable this Equ if you want to use

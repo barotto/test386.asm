@@ -795,20 +795,8 @@ post11:
 	rep   stosd
 	mov   [es:ebx + (TESTPAGE_PTE&0x3FF)*4], dword TESTPAGE_OFF
 
-	; TODO verify on real hardware if there actually are differences between
-	; 386/486 and later Intel CPUs for combined super/user protection
-	%if TEST_PAGING>0
-		%if TEST_PAGING<5 && BOCHS=0
-		mov   eax, paging386end-paging386
-		mov   esi, paging386
-		%else
-		mov   eax, paging586end-paging586
-		mov   esi, paging586
-		%endif
-	%else
-		mov   eax, pagingAnyEnd-pagingAny
-		mov   esi, pagingAny
-	%endif
+	mov   eax, pagingTestsEnd-pagingTests
+	mov   esi, pagingTests
 	mov   edx, 0
 	mov   ecx, 3
 	div   ecx

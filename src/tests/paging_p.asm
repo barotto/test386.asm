@@ -126,32 +126,34 @@ getPDE:
 ;
 ; Combined Page Directory and Page Table Protection:
 ;
-; +-----------------+-----------------+----------------+----------------+
-; |  Page Directory |    Page Table   |  Combined 386  |  Combined 586+ |
-; | Privilege  Type | Privilege  Type | Privilege  Type| Privilege  Type|
-; |-----------------+-----------------+----------------+----------------|
-; | User       R    | User       R    | User       R   | User       R   |
-; | User       R    | User       RW   | User       R   | User       R   |
-; | User       RW   | User       R    | User       R   | User       R   |
-; | User       RW   | User       RW   | User       RW  | User       RW  |
-; | User       R    | Supervisor R    | User       R   | Supervisor RW  |*
-; | User       R    | Supervisor RW   | User       R   | Supervisor RW  |*
-; | User       RW   | Supervisor R    | User       R   | Supervisor RW  |*
-; | User       RW   | Supervisor RW   | User       RW  | Supervisor RW  |*
-; | Supervisor R    | User       R    | User       R   | Supervisor RW  |*
-; | Supervisor R    | User       RW   | User       R   | Supervisor RW  |*
-; | Supervisor RW   | User       R    | User       R   | Supervisor RW  |*
-; | Supervisor RW   | User       RW   | User       RW  | Supervisor RW  |*
-; | Supervisor R    | Supervisor R    | Supervisor RW  | Supervisor RW  |
-; | Supervisor R    | Supervisor RW   | Supervisor RW  | Supervisor RW  |
-; | Supervisor RW   | Supervisor R    | Supervisor RW  | Supervisor RW  |
-; | Supervisor RW   | Supervisor RW   | Supervisor RW  | Supervisor RW  |
-; +-----------------+-----------------+----------------+----------------+
+; +-----------------+-----------------+----------------+
+; |  Page Directory |    Page Table   |    Combined    |
+; | Privilege  Type | Privilege  Type | Privilege  Type|
+; |-----------------+-----------------+----------------|
+; | User       R    | User       R    | User       R   |
+; | User       R    | User       RW   | User       R   |
+; | User       RW   | User       R    | User       R   |
+; | User       RW   | User       RW   | User       RW  |
+; | User       R    | Supervisor R    | Supervisor RW  |*
+; | User       R    | Supervisor RW   | Supervisor RW  |*
+; | User       RW   | Supervisor R    | Supervisor RW  |*
+; | User       RW   | Supervisor RW   | Supervisor RW  |*
+; | Supervisor R    | User       R    | Supervisor RW  |*
+; | Supervisor R    | User       RW   | Supervisor RW  |*
+; | Supervisor RW   | User       R    | Supervisor RW  |*
+; | Supervisor RW   | User       RW   | Supervisor RW  |*
+; | Supervisor R    | Supervisor R    | Supervisor RW  |
+; | Supervisor R    | Supervisor RW   | Supervisor RW  |
+; | Supervisor RW   | Supervisor R    | Supervisor RW  |
+; | Supervisor RW   | Supervisor RW   | Supervisor RW  |
+; +-----------------+-----------------+----------------+
 ;
-; * Programmer's reference manuals for 80386 and 80486 have different results for
-;   these cases compared to manuals for Pentium and later processors. Not sure
-;   if manuals are wrong or Intel changed the protection behaviour.
-;   TODO test on real hw
+; * Programmer's reference manuals for 386DX and i486 have different results for
+;   these cases.
+;   In particular, the following manuals are wrong:
+;   - 386DX Microprocessor Programmer's Reference Manual 1990
+;   - i486 Processor Programmer's Reference Manual 1990
+;
 ;
 ; #PF error code pushed on the stack (386, 486, Pentium):
 ;
@@ -182,7 +184,7 @@ PTE_USER_R    equ PTE_PRESENT|PTE_USER
 PTE_USER_W    equ PTE_PRESENT|PTE_USER|PTE_WRITE
 
 
-%macro pagingCommonTests 0
+pagingTests:
 ; not present faults
 db	PTE_PRESENT|         PTE_WRITE,                       PTE_WRITE,  PF_NOTP|PF_READ
 db	PTE_PRESENT|         PTE_WRITE,                       PTE_WRITE,  PF_NOTP|PF_WRITE
@@ -250,37 +252,8 @@ db	PTE_SUPER_W,  PTE_USER_R,   PF_NOFAULT|PF_READ
 db	PTE_SUPER_W,  PTE_USER_R,   PF_NOFAULT|PF_WRITE
 db	PTE_SUPER_W,  PTE_USER_W,   PF_NOFAULT|PF_READ
 db	PTE_SUPER_W,  PTE_USER_W,   PF_NOFAULT|PF_WRITE
-%endmacro
 
-pagingAny:
-pagingCommonTests
-pagingAnyEnd:
-
-paging386:
-pagingCommonTests
-; 386 and 486 behaviour for user-super combinations and user access (according
-; to Intel's manuals)
-db	PTE_USER_R,   PTE_SUPER_R,  PF_NOFAULT|PF_READ |PF_USER
-db	PTE_USER_R,   PTE_SUPER_R,  PF_PROT   |PF_WRITE|PF_USER
-db	PTE_USER_R,   PTE_SUPER_W,  PF_NOFAULT|PF_READ |PF_USER
-db	PTE_USER_R,   PTE_SUPER_W,  PF_PROT   |PF_WRITE|PF_USER
-db	PTE_USER_W,   PTE_SUPER_R,  PF_NOFAULT|PF_READ |PF_USER
-db	PTE_USER_W,   PTE_SUPER_R,  PF_PROT   |PF_WRITE|PF_USER
-db	PTE_USER_W,   PTE_SUPER_W,  PF_NOFAULT|PF_READ |PF_USER
-db	PTE_USER_W,   PTE_SUPER_W,  PF_NOFAULT|PF_WRITE|PF_USER
-db	PTE_SUPER_R,  PTE_USER_R,   PF_NOFAULT|PF_READ |PF_USER
-db	PTE_SUPER_R,  PTE_USER_R,   PF_PROT   |PF_WRITE|PF_USER
-db	PTE_SUPER_R,  PTE_USER_W,   PF_NOFAULT|PF_READ |PF_USER
-db	PTE_SUPER_R,  PTE_USER_W,   PF_PROT   |PF_WRITE|PF_USER
-db	PTE_SUPER_W,  PTE_USER_R,   PF_NOFAULT|PF_READ |PF_USER
-db	PTE_SUPER_W,  PTE_USER_R,   PF_PROT   |PF_WRITE|PF_USER
-db	PTE_SUPER_W,  PTE_USER_W,   PF_NOFAULT|PF_READ |PF_USER
-db	PTE_SUPER_W,  PTE_USER_W,   PF_NOFAULT|PF_WRITE|PF_USER
-paging386end:
-
-paging586:
-pagingCommonTests
-; 586+ behaviour for user-super combinations and user access
+; user-super combinations with user access
 db	PTE_USER_R,   PTE_SUPER_R,  PF_PROT|PF_READ |PF_USER
 db	PTE_USER_R,   PTE_SUPER_R,  PF_PROT|PF_WRITE|PF_USER
 db	PTE_USER_R,   PTE_SUPER_W,  PF_PROT|PF_READ |PF_USER
@@ -297,7 +270,7 @@ db	PTE_SUPER_W,  PTE_USER_R,   PF_PROT|PF_READ |PF_USER
 db	PTE_SUPER_W,  PTE_USER_R,   PF_PROT|PF_WRITE|PF_USER
 db	PTE_SUPER_W,  PTE_USER_W,   PF_PROT|PF_READ |PF_USER
 db	PTE_SUPER_W,  PTE_USER_W,   PF_PROT|PF_WRITE|PF_USER
-paging586end:
+pagingTestsEnd:
 
 pageEntryStr:           ; UWP
 	db  "  SUPER R, ",0 ; 000

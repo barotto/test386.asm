@@ -30,6 +30,24 @@ the x86 architecture are not presently tested, such as:
 Also, even if the program can run on any x86 32-bit compatible CPU, its testing
 routines are limited to the functionality of the intel 80386 processor family.
 
+### Realistic expectations
+
+Total correctness depends on termination and there is no general solution
+to the [halting problem](https://en.wikipedia.org/wiki/Halting_problem). 
+
+That being said, and even aiming at partial correctness, the x86 architecture is
+so complex (and the input domain so vast) that the probability of reaching a
+good level of testing coverage, enough to declare a CPU implementation as bug
+free (for some definition of "free"), is close to 0.  
+
+Judging from the amount of errata that follow a CPU product launch, not even the
+CPU manufacturers are capable of such a feat, despite their infinite amount of
+engeenering resources.
+
+Nonetheless I hope you'll find this program useful (and correct) enough to be
+added to your unit tests and worthy to be used alongside tools like
+[s a n d s i f t e r](https://github.com/xoreaxeaxeax/sandsifter).  
+
 ## How to assemble
 
 First of all grab the NASM assembler from http://www.nasm.us/ and follow its

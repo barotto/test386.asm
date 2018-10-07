@@ -194,7 +194,7 @@
 ;
 ; %1: vector
 ; %2: expected error code
-; %3: fault causing instruction
+; %3: fault causing instruction (can't be a call unless the call is the faulting instruction)
 ;
 ; the stack must be initialized
 ;
@@ -208,32 +208,65 @@
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
+; %1: vector
+; %2: expected error code
+; %3: the provilege level the test code will run in
+; %4: the expected value of pushed EIP (specify if %5 is a call, otherwise use -1)
+; %5: fault causing code (can be a call to procedure)
+;
+; The fault handler is executed in ring 0. The caller must reset the data segments.
+;
+%macro protModeFaultTestEx 5+
+	setProtModeIntGate %1, %%continue, ACC_DPL_0
+%%test:
+	%5
+	jmp    error
+%%continue:
+	%if %3 = 0
+		%assign expectedCS C_SEG_PROT32
+	%else
+		%assign expectedCS CU_SEG_PROT32|3
+	%endif
+	%if %4 = -1
+		protModeExcCheck %1, %2, %%test, expectedCS
+	%else
+		protModeExcCheck %1, %2, %4, expectedCS
+	%endif
+	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
+%endmacro
+
 ;
 ; Checks exception result and restores the previous handler
 ;
 ; %1: vector
 ; %2: expected error code
 ; %3: expected pushed value of EIP
+; %4: expected pushed value of CS (optional)
 ;
-%macro protModeExcCheck 3
-	%if %1 == 8 || (%1 > 10 && %1 < 14)
+%macro protModeExcCheck 3-4 -1
+	%if %1 == 8 || (%1 > 10 && %1 <= 14)
 	%assign exc_errcode 4
 	cmp    [ss:esp], dword %2
 	jne    error
 	%else
 	%assign exc_errcode 0
 	%endif
-	mov    bx, cs
-	test   bx, 7
-	jnz %%ring3
-%%ring0:
-	cmp    [ss:esp+exc_errcode+4], dword C_SEG_PROT32
-	jne    error
-	jmp %%continue
-%%ring3:
-	cmp    [ss:esp+exc_errcode+4], dword CU_SEG_PROT32|3
-	jne    error
-%%continue:
+	%if %4 != -1
+		cmp    [ss:esp+exc_errcode+4], dword %4
+		jne    error
+	%else
+		mov    bx, cs
+		test   bx, 7
+		jnz %%ring3
+		%%ring0:
+		cmp    [ss:esp+exc_errcode+4], dword C_SEG_PROT32
+		jne    error
+		jmp %%continue
+		%%ring3:
+		cmp    [ss:esp+exc_errcode+4], dword CU_SEG_PROT32|3
+		jne    error
+		%%continue:
+	%endif
 	cmp    [ss:esp+exc_errcode], dword %3
 	jne    error
 	add    esp, 12+exc_errcode

@@ -1039,6 +1039,41 @@ post19:
 
 	advTestSegProt
 
+;
+;   ENTER
+;
+%include "tests/enter_m.asm"
+post1A:
+	POST 1A
+	testENTER16 1, 0,16
+	testENTER16 2, 1,16
+	testENTER16 3, 4,16
+	testENTER16 4,36,32
+	testENTER32 5, 0,32
+	testENTER32 6, 1,32
+	testENTER32 7, 4,32
+	testENTER32 8,36,16
+	; The ENTER instruction causes a page fault whenever a write using the final
+	; value of the stack pointer (within the current stack segment) would do so.
+	jmp .pageFaultTest
+.pageFaultProc:
+	call  switchToRing3
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+.pageFaultEIP:
+	enter 1,0
+	jmp   error
+.pageFaultTest:
+	loadProtModeStack
+	updPageFlags 0x1000|(TEST_BASE>>12), PTE_SUPER_W
+	protModeFaultTestEx EX_PF, PF_PROT|PF_WRITE|PF_USER, 3, .pageFaultEIP, call .pageFaultProc
+	testCPL 0
+	mov   ax, D1_SEG_PROT
+	mov   ds, ax
+	mov   ax, D2_SEG_PROT
+	mov   es, ax
+
 
 %include "print_init.asm"
 

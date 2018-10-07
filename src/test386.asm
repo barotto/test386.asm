@@ -1074,6 +1074,19 @@ post1A:
 	mov   ax, D2_SEG_PROT
 	mov   es, ax
 
+;
+;   LEAVE
+;
+%include "tests/leave_m.asm"
+post1B:
+	POST 1B
+	testLEAVE o16,16
+	testLEAVE o16,32
+	testLEAVE o32,16
+	testLEAVE o32,32
+
+	loadProtModeStack
+
 
 %include "print_init.asm"
 

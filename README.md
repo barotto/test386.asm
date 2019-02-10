@@ -136,6 +136,7 @@ This is the list of tests with their diagnostic code:
 | 0x19 | Exchange Register/Memory with Register (XCHG)                      |
 | 0x1A | Make Stack Frame for Procedure Parameters (ENTER)                  |
 | 0x1B | High Level Procedure Exit (LEAVE)                                  |
+| 0x1C | Verify a Segment for Reading or Writing (VERR/VERW)                |
 | 0xE0 | Undefined behaviours and bugs (CPU family dependent) *             |
 | 0xEE | Series of unverified tests for arithmetical and logical opcodes ** |
 | 0xFF | Testing completed                                                  |

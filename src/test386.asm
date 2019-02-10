@@ -1,7 +1,7 @@
 ;
 ;   test386.asm
 ;   Copyright (C) 2012-2015 Jeff Parsons <Jeff@pcjs.org>
-;   Copyright (C) 2017-2018 Marco Bortolin <barotto@gmail.com>
+;   Copyright (C) 2017-2019 Marco Bortolin <barotto@gmail.com>
 ;
 ;   This file is a derivative work of PCjs
 ;   http://pcjs.org/tests/pcx86/80386/test386.asm
@@ -53,8 +53,8 @@
 ;	mov eax,[nosplit ebp*2]  mov eax,[ebp*2+0x0]      8B046D00000000
 ;
 
-%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2018 Marco Bortolin '
-%define RELEASE   '??/??/18'
+%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2019 Marco Bortolin '
+%define RELEASE   '??/??/19'
 
 	cpu 386
 	section .text
@@ -90,6 +90,7 @@ C_SEG_REAL   equ 0xf000
 S_SEG_REAL   equ 0x1000
 IDT_SEG_REAL equ 0x0040
 GDT_SEG_REAL equ 0x0050
+GDT_SEG_LIMIT equ 0x2FF
 %assign D1_SEG_REAL TEST_BASE1 >> 4
 %assign D2_SEG_REAL TEST_BASE2 >> 4
 
@@ -248,6 +249,7 @@ initGDT:
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
 	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000500,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
@@ -298,7 +300,7 @@ addrProtIDT: ; address of pmode IDT to be used with lidt
 	dw 0xFF              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
-	dw 0x2FF
+	dw GDT_SEG_LIMIT
 	dd GDT_SEG_REAL << 4
 
 ; Initializes an interrupt gate in system memory in real mode
@@ -395,6 +397,7 @@ initLDT:
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defLDTDesc RO_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT
+	defLDTDesc ROU_SEG_PROT,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_R|ACC_PRESENT|ACC_DPL_3
 	defLDTDesc DTEST_SEG_PROT, TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defLDTDesc DPL1_SEG_PROT,  TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_1
 	defLDTDesc NP_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W
@@ -1086,6 +1089,50 @@ post1B:
 	testLEAVE o32,32
 
 	loadProtModeStack
+	jmp post1C
+
+;
+;   VERR/VERW
+;
+%include "tests/ver_p.asm"
+post1C:
+	POST 1C
+	; null segment
+	testVERR NULL,0
+	testVERW NULL,0
+	; out of bounds descriptor
+	testVERR GDT_SEG_LIMIT+1,0
+	testVERW GDT_SEG_LIMIT+1,0
+	; system segment
+	testVERR LDT_SEG_PROT,0
+	testVERW LDT_SEG_PROT,0
+
+	; CPL 0
+	; code segment
+	testVERR C_SEG_PROT32,1
+	testVERW C_SEG_PROT32,0
+	; data segment
+	testVERR S_SEG_PROT32,1
+	testVERW S_SEG_PROT32,1
+
+	; CPL 3
+	call  switchToRing3
+	; non-conforming code segment
+	testVERR C_SEG_PROT32,0  ; DPL0 code segment
+	testVERW C_SEG_PROT32,0
+	testVERR CU_SEG_PROT32,1 ; DPL3 code segment
+	testVERW CU_SEG_PROT32,0
+	; conforming code segment
+	testVERR CC_SEG_PROT32,1
+	testVERW CC_SEG_PROT32,0
+	; data segment
+	testVERR S_SEG_PROT32,0  ; DPL0 stack segment
+	testVERW S_SEG_PROT32,0
+	testVERR SU_SEG_PROT32,1 ; DPL3 stack segment
+	testVERW SU_SEG_PROT32,1
+	testVERR ROU_SEG_PROT,1  ; DPL3 read-only data segment
+	testVERW ROU_SEG_PROT,0
+	call  switchToRing0
 
 
 %include "print_init.asm"

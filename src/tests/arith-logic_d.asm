@@ -420,15 +420,15 @@ tableOps:
 	defOpSh  "D2 RCL",rcl,al,cl,TYPE_SHIFTS_R                 ;    D2 D0
 	defOpSh  "D3 RCL",rcl,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 D0
 	defOpSh  "D3 RCL",rcl,eax,cl,TYPE_SHIFTS_R                ;    D3 D0
-	defOpSh  "D0 RCR",rol,al,1,TYPE_SHIFTS_1                  ;    D0 C0
-	defOpSh  "D1 RCR",rol,ax,1,TYPE_SHIFTS_1                  ; 66 D1 C0
-	defOpSh  "D1 RCR",rol,eax,1,TYPE_SHIFTS_1                 ;    D1 C0
-	defOpSh  "C0 RCR",rol,al,7,TYPE_SHIFTS_1                  ;    C0 C007
-	defOpSh  "C1 RCR",rol,ax,7,TYPE_SHIFTS_1                  ; 66 C1 C007
-	defOpSh  "C1 RCR",rol,eax,7,TYPE_SHIFTS_1                 ;    C1 C007
-	defOpSh  "D2 RCR",rol,al,cl,TYPE_SHIFTS_R                 ;    D2 C0
-	defOpSh  "D3 RCR",rol,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 C0
-	defOpSh  "D3 RCR",rol,eax,cl,TYPE_SHIFTS_R                ;    D3 C0
+	defOpSh  "D0 RCR",rcr,al,1,TYPE_SHIFTS_1                  ;    D0 D8
+	defOpSh  "D1 RCR",rcr,ax,1,TYPE_SHIFTS_1                  ; 66 D1 D8
+	defOpSh  "D1 RCR",rcr,eax,1,TYPE_SHIFTS_1                 ;    D1 D8
+	defOpSh  "C0 RCR",rcr,al,7,TYPE_SHIFTS_1                  ;    C0 D807
+	defOpSh  "C1 RCR",rcr,ax,7,TYPE_SHIFTS_1                  ; 66 C1 D807
+	defOpSh  "C1 RCR",rcr,eax,7,TYPE_SHIFTS_1                 ;    C1 D807
+	defOpSh  "D2 RCR",rcr,al,cl,TYPE_SHIFTS_R                 ;    D2 D8
+	defOpSh  "D3 RCR",rcr,ax,cl,TYPE_SHIFTS_R                 ; 66 D3 D8
+	defOpSh  "D3 RCR",rcr,eax,cl,TYPE_SHIFTS_R                ;    D3 D8
 	defOpShD "0FA4 SHLD",shld,ax,dx,8,TYPE_SHIFTS_R           ; 66 0FA4 D0 08
 	defOpShD "0FA4 SHLD",shld,eax,edx,16,TYPE_SHIFTS_R        ;    0FA4 D0 10
 	defOpShD "0FA5 SHLD",shld,ax,dx,cl,TYPE_SHIFTS_R          ; 66 0FA5 D0

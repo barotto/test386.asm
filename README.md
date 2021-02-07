@@ -21,11 +21,11 @@ For the full list of tested opcodes see **<tt>intel-opcodes.ods</tt>**.
 Those opcodes that are tested have the relevant diagnostic code in the "test in
 real mode" and/or "test in prot. mode" columns.  
 Besides the specific opcodes reported in the opcodes list file, other aspects of
-the x86 architecture are not presently tested, such as:
+the x86 architecture are only partially tested or not tested at all:
 
-  - virtual-8086 mode
-  - task management
-  - user mode (ring 3) operations
+  - no virtual-8086 mode testing
+  - no task management testing
+  - partial testing of user mode (ring 3) operations
   
 Also, even if the program can run on any x86 32-bit compatible CPU, its testing
 routines are limited to the functionality of the intel 80386 processor family.
@@ -117,8 +117,8 @@ This is the list of tests with their diagnostic code:
 | 0x05 | Calls in real mode                                                 |
 | 0x06 | Load full pointer in real mode                                     |
 | 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
-| 0x09 | Test user mode (ring 3) switching                                  |
-| 0x0A | Stack functionality                                                |
+| 0x09 | Stack functionality                                                |
+| 0x0A | Test user mode (ring 3) switching                                  |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
 | 0x0D | 16-bit addressing modes (LEA)                                      |

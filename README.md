@@ -58,7 +58,7 @@ values for your system.
 
 A diagnostic code will be output to the configured POST port. Computation
 results in the form of ASCII messages will also be output to LPT, COM, and/or
-OUT ports, whichever is enabled and configured.
+custom OUT ports, whichever is enabled and configured.
 See the <tt>src/configuration.asm</tt> file for information on how to configure
 the program's output.
 
@@ -72,8 +72,7 @@ Otherwise use a command line like this one:
 nasm -i./src/ -f bin src/test386.asm -l test386.lst -o test386.bin
 ```
 
-Please note that the multiple <tt>(testBCD:19) unterminated string</tt> warnings
-are expected and can be ignored.
+Any multiple <tt>(testBCD:19) unterminated string</tt> warnings can be ignored.
 
 The final product is a binary file named **<tt>test386.bin</tt>** of exactly
 65,536 bytes.
@@ -125,11 +124,11 @@ This is the list of tests with their diagnostic code:
 | 0x0E | 32-bit addressing modes (LEA)                                      |
 | 0x0F | Access memory using various addressing modes                       |
 | 0x10 | Store, move, scan, and compare string data in protected mode       |
-| 0x11 | Page faults                                                        |
+| 0x11 | Page faults and PTE bits                                           |
 | 0x12 | Other memory access faults                                         |
 | 0x13 | Bit Scan operations                                                |
 | 0x14 | Bit Test operations                                                |
-| 0x15 | Byte set on condition                                              |
+| 0x15 | Byte set on condition (SETcc)                                      |
 | 0x16 | Calls in protected mode                                            |
 | 0x17 | Adjust RPL Field of Selector (ARPL)                                |
 | 0x18 | Check Array Index Against Bounds (BOUND)                           |

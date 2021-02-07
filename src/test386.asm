@@ -1,10 +1,10 @@
 ;
 ;   test386.asm
 ;   Copyright (C) 2012-2015 Jeff Parsons <Jeff@pcjs.org>
-;   Copyright (C) 2017-2019 Marco Bortolin <barotto@gmail.com>
+;   Copyright (C) 2017-2021 Marco Bortolin <barotto@gmail.com>
 ;
 ;   This file is a derivative work of PCjs
-;   http://pcjs.org/tests/pcx86/80386/test386.asm
+;   https://www.pcjs.org/software/pcx86/test/cpu/80386/test386.asm
 ;
 ;   test386.asm is free software: you can redistribute it and/or modify it under
 ;   the terms of the GNU General Public License as published by the Free
@@ -20,15 +20,15 @@
 ;   test386.asm.  If not see <http://www.gnu.org/licenses/gpl.html>.
 ;
 ;   This program was originally developed for IBMulator
-;   http://barotto.github.io/IBMulator
+;   https://barotto.github.io/IBMulator
 ;
 ;   Overview
 ;   --------
 ;   This file is designed to run as a test ROM, loaded in place of the BIOS.
 ;   Its pourpose is to test the CPU, reporting its status to the POST port and
-;   to the printer/serial port.
+;   its computational results in ASCII form to various configurable ports.
 ;   A 80386 or later CPU is required. This ROM is designed to test an emulator
-;   CPU and was never tested on a real hardware.
+;   CPU and was never tested on real hardware.
 ;
 ;   It must be installed at physical address 0xf0000 and aliased at physical
 ;   address 0xffff0000.  The jump at resetVector should align with the CPU reset
@@ -53,8 +53,8 @@
 ;	mov eax,[nosplit ebp*2]  mov eax,[ebp*2+0x0]      8B046D00000000
 ;
 
-%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2019 Marco Bortolin '
-%define RELEASE   '??/??/19'
+%define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2021 Marco Bortolin '
+%define RELEASE   '??/??/21'
 
 	cpu 386
 	section .text
@@ -109,9 +109,12 @@ cpuTest:
 ; ==============================================================================
 
 %include "real_m.asm"
-
+;-------------------------------------------------------------------------------
 	POST 0
-
+;-------------------------------------------------------------------------------
+;
+;   Real mode initialisation
+;
 	initRealModeIDT
 	mov ax, S_SEG_REAL
 	mov ss, ax
@@ -121,7 +124,10 @@ cpuTest:
 	mov dx, D2_SEG_REAL
 	mov es, dx
 
+
+;-------------------------------------------------------------------------------
 	POST 1
+;-------------------------------------------------------------------------------
 ;
 ;   Conditional jumps
 ;
@@ -137,11 +143,14 @@ cpuTest:
 	testLoopZ
 	testLoopNZ
 
+
+;-------------------------------------------------------------------------------
+	POST 2
+;-------------------------------------------------------------------------------
 ;
 ;   Quick tests of unsigned 32-bit multiplication and division
 ;   Thorough arithmetical and logical tests are done later
 ;
-	POST 2
 	mov    eax, 0x80000001
 	imul   eax
 	mov    eax, 0x44332211
@@ -152,12 +161,14 @@ cpuTest:
 	cmp    eax, ebx
 	jne    error
 
-;
-;   Test of moving segment registers
-;
-%include "tests/mov_m.asm"
 
+%include "tests/mov_m.asm"
+;-------------------------------------------------------------------------------
 	POST 3
+;-------------------------------------------------------------------------------
+;
+;   Move segment registers in real mode
+;
 	testMovSegR_real ss
 	testMovSegR_real ds
 	testMovSegR_real es
@@ -167,12 +178,14 @@ cpuTest:
 
 	advTestSegReal
 
+
+%include "tests/string_m.asm"
+;-------------------------------------------------------------------------------
+	POST 4
+;-------------------------------------------------------------------------------
 ;
 ;   Test store, move, scan, and compare string data
 ;
-%include "tests/string_m.asm"
-
-	POST 4
 	testStringOps b,0,a16
 	testStringOps w,0,a16
 	testStringOps d,0,a16
@@ -188,23 +201,28 @@ cpuTest:
 
 	advTestSegReal
 
-;
-;   Calls
-;
-%include "tests/call_m.asm"
 
+%include "tests/call_m.asm"
+;-------------------------------------------------------------------------------
 	POST 5
+;-------------------------------------------------------------------------------
+;
+;   Calls in real mode
+;
 	mov    si, 0
 	testCallNear sp
 	testCallFar C_SEG_REAL
 
 	advTestSegReal
 
-;
-;   Load full pointer
-;
+
 %include "tests/load_ptr_m.asm"
+;-------------------------------------------------------------------------------
 	POST 6
+;-------------------------------------------------------------------------------
+;
+;   Load full pointer in real mode
+;
 	mov    di, 0
 	testLoadPtr ss
 	testLoadPtr ds
@@ -219,7 +237,12 @@ cpuTest:
 ;	Protected mode tests
 ; ==============================================================================
 
+;-------------------------------------------------------------------------------
 	POST 8
+;-------------------------------------------------------------------------------
+;
+;   GDT, LDT, PDT, and PT setup, enter protected mode
+;
 	jmp initGDT
 
 ESP_R0_PROT equ 0x0000FFFF
@@ -413,12 +436,15 @@ initLDT:
 %include "protected_rings_p.asm"
 
 protTests:
-;
-;   Test the stack
-;
+
 %include "tests/stack_m.asm"
 
+;-------------------------------------------------------------------------------
 	POST 9
+;-------------------------------------------------------------------------------
+;
+;   Stack functionality
+;
 ;
 ;   For the next tests, with a 16-bit data segment in SS, we
 ;   expect all pushes/pops will occur at SP rather than ESP.
@@ -504,10 +530,13 @@ protTests:
 
 	advTestSegProt
 
+
+;-------------------------------------------------------------------------------
+	POST A
+;-------------------------------------------------------------------------------
 ;
 ;   Test user mode (ring 3) switching
 ;
-	POST A
 	call   clearTSS
 	mov    ax, D_SEG_PROT32
 	mov    ds, ax
@@ -542,11 +571,13 @@ protTests:
 	cmp    ax, C_SEG_PROT32
 	jne    error
 
+
+;-------------------------------------------------------------------------------
+	POST B
+;-------------------------------------------------------------------------------
 ;
 ;   Test of moving segment registers in protected mode
 ;
-	POST B
-
 	testMovSegR_prot ds
 	testMovSegR_prot es
 	testMovSegR_prot fs
@@ -557,10 +588,13 @@ protTests:
 	loadProtModeStack
 	advTestSegProt
 
+
+;-------------------------------------------------------------------------------
+	POST C
+;-------------------------------------------------------------------------------
 ;
 ;   Zero and sign-extension tests
 ;
-	POST C
 	movsx  eax, byte [cs:signedByte] ; byte to a 32-bit register with sign-extension
 	cmp    eax, 0xffffff80
 	jne    error
@@ -638,15 +672,17 @@ protTests:
 	cmp    ebx, 0xFFFFFF80
 	jne    error
 
-;
-;   Test 16-bit addressing modes
-;
+
 	jmp postD
 %include "tests/lea_m.asm"
 %include "tests/lea_p.asm"
-
 postD:
+;-------------------------------------------------------------------------------
 	POST D
+;-------------------------------------------------------------------------------
+;
+;   16-bit addressing modes (LEA)
+;
 	mov ax, 0x0001
 	mov bx, 0x0002
 	mov cx, 0x0004
@@ -669,19 +705,24 @@ postD:
 	testLEA16 [bx + 0x4000 + si], 0x4012
 	testLEA16 [bx + 0x4000 + di], 0x4022
 
-;
-;   Test 32-bit addressing modes
-;
+
+;-------------------------------------------------------------------------------
 	POST E
+;-------------------------------------------------------------------------------
+;
+;   32-bit addressing modes (LEA)
+;
 	call testAddressing32
 
 	advTestSegProt
 
+
+;-------------------------------------------------------------------------------
+	POST F
+;-------------------------------------------------------------------------------
 ;
 ;   Access memory using various addressing modes
 ;
-	POST F
-
 	; store a known word at the scratch address
 	mov    ebx, 0x11223344
 	mov    [0x10000], ebx
@@ -752,10 +793,13 @@ postD:
 
 	advTestSegProt
 
-;
-;   Verify string operations
-;
+
+;-------------------------------------------------------------------------------
 	POST 10
+;-------------------------------------------------------------------------------
+;
+;   Store, move, scan, and compare string data in protected mode
+;
 	pushad
 	pushfd
 	testStringOps b,0,a32
@@ -775,15 +819,17 @@ postD:
 
 	advTestSegProt
 
-;
-;	Verify page faults and PTE bits
-;
+
 	jmp post11
 %include "tests/paging_m.asm"
 %include "tests/paging_p.asm"
-
 post11:
+;-------------------------------------------------------------------------------
 	POST 11
+;-------------------------------------------------------------------------------
+;
+;	Verify page faults and PTE bits
+;
 	setProtModeIntGate EX_PF, PageFaultHandler
 	; set test data segment to DPL 3 R/W flat
 	updLDTDesc DTEST_SEG_PROT, 0x0000000, 0x000fffff, ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3, EXT_PAGE
@@ -828,10 +874,14 @@ post11:
 
 	mov ax, D1_SEG_PROT
 	mov ds, ax
+
+
+;-------------------------------------------------------------------------------
+	POST 12
+;-------------------------------------------------------------------------------
 ;
 ;   Verify other memory access faults
 ;
-	POST 12
 	; #GP(0) If the destination operand is in a non-writable segment.
 	mov ax, RO_SEG_PROT ; write protect DS
 	mov ds, ax
@@ -864,19 +914,24 @@ post11:
 	mov ax, D1_SEG_PROT
 	mov ds, ax
 
+
+%include "tests/bit_m.asm"
+;-------------------------------------------------------------------------------
+	POST 13
+;-------------------------------------------------------------------------------
 ;
 ;   Verify Bit Scan operations
 ;
-%include "tests/bit_m.asm"
-
-	POST 13
 	testBitscan bsf
 	testBitscan bsr
 
+
+;-------------------------------------------------------------------------------
+	POST 14
+;-------------------------------------------------------------------------------
 ;
 ;   Verify Bit Test operations
 ;
-	POST 14
 	testBittest16 bt
 	testBittest16 btc
 	cmp edx, 0x00005555
@@ -899,31 +954,39 @@ post11:
 	cmp edx, 0xffffffff
 	jne error
 
-;
-;   SETcc - Byte set on condition
-;
-%include "tests/setcc_m.asm"
 
+%include "tests/setcc_m.asm"
+;-------------------------------------------------------------------------------
 	POST 15
+;-------------------------------------------------------------------------------
+;
+;   Verify Byte set on condition (SETcc)
+;
 	testSetcc bl
 	testSetcc byte [0x10000]
 
 	advTestSegProt
 
-;
-;	Call protected mode
-;
+
+;-------------------------------------------------------------------------------
 	POST 16
+;-------------------------------------------------------------------------------
+;
+;	Calls in protected mode
+;
 	mov si, 0
 	testCallNear esp
 	testCallFar C_SEG_PROT32
 
 	advTestSegProt
 
-;
-;	ARPL
-;
+
+;-------------------------------------------------------------------------------
 	POST 17
+;-------------------------------------------------------------------------------
+;
+;	Adjust RPL Field of Selector (ARPL)
+;
 	; test on register destination
 	xor ax, ax       ; ZF = 0
 	mov ax, 0xfff0
@@ -968,10 +1031,13 @@ post11:
 
 	advTestSegProt
 
-;
-;	BOUND
-;
+
+;-------------------------------------------------------------------------------
 	POST 18
+;-------------------------------------------------------------------------------
+;
+;	Check Array Index Against Bounds (BOUND)
+;
 	setProtModeIntGate EX_BR, BoundExcHandler
 	xor eax, eax
 	mov ebx, 0x10100
@@ -1006,13 +1072,15 @@ BoundExcHandler:
 	mov eax, BOUND_HANDLER_SIG
 	iretd
 
-;
-;   XCHG
-;
+
 %include "tests/xchg_m.asm"
 post19:
+;-------------------------------------------------------------------------------
 	POST 19
-
+;-------------------------------------------------------------------------------
+;
+;   Exchange Register/Memory with Register (XCHG)
+;
 	testXchg ax,cx ; 66 91
 	testXchg ax,dx ; 66 92
 	testXchg ax,bx ; 66 93
@@ -1042,12 +1110,15 @@ post19:
 
 	advTestSegProt
 
-;
-;   ENTER
-;
+
 %include "tests/enter_m.asm"
 post1A:
+;-------------------------------------------------------------------------------
 	POST 1A
+;-------------------------------------------------------------------------------
+;
+;   Make Stack Frame for Procedure Parameters (ENTER)
+;
 	testENTER16 1, 0,16
 	testENTER16 2, 1,16
 	testENTER16 3, 4,16
@@ -1077,12 +1148,15 @@ post1A:
 	mov   ax, D2_SEG_PROT
 	mov   es, ax
 
-;
-;   LEAVE
-;
+
 %include "tests/leave_m.asm"
 post1B:
+;-------------------------------------------------------------------------------
 	POST 1B
+;-------------------------------------------------------------------------------
+;
+;   High Level Procedure Exit (LEAVE)
+;
 	testLEAVE o16,16
 	testLEAVE o16,32
 	testLEAVE o32,16
@@ -1091,12 +1165,15 @@ post1B:
 	loadProtModeStack
 	jmp post1C
 
-;
-;   VERR/VERW
-;
+
 %include "tests/ver_p.asm"
 post1C:
+;-------------------------------------------------------------------------------
 	POST 1C
+;-------------------------------------------------------------------------------
+;
+;   Verify a Segment for Reading or Writing (VERR/VERW)
+;
 	; null segment
 	testVERR NULL,0
 	testVERW NULL,0
@@ -1141,14 +1218,14 @@ post1C:
 
 %include "print_p.asm"
 
+undefTests:
+;-------------------------------------------------------------------------------
+	POST E0
+;-------------------------------------------------------------------------------
 ;
 ;   Undefined behaviours and bugs
 ;   Results have been validated against 386SX hardware.
 ;
-undefTests:
-
-	POST E0
-
 	mov al, 0
 	cmp al, TEST_UNDEF
 	je arithLogicTests
@@ -1279,16 +1356,15 @@ rotate386FlagsTest:
 	jmp arithLogicTests
 
 
+arithLogicTests:
+;-------------------------------------------------------------------------------
+	POST EE
+;-------------------------------------------------------------------------------
 ;
 ;   Now run a series of unverified tests for arithmetical and logical opcodes
 ;   Manually verify by comparing the tests output with a reference file
 ;
-arithLogicTests:
-
-	POST EE
-
 	jmp bcdTests
-
 
 bcdTests:
 	testBCD   daa, 0x12340503, PS_AF,         PS_CF | PS_PF | PS_ZF | PS_SF | PS_AF
@@ -1336,8 +1412,11 @@ bcdTests:
 	testBCD   aam, 0x12340547, PS_AF,         PS_PF | PS_ZF | PS_SF
 	testBCD   aad, 0x12340407, PS_AF,         PS_PF | PS_ZF | PS_SF
 
+
 	setProtModeIntGate EX_DE, DivExcHandler
 	cld
+	; The tests for arithmetical and logical opcodes are defined as a sequence
+	; of procedures labeled as "tableOps" (see tests/arith-logic_d.asm)
 	mov    esi, tableOps   ; ESI -> tableOps entry
 
 testOps:
@@ -1412,11 +1491,14 @@ DivExcHandlerRet:
 
 %include "tests/arith-logic_d.asm"
 
-;
-; Testing finished. STOP.
-;
+
 postFF:
+;-------------------------------------------------------------------------------
 	POST FF
+;-------------------------------------------------------------------------------
+;
+;   Testing finished. STOP.
+;
 	cli
 	hlt
 	jmp postFF

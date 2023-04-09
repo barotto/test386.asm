@@ -1,3 +1,20 @@
+%macro COM_OUT 2
+mov al, %2
+mov dx, [cs:COMTHRports+(COM_PORT-1)*2]
+add dx, %1
+out dx, al
+%endmacro
+
+	%if COM_PORT
+	COM_OUT 1, 0x00     ; Disable interrupts
+	COM_OUT 3, 0x80     ; Enable DLAB (set baud rate divisor)
+	COM_OUT 0, COM_PORT_DIV & 0xff ; Set divisor low byte
+	COM_OUT 1, COM_PORT_DIV >> 8   ; Set divisor high byte
+	COM_OUT 3, 0x03     ; Disable DLAB, 8 bits, no parity, one stop bit
+	COM_OUT 2, 0x00     ; Disable FIFO
+	COM_OUT 4, 0x00     ; IRQs disabled, RTS/DTR disabled
+	%endif
+
 	%if LPT_PORT && IBM_PS1
 	; Enable output to the configured LPT port
 	mov    ax, 0xff7f  ; bit 7 = 0  setup functions

@@ -18,6 +18,10 @@ LPT_PORT equ 1
 ; Possible values: 0=disabled, 1=COM1 (3F8h-3FDh), 2=COM2 (2F8h-2FDh)
 COM_PORT equ 0
 
+; The serial port speed as a 16-bit divisor of 115200 baud.
+; Possible values range from 0x0001 (115200 baud) to 0x0900 (50 baud)
+COM_PORT_DIV equ 0x0001
+
 ; Additional port for direct ASCII output.
 ; Possible values: any 16-bit value, 0=disabled.
 OUT_PORT equ 0

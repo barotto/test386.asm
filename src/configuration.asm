@@ -12,7 +12,11 @@ POST_PORT equ 0x190
 
 ; The parallel port to use to print ASCII computational results.
 ; Possible values: 0=disabled, 1=LPT1 (3BCh), 2=LPT2 (378h), 3=LPT3 (278h)
-LPT_PORT equ 1
+LPT_PORT equ 0
+
+; The parallel port strobing delay (lower is faster)
+; Possible values: from 0 to 0xffffffff (emulators can use 0 to disable the delay)
+LPT_STROBING equ 0
 
 ; The serial port to use to print ASCII computational results.
 ; Possible values: 0=disabled, 1=COM1 (3F8h-3FDh), 2=COM2 (2F8h-2FDh)

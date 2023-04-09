@@ -6,6 +6,7 @@ out dx, al
 %endmacro
 
 	%if COM_PORT
+	; Initialize the serial port
 	COM_OUT 1, 0x00     ; Disable interrupts
 	COM_OUT 3, 0x80     ; Enable DLAB (set baud rate divisor)
 	COM_OUT 0, COM_PORT_DIV & 0xff ; Set divisor low byte
@@ -16,7 +17,7 @@ out dx, al
 	%endif
 
 	%if LPT_PORT && IBM_PS1
-	; Enable output to the configured LPT port
+	; Enable output to LPT port for PS/1 computers
 	mov    ax, 0xff7f  ; bit 7 = 0  setup functions
 	out    94h, al     ; system board enable/setup register
 	mov    dx, 102h
@@ -25,4 +26,15 @@ out dx, al
 	out    dx, al
 	mov    al, ah
 	out    94h, al     ; bit 7 = 1  enable functions
+	%endif
+
+	%if LPT_PORT
+	; Initialize the printer
+	mov    dx, [cs:LPTports+(LPT_PORT-1)*2]
+	add    dx, 2       ; CONTROL register
+	mov    al, 0x08    ; SELECT, -INIT, IRQ disabled
+	out    dx, al
+	jmp    $+2
+	mov    al, 0x0C    ; SELECT, IRQ disabled
+	out    dx, al
 	%endif

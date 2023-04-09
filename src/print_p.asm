@@ -40,26 +40,49 @@ printEOL:
 printChar:
 	pushfd
 	push   edx
-	%if COM_PORT
+	push   ecx
 	push   eax
+	mov    ah, al      ; save AL
+	%if COM_PORT
 	mov    dx, [cs:COMLSRports+(COM_PORT-1)*2]   ; EDX == COM LSR (Line Status Register)
 .loop:
 	in     al, dx
 	test   al, 0x20    ; THR (Transmitter Holding Register) empty?
 	jz     .loop       ; no
-	pop    eax
+	mov    al, ah      ; restore AL
 	mov    dx, [cs:COMTHRports+(COM_PORT-1)*2]   ; EDX -> COM2 THR (Transmitter Holding Register)
 	out    dx, al
 	jmp    $+2
 	%endif
 	%if LPT_PORT
 	mov    dx, [cs:LPTports+(LPT_PORT-1)*2]
-	out    dx, al
+	inc    dx          ; STATUS register
+.loop2:
+	in     al, dx      ; wait !BUSY
+	test   al, 0x80
+	jz     .loop2      ; wait until it's 1
+	dec    dx          ; DATA register
+	mov    al, ah      ; restore AL
+	out    dx, al      ; send the DATA, then STROBE
 	jmp    $+2
+	add    dx, 2       ; CONTROL register
+	in     al, dx      ; read the current config
+	or     al, 1       ; enable strobing bit
+	out    dx, al
+	and    al, 0xfe    ; disable strobing bit
+	%if LPT_STROBING
+	mov    ecx, LPT_STROBING
+.loop3:
+	loop   .loop3
+	%endif
+	out    dx, al
+	mov    al, ah      ; restore AL
 	%endif
 	%if OUT_PORT
 	out    OUT_PORT, al
 	%endif
+	pop    eax
+	pop    ecx
 	pop    edx
 	popfd
 	ret

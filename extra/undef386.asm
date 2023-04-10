@@ -26,10 +26,10 @@
 ;   The following tests are currently defined:
 ;
 ;   Paging: tests if the CPU follows the 386/486 memory protection behaviour as
-;           described in the programmer's manuals for those CPUs  (wrong) or the
+;           described in the programmer's manuals for those CPUs (wrong) or the
 ;           behaviour of Pentium and later processors (correct).
-;           Possible results: 386/486: wrong implementation
-;                             586+: correct implementation
+;           Possible results: 386/486 docs: wrong implementation
+;                             586+ docs: correct implementation
 ;   32bit SMSW: executes 'SMSW eax' in both real (1st result) and protected (2nd result)
 ;               modes and checks the value of the upper 16 bits of the destination register.
 ;               Possible results: undefined: upper 16 bits are nonsense
@@ -42,15 +42,18 @@
 ;              Possible results: same as "32bit SLDT"
 ;   32bit MOV SR: executes 'MOV eax,ds' and checks the value of the upper 16 bits.
 ;                 Possible results: same as "32bit SLDT"
+;   32bit PUSH SR: executes 'PUSH ds' and checks the value of the upper 16 bits.
+;                 Possible results: same as "32bit SLDT"
 ;   undef. RAM: reads a byte from a memory location that doesn't exist.
 ;               Possible results: a byte in hexadecimal format.
 
-;   These are the results for the 80486DX:
-;    Paging: 586+
+;   These are the results for 80386SX and 80486DX CPUs:
+;    Paging: 586+ docs
 ;    32bit SMSW: CR0 CR0
 ;    32bit SLDT: zero
 ;    32bit STR: zero
 ;    32bit MOV SR: zero
+;    32bit PUSH SR: untouched
 ;    undef. RAM: 0xFF
 ;
 
@@ -87,6 +90,8 @@ resultSTR:
 	dw strError
 resultMOVSR:
 	dw strError
+resultPUSHSR:
+	dw strError
 resultUndefRAM:
 	db 0x00
 flags:
@@ -98,9 +103,10 @@ strSMSW:      db "32bit SMSW: $"
 strSLDT:      db "32bit SLDT: $"
 strSTR:       db "32bit STR: $"
 strMOVSR:     db "32bit MOV SR: $"
+strPUSHSR:    db "32bit PUSH SR: $"
 strUndefRAM:  db "undef. RAM: 0x$"
-strPaging386: db "386/486$"
-strPaging586: db "586+$"
+strPaging386: db "386/486 docs$"
+strPaging586: db "586+ docs$"
 strCR0:       db "CR0 $"
 strUndefined: db "undefined $"
 strUntouched: db "untouched $"
@@ -298,9 +304,21 @@ SMSWProtTest:
 
 
 %macro testUpper16Bits 2+
-; We need to distinguish zeroing, undefined value, and untouched bits
 	mov eax, 0xdeadbeef
 	%2
+	testUpper16BitsResult %1
+%endmacro
+
+%macro testUpper16BitsStack 1
+	push dword 0xdeadbeef
+	add esp, 4
+	o32 push ds
+	pop eax
+	testUpper16BitsResult %1
+%endmacro
+
+%macro testUpper16BitsResult 1
+; We need to distinguish zeroing, undefined value, and untouched bits
 	shr eax, 16
 	cmp ax, 0xdead
 	je %%untouched
@@ -325,7 +343,6 @@ SMSWProtTest:
 ; They are undefined for Pentium, Intel486, and Intel386 processors.
 ; * 80386 and 80486 programmer's manuals:
 ;  The operand-size attribute has no effect on the operation of the instruction.
-
 SLDTTest:
 	testUpper16Bits resultSLDT, sldt eax
 
@@ -345,6 +362,13 @@ STRTest:
 ; Upper 16 bits are zeroed for Pentium Pro and later, undefined for Pentium and earlier.
 MOVSRTest:
 	testUpper16Bits resultMOVSR, mov eax,ds
+
+
+; Test 32-bit PUSH SR
+; Either a zero-extended value is pushed on the stack or the segment selector is written
+; on the stack using a 16-bit move.
+PUSHSRTest:
+	testUpper16BitsStack resultPUSHSR
 
 
 ; Read a byte from not present RAM to see what's there
@@ -535,6 +559,10 @@ printResults:
 
 	printString strMOVSR
 	printString [resultMOVSR]
+	printString strNewline
+
+	printString strPUSHSR
+	printString [resultPUSHSR]
 	printString strNewline
 
 	printString strUndefRAM

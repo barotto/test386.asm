@@ -1,6 +1,6 @@
 ;
 ;   undef386.asm
-;   Copyright (C) 2019 Marco Bortolin <barotto@gmail.com>
+;   Copyright (C) 2019-2023 Marco Bortolin <barotto@gmail.com>
 ;
 ;   undef386.asm is free software: you can redistribute it and/or modify it under
 ;   the terms of the GNU General Public License as published by the Free
@@ -42,13 +42,16 @@
 ;              Possible results: same as "32bit SLDT"
 ;   32bit MOV SR: executes 'MOV eax,ds' and checks the value of the upper 16 bits.
 ;                 Possible results: same as "32bit SLDT"
+;   undef. RAM: reads a byte from a memory location that doesn't exist.
+;               Possible results: a byte in hexadecimal format.
 
-;   These are the results for the 486DX:
+;   These are the results for the 80486DX:
 ;    Paging: 586+
 ;    32bit SMSW: CR0 CR0
 ;    32bit SLDT: zero
 ;    32bit STR: zero
 ;    32bit MOV SR: zero
+;    undef. RAM: 0xFF
 ;
 
 cpu 386
@@ -84,6 +87,8 @@ resultSTR:
 	dw strError
 resultMOVSR:
 	dw strError
+resultUndefRAM:
+	db 0x00
 flags:
 	dw 0
 
@@ -93,6 +98,7 @@ strSMSW:      db "32bit SMSW: $"
 strSLDT:      db "32bit SLDT: $"
 strSTR:       db "32bit STR: $"
 strMOVSR:     db "32bit MOV SR: $"
+strUndefRAM:  db "undef. RAM: 0x$"
 strPaging386: db "386/486$"
 strPaging586: db "586+$"
 strCR0:       db "CR0 $"
@@ -164,6 +170,14 @@ initGDT:
 	defGDTDesc DS_SEG32_DPL3, ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc TSS_SEG,       ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
+
+	%assign FLAT_SEG GDTSelDesc
+	mov  eax, FLAT_SEG
+	mov  esi, 0
+	mov  edi, 0xfffff
+	mov  dx,  ACC_TYPE_DATA_R|ACC_PRESENT|EXT_PAGE ; DOSBox has a bug where EXT_PAGE is not necessary
+	mov  ebx, GDT
+	initDescriptor
 
 	; EAX = cs.base
 	xor   eax, eax
@@ -253,10 +267,8 @@ switchToProtMode:
 	cli ; turn off interrupts
 	o32 lidt [cs:addrIDT]
 	o32 lgdt [cs:addrGDT]
-	mov   eax, [cs:addrPageDir]
-	mov   cr3, eax
 	mov   eax, cr0
-	or    eax, CR0_MSW_PE | CR0_PG
+	or    eax, CR0_MSW_PE
 	mov   cr0, eax
 	jmp   CS_SEG32:toProt32
 
@@ -334,12 +346,26 @@ STRTest:
 MOVSRTest:
 	testUpper16Bits resultMOVSR, mov eax,ds
 
+
+; Read a byte from not present RAM to see what's there
+undefRAMTest:
+	mov   ax, FLAT_SEG
+	mov   gs, ax
+	mov   al, [gs:0xffeffff0]
+	mov   [resultUndefRAM], al
+
 ;
 ; Test memory protection behaviour with Paging, see if programmer's
 ; reference manuals for the 80386 and 80486 processors are wrong.
 ; Keep this test as the last one.
 ;
 pagingTest:
+	; enable paging
+	mov   eax, [cs:addrPageDir]
+	mov   cr3, eax
+	mov   eax, cr0
+	or    eax, CR0_PG
+	mov   cr0, eax
 switchToRing3:
 	mov   ebx, TSS
 	; set ring 0 SS:ESP
@@ -453,11 +479,41 @@ toReal:
 	; 9. Execute the STI instruction
 	sti
 
+	jmp printResults
+
+
 %macro printString 1
 	mov   dx, %1
 	mov   ah, 0x9
 	int   0x21
 %endmacro
+%macro printChar 0
+	mov   ah, 0x2
+	int   0x21
+%endmacro
+
+;
+;   printHex(EDX == value, CL == number of hex digits)
+;
+printHex:
+	shl    cl, 2  ; CL == number of bits (4 times the number of hex digits)
+	jz     .done
+.loop:
+	sub    cl, 4
+	push   edx
+	shr    edx, cl
+	and    dl, 0x0f
+	add    dl, '0'
+	cmp    dl, '9'
+	jbe    .digit
+	add    dl, 'A'-'0'-10
+.digit:
+	printChar
+	pop    edx
+	test   cl, cl
+	jnz    .loop
+.done:
+	ret
 
 printResults:
 	printString strPaging
@@ -479,6 +535,13 @@ printResults:
 
 	printString strMOVSR
 	printString [resultMOVSR]
+	printString strNewline
+
+	printString strUndefRAM
+	xor edx, edx
+	mov dl, byte [resultUndefRAM]
+	mov cl, 2
+	call printHex
 	printString strNewline
 
 exit:

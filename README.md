@@ -116,7 +116,7 @@ This is the list of tests with their diagnostic code:
 | 0x05 | Calls in real mode                                                 |
 | 0x06 | Load full pointer in real mode                                     |
 | 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
-| 0x09 | Stack functionality                                                |
+| 0x09 | Stack functionality †                                              |
 | 0x0A | Test user mode (ring 3) switching                                  |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
@@ -139,6 +139,10 @@ This is the list of tests with their diagnostic code:
 | 0xE0 | Undefined behaviours and bugs (CPU family dependent) *             |
 | 0xEE | Series of unverified tests for arithmetical and logical opcodes ** |
 | 0xFF | Testing completed                                                  |
+
+† test <tt>0x09</tt> will test the upper 16-bit value of a 32-bit PUSH of a
+16-bit segment selector when TEST_UNDEF is enabled, and will fail if the word is
+modified.
 
 \* test <tt>0xE0</tt> needs to be enabled via the TEST_UNDEF equ, and 
 the proper CPU family needs to be specified with the CPU_FAMILY equ (currently

@@ -235,6 +235,26 @@
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
+; Tests an user-mode exception
+;%1: exception number
+;%2: fault error code
+;%3 instruction to execute
+%macro testUserFault 3
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%3
+	jmp   error
+%%startinglabel:
+	loadProtModeStack
+	protModeFaultTestEx %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
 ;
 ; Checks exception result and restores the previous handler
 ;

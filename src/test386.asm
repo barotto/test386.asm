@@ -564,12 +564,24 @@ protTests:
 	; test some privileged ops
 	protModeFaultTest EX_GP, 0, cli
 	protModeFaultTest EX_GP, 0, hlt
+	;Perform user-mode far call test
+	call CU_SEG_PROT32|3:userfarfunc
+	;Perform user-mode far jump test
+	jmp CU_SEG_PROT32|3:userjmpfunc
+	userfarfunc:
+		retf ;Simply return to the caller on the same privilege level
+	userjmpfunc:
 	; switch back to ring 0
 	call switchToRing0
 	; CS must be C_SEG_PROT32|0 (CPL=0)
 	mov    ax, cs
 	cmp    ax, C_SEG_PROT32
 	jne    error
+
+	;Perform some user mode exception tests
+	testUserFault EX_GP, C_SEG_PROT32, jmp C_SEG_PROT32|3:0
+	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0
+	;User mode validated.
 
 
 ;-------------------------------------------------------------------------------

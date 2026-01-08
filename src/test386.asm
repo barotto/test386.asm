@@ -579,10 +579,20 @@ protTests:
 	jne    error
 
 	;Perform some user mode exception tests
+	;Basic jump from user mode to kernel mode
 	testUserFault EX_GP, C_SEG_PROT32, jmp C_SEG_PROT32|3:0
+	;Basic call from user mode to kernel mode
 	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0
+	;Far return from user mode to kernel mode
+	testUserFault EX_GP, C_SEG_PROT32, jmp userretferrorfunction
 	;User mode validated.
-
+	jmp skipuserretffunction
+	userretferrorfunction:
+		;From user mode to kernel mode error address, which isn't allowed.
+		push C_SEG_PROT32
+		push error
+		retf
+	skipuserretffunction
 
 ;-------------------------------------------------------------------------------
 	POST B

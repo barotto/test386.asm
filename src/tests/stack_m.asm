@@ -406,7 +406,15 @@
 	jne    error
 	cmp    ebx, 0x44444444
 	jne    error
+	%if %1 = 16
+		%if TEST_UNDEF && CPU_FAMILY = 3
+		cmp    esp, 0xDEAD0000 ; On the i386 ESP is actually loaded with the MSW of the popped value.
+		%else
+		cmp    sp, 0x0000 ; check SP only as we're not testing undefined behaviours. 
+		%endif
+	%else
 	cmp    esp, 0x20000
+	%endif
 	jne    error
 	lea    eax, [esp-4]
 	%if %1 = 16

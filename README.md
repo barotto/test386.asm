@@ -140,9 +140,10 @@ This is the list of tests with their diagnostic code:
 | 0xEE | Series of unverified tests for arithmetical and logical opcodes ** |
 | 0xFF | Testing completed                                                  |
 
-† test <tt>0x09</tt> will test the upper 16-bit value of a 32-bit PUSH of a
-16-bit segment selector when TEST_UNDEF is enabled, and will fail if the word is
-modified.
+† When TEST_UNDEF is enabled, test <tt>0x09</tt> will test the upper 16-bit
+value of a 32-bit PUSH of a 16-bit segment selector, and will fail if the word
+is modified. It'll also check the MSW of ESP after a POPAD, that for 16-bit
+stacks must be equal to the MSW of its popped value.
 
 \* test <tt>0xE0</tt> needs to be enabled via the TEST_UNDEF equ, and 
 the proper CPU family needs to be specified with the CPU_FAMILY equ (currently

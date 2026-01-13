@@ -320,7 +320,7 @@ ptrTSSprot: ; pointer to the task state segment
 	dd 0
 	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x117              ; 16-bit limit
+	dw 0x11F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -356,9 +356,15 @@ initIDT:
 	mov    edi, kernelconforminginterrupt
 	inc    eax
 	call   initIntGateReal
-	;Interrupt 22h: user mode interrupt
+	;Interrupt 22h: user mode only interrupt
 	mov    esi, CU_SEG_PROT32
 	mov    edi, usermodeinterrupt
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 23h: kernel mode only interrupt
+	mov    esi, C_SEG_PROT32
+	mov    edi, kernelonlyinterrupt
+	mov    dx,  ACC_DPL_0
 	inc    eax
 	call   initIntGateReal
 
@@ -629,6 +635,34 @@ protTests:
 		cmp dword [esp+0x10],SU_SEG_PROT32|3
 		jne error ;Invalid user stack segment
 		iret ;Simply return to user mode
+	kernelonlyinterrupt: ;Kernel mode interrupt handler
+		push ax
+		testCPL 0 ;Stays at CPL 0
+		pop ax
+		push ebx
+		push ds
+		push ecx
+		lds ebx, [cs:ptrTSSprot] ;Get the TSS
+		mov ecx,eax ;Get ESP for the kernel mode program (stored into eax)
+		sub ecx,0xC+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		mov bx,word [bx+8] ;Expected: kernel mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jne error
+		pop ecx
+		mov bx,cs
+		cmp bx,C_SEG_PROT32 ;Did we arrive at proper kernel code?
+		jne error
+		pop ds
+		pop ebx
+		cmp dword [esp+0x00],kernelmodeonlyinterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],C_SEG_PROT32
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to user mode
 	kernelconforminginterrupt: ;Kernel mode conforming interrupt handler
 		testCPL 3 ;Conforming stays at CPL 3
 		push ebx
@@ -697,6 +731,12 @@ protTests:
 	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0
 	;Far return from user mode to kernel mode
 	testUserFaultEx EX_GP, C_SEG_PROT32, userretferrorlocation, jmp userretferrorfunction
+	;Test kernel mode only interrupt
+	mov eax,esp ;Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
+	int 0x23
+	kernelmodeonlyinterruptreturn:
+	;Interrupt from kernel mode to user mode is forbidden, so test for that.
+	protModeFaultTest EX_GP, CU_SEG_PROT32, int 0x22
 	;User mode validated.
 
 ;-------------------------------------------------------------------------------

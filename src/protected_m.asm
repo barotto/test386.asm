@@ -239,7 +239,7 @@
 ;%1: exception number
 ;%2: fault error code
 ;%3 instruction to execute
-%macro testUserFault 3
+%macro testUserFault 3+
 jmp %%startinglabel
 %%usercodelabel:
 	call  switchToRing3
@@ -252,6 +252,27 @@ jmp %%startinglabel
 %%startinglabel:
 	loadProtModeStack
 	protModeFaultTestEx %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception with custom fault point
+;%1: exception number
+;%2: fault error code
+;%3: the expected value of pushed EIP
+;%4 instruction to execute
+%macro testUserFaultEx 4+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%4
+	jmp   error
+%%startinglabel:
+	loadProtModeStack
+	protModeFaultTestEx %1, %2, 3, %3, call %%usercodelabel
 	testCPL 0
 %endmacro
 

@@ -357,7 +357,7 @@ initIDT:
 	inc    eax
 	call   initIntGateReal
 	;Interrupt 22h: user mode interrupt
-	mov    esi, CC_SEG_PROT32
+	mov    esi, CU_SEG_PROT32
 	mov    edi, usermodeinterrupt
 	inc    eax
 	call   initIntGateReal
@@ -583,6 +583,7 @@ protTests:
 	protModeFaultTest EX_GP, 0, hlt
 	;Test invalid interrupt call
 	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
+	;We should have the intial user mode stack setup right now for the below checks to validate.
 	;Interrupt from user mode to kernel mode
 	int 0x20
 	kernelmodeinterruptreturn:
@@ -601,18 +602,50 @@ protTests:
 		retf ;Simply return to the caller on the same privilege level
 	kernelinterrupt: ;Kernel mode interrupt handler
 		testCPL 0 ;Elevates to CPL 0
+		push ebx
+		push ecx
+		push ds
+		lds ebx, [cs:ptrTSSprot] ;Get the TSS
+		mov ecx,[ebx+4] ;Get TSS ESP0
+		sub ecx,0x14+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jnz error
+		mov cx,ss
+		cmp cx,word [ebx+8] ;Did the stack pointer load correctly?
+		jnz error
+		pop ds
+		pop ecx
+		mov bx,cs
+		cmp bx,C_SEG_PROT32 ;Did we end up in kernel mode correctly?
+		jnz error
+		pop ebx
 		cmp dword [esp+0x00],kernelmodeinterruptreturn
 		jnz error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
 		jnz error ;Invalid return code segment
 		;Ignore eflags
-		cmp dword [esp+0x10],ESP_R3_PROT
+		cmp dword [esp+0x0C],ESP_R3_PROT
 		jnz error ;Invalid return ESP
-		cmp dword [esp+0x14],SU_SEG_PROT32|3
+		cmp dword [esp+0x10],SU_SEG_PROT32|3
 		jnz error ;Invalid user stack segment
 		iret ;Simply return to user mode
 	kernelconforminginterrupt: ;Kernel mode conforming interrupt handler
 		testCPL 3 ;Conforming stays at CPL 3
+		push ebx
+		push ecx
+		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
+		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jnz error
+		mov cx,ss
+		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jnz error
+		pop ecx
+		mov bx,cs
+		cmp bx,CC_SEG_PROT32|3 ;Did we arrive at proper conforming code?
+		jnz error
+		pop ebx
 		cmp dword [esp+0x00],kernelconforminginterruptreturn
 		jnz error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
@@ -621,12 +654,34 @@ protTests:
 		iret ;Simply return to user mode, stays at CPL 3
 	usermodeinterrupt: ;User mode interrupt handler
 		testCPL 3 ;User mode stays at CPL 3
+		push ebx
+		push ecx
+		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
+		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jnz error
+		mov cx,ss
+		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jnz error
+		pop ecx
+		mov bx,cs
+		cmp bx,CU_SEG_PROT32|3 ;Did we arrive at proper user mode code?
+		jnz error
+		pop ebx
 		cmp dword [esp+0x00],userinterruptreturn
 		jnz error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
 		jnz error ;Invalid return code segment
 		;Ignore eflags
 		iret ;Simply return to caller, stays as user mode.
+
+	userretferrorfunction:
+		;From user mode to kernel mode error address, which isn't allowed.
+		push C_SEG_PROT32
+		push error
+		userretferrorlocation:
+		retf
 	userjmpfunc:
 	; switch back to ring 0
 	call switchToRing0
@@ -641,15 +696,8 @@ protTests:
 	;Basic call from user mode to kernel mode
 	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0
 	;Far return from user mode to kernel mode
-	testUserFault EX_GP, C_SEG_PROT32, jmp userretferrorfunction
+	testUserFaultEx EX_GP, C_SEG_PROT32, userretferrorlocation, jmp userretferrorfunction
 	;User mode validated.
-	jmp skipuserretffunction
-	userretferrorfunction:
-		;From user mode to kernel mode error address, which isn't allowed.
-		push C_SEG_PROT32
-		push error
-		retf
-	skipuserretffunction:
 
 ;-------------------------------------------------------------------------------
 	POST B

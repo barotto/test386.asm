@@ -68,9 +68,9 @@
 ;
 ; memory map:
 ;  00000-003FF real mode IDT
-;  00400-004FF protected mode IDT
-;  00500-0077F protected mode GDT
-;  00800-00FFF protected mode LDT
+;  00400-00517 protected mode IDT
+;  00600-0087F protected mode GDT
+;  00900-00FFF protected mode LDT
 ;  01000-01FFF page directory
 ;  02000-02FFF page table 0
 ;  03000-03FFF page table 1
@@ -89,7 +89,7 @@ TEST_BASE  equ 0x20000
 C_SEG_REAL   equ 0xf000
 S_SEG_REAL   equ 0x1000
 IDT_SEG_REAL equ 0x0040
-GDT_SEG_REAL equ 0x0050
+GDT_SEG_REAL equ 0x0060
 GDT_SEG_LIMIT equ 0x2FF
 %assign D1_SEG_REAL TEST_BASE1 >> 4
 %assign D2_SEG_REAL TEST_BASE2 >> 4
@@ -273,12 +273,12 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc GDT_DSEG_PROT, 0x00000500,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc LDT_SEG_PROT,  0x00000800,0x000007ff,ACC_TYPE_LDT|ACC_PRESENT
-	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x00000117,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x00000117,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc LDT_SEG_PROT,  0x00000900,0x000006ff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_DSEG_PROT, 0x00000900,0x000006ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
@@ -320,7 +320,7 @@ ptrTSSprot: ; pointer to the task state segment
 	dd 0
 	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0xFF              ; 16-bit limit
+	dw 0x117              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -344,6 +344,23 @@ initIDT:
 	call   initIntGateReal
 %assign vector vector+1
 %endrep
+	;Install some interrupt handlers for user mode tests
+	;Interrupt 20h: non-conforming kernel interrupt, callable from user mode
+	mov    esi, C_SEG_PROT32
+	mov    edi, kernelinterrupt
+	mov    dx,  ACC_DPL_3
+	mov    eax, 0x20
+	call   initIntGateReal
+	;Interrupt 21h: conforming kernel interrupt, callable from user mode
+	mov    esi, CC_SEG_PROT32
+	mov    edi, kernelconforminginterrupt
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 22h: user mode interrupt
+	mov    esi, CC_SEG_PROT32
+	mov    edi, usermodeinterrupt
+	inc    eax
+	call   initIntGateReal
 
 	jmp initPaging
 
@@ -564,12 +581,52 @@ protTests:
 	; test some privileged ops
 	protModeFaultTest EX_GP, 0, cli
 	protModeFaultTest EX_GP, 0, hlt
+	;Test invalid interrupt call
+	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
+	;Interrupt from user mode to kernel mode
+	int 0x20
+	kernelmodeinterruptreturn:
+	;Interrupt from user mode to kernel conforming
+	int 0x21
+	kernelconforminginterruptreturn:
+	;Interrupt from user mode to user mode
+	int 0x22
+	userinterruptreturn:
+	;Interupt from user mode to
 	;Perform user-mode far call test
 	call CU_SEG_PROT32|3:userfarfunc
 	;Perform user-mode far jump test
 	jmp CU_SEG_PROT32|3:userjmpfunc
 	userfarfunc:
 		retf ;Simply return to the caller on the same privilege level
+	kernelinterrupt: ;Kernel mode interrupt handler
+		testCPL 0 ;Elevates to CPL 0
+		cmp dword [esp+0x00],kernelmodeinterruptreturn
+		jnz error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jnz error ;Invalid return code segment
+		;Ignore eflags
+		cmp dword [esp+0x10],ESP_R3_PROT
+		jnz error ;Invalid return ESP
+		cmp dword [esp+0x14],SU_SEG_PROT32|3
+		jnz error ;Invalid user stack segment
+		iret ;Simply return to user mode
+	kernelconforminginterrupt: ;Kernel mode conforming interrupt handler
+		testCPL 3 ;Conforming stays at CPL 3
+		cmp dword [esp+0x00],kernelconforminginterruptreturn
+		jnz error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jnz error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to user mode, stays at CPL 3
+	usermodeinterrupt: ;User mode interrupt handler
+		testCPL 3 ;User mode stays at CPL 3
+		cmp dword [esp+0x00],userinterruptreturn
+		jnz error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jnz error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to caller, stays as user mode.
 	userjmpfunc:
 	; switch back to ring 0
 	call switchToRing0
@@ -592,7 +649,7 @@ protTests:
 		push C_SEG_PROT32
 		push error
 		retf
-	skipuserretffunction
+	skipuserretffunction:
 
 ;-------------------------------------------------------------------------------
 	POST B

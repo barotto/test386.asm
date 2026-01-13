@@ -609,25 +609,25 @@ protTests:
 		mov ecx,[ebx+4] ;Get TSS ESP0
 		sub ecx,0x14+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
 		cmp esp,ecx ;Did the stack decrease correctly?
-		jnz error
+		jne error
 		mov cx,ss
 		cmp cx,word [ebx+8] ;Did the stack pointer load correctly?
-		jnz error
+		jne error
 		pop ds
 		pop ecx
 		mov bx,cs
 		cmp bx,C_SEG_PROT32 ;Did we end up in kernel mode correctly?
-		jnz error
+		jne error
 		pop ebx
 		cmp dword [esp+0x00],kernelmodeinterruptreturn
-		jnz error ;Invalid return address
+		jne error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
-		jnz error ;Invalid return code segment
+		jne error ;Invalid return code segment
 		;Ignore eflags
 		cmp dword [esp+0x0C],ESP_R3_PROT
-		jnz error ;Invalid return ESP
+		jne error ;Invalid return ESP
 		cmp dword [esp+0x10],SU_SEG_PROT32|3
-		jnz error ;Invalid user stack segment
+		jne error ;Invalid user stack segment
 		iret ;Simply return to user mode
 	kernelconforminginterrupt: ;Kernel mode conforming interrupt handler
 		testCPL 3 ;Conforming stays at CPL 3
@@ -636,20 +636,20 @@ protTests:
 		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
 		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
 		cmp esp,ecx ;Did the stack decrease correctly?
-		jnz error
+		jne error
 		mov cx,ss
 		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
 		cmp cx,bx ;Did the stack pointer load correctly?
-		jnz error
+		jne error
 		pop ecx
 		mov bx,cs
 		cmp bx,CC_SEG_PROT32|3 ;Did we arrive at proper conforming code?
-		jnz error
+		jne error
 		pop ebx
 		cmp dword [esp+0x00],kernelconforminginterruptreturn
-		jnz error ;Invalid return address
+		jne error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
-		jnz error ;Invalid return code segment
+		jne error ;Invalid return code segment
 		;Ignore eflags
 		iret ;Simply return to user mode, stays at CPL 3
 	usermodeinterrupt: ;User mode interrupt handler
@@ -659,20 +659,20 @@ protTests:
 		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
 		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
 		cmp esp,ecx ;Did the stack decrease correctly?
-		jnz error
+		jne error
 		mov cx,ss
 		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
 		cmp cx,bx ;Did the stack pointer load correctly?
-		jnz error
+		jne error
 		pop ecx
 		mov bx,cs
 		cmp bx,CU_SEG_PROT32|3 ;Did we arrive at proper user mode code?
-		jnz error
+		jne error
 		pop ebx
 		cmp dword [esp+0x00],userinterruptreturn
-		jnz error ;Invalid return address
+		jne error ;Invalid return address
 		cmp dword [esp+0x04],CU_SEG_PROT32|3
-		jnz error ;Invalid return code segment
+		jne error ;Invalid return code segment
 		;Ignore eflags
 		iret ;Simply return to caller, stays as user mode.
 

@@ -769,9 +769,12 @@ protTests:
 
 	userV86iretrealmodefunc:
 		bits 16
-		pushf
+		pushf ;This doubles as a pushf IOPL 3 test
 		push cs
 		push word userV86iretinterrupttret
+		;Also, STI/CLI are allowed in this case, perform the test here.
+		sti
+		cli
 		iret
 		bits 32
 
@@ -814,6 +817,9 @@ protTests:
 	;Check invalid virtual 8086 mode interrupts
 	;interrupt without IOPL 3 faults with #GP(0)
 	testUserV86_0_Fault EX_GP, 0, int 0x22
+	;CLI/STI without IOPL 3 faults with #GP(0)
+	testUserV86_0_Fault EX_GP, 0, cli
+	testUserV86_0_Fault EX_GP, 0, sti
 	;pushf isn't allowed with IOPL 0
 	testUserV86_0_Fault EX_GP, 0, pushf
 	;iret without IOPL 3 faults with #GP(0)

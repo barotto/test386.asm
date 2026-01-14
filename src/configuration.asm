@@ -30,9 +30,9 @@ COM_PORT_DIV equ 0x0001
 ; Possible values: any 16-bit value, 0=disabled.
 OUT_PORT equ 0
 
-; Enable POST E0 test for undefined behaviours and bugs. You also need to
-; specify the CPU model your emulator implements (see CPU_FAMILY).
-; Possible values: 1=enable POST E0, 0=skip the tests
+; Enable undefined behaviour testing. You also need to specify the CPU model your
+; emulator implements (see CPU_FAMILY).
+; Possible values: 1=enable, 0=disable
 TEST_UNDEF equ 0
 
 ; The CPU family option is used only when POST E0 is enabled.

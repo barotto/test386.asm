@@ -324,7 +324,7 @@ jmp %%startinglabel
 ; Tests an user-mode exception with custom fault point
 ;%1: exception number
 ;%2: fault error code
-;%3: the expected value of pushed EIP
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
 ;%4 instruction to execute
 %macro testUserFaultEx 4+
 jmp %%startinglabel
@@ -338,14 +338,18 @@ jmp %%startinglabel
 	jmp   error
 %%startinglabel:
 	loadProtModeStack
+	%if %3 = -1
+	protModeFaultTestEx %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
 	protModeFaultTestEx %1, %2, 3, %3, call %%usercodelabel
+	%endif
 	testCPL 0
 %endmacro
 
 ; Tests an user-mode exception with custom fault point (Virtual 8086 mode) under IOPL 0
 ;%1: exception number
 ;%2: fault error code
-;%3: the expected value of pushed EIP
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
 ;%4 instruction to execute
 %macro testUserV86_0_FaultEx 4+
 jmp %%startinglabel
@@ -358,14 +362,18 @@ jmp %%startinglabel
 	bits 32
 %%startinglabel:
 	loadProtModeStack
+	%if %3 = -1
 	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
+	%else
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%endif
 	testCPL 0
 %endmacro
 
 ; Tests an user-mode exception with custom fault point (Virtual 8086 mode) under IOPL 3
 ;%1: exception number
 ;%2: fault error code
-;%3: the expected value of pushed EIP
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
 ;%4 instruction to execute
 %macro testUserV86_3_FaultEx 4+
 jmp %%startinglabel
@@ -378,7 +386,11 @@ jmp %%startinglabel
 	bits 32
 %%startinglabel:
 	loadProtModeStack
+	%if %3 = -1
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
 	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
+	%endif
 	testCPL 0
 %endmacro
 

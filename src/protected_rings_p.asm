@@ -180,9 +180,10 @@ switchToRing0:
 
 ; Handles cleanup after returning from Ring 3 (Virtual 8086 mode) to Ring 0
 ;
-; After calling this procedure consider all the registers and flags as trashed.
+; After calling this procedure consider all the registers and flags as trashed. Assumes that the error code has already been popped.
 ;
 switchedToRing0V86_cleanup:
+	add    esp, 0x24 ;Clean up stack from the V86 mode. 
 	push   ds
 	push   ebx
 	lds    ebx, [cs:ptrTSSprot]
@@ -200,3 +201,17 @@ switchedToRing0V86_cleanup:
 	pop    ebx
 	pop    ds
 	ret
+
+V86modeexitinterrupt:
+	call    switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
+	push    eax ;Push the return point
+	ret
+
+; Switches from Ring 3 to Ring 0 (V86 mode)
+;
+; After calling this procedure consider all the registers and flags as trashed.
+;
+switchtoring0V86:
+	pop    eax ; read the return offset
+	int    0x25
+

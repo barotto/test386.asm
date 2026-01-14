@@ -259,6 +259,7 @@
 	%else
 		protModeExcCheckV86 %1, %2, %4, expectedCS
 	%endif
+	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 

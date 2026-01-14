@@ -68,7 +68,7 @@
 ;
 ; memory map:
 ;  00000-003FF real mode IDT
-;  00400-00527 protected mode IDT
+;  00400-0052F protected mode IDT
 ;  00600-0087F protected mode GDT
 ;  00900-00FFF protected mode LDT
 ;  01000-01FFF page directory
@@ -273,8 +273,8 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x00000127,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x00000127,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000012F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000012F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000900,0x000006ff,ACC_TYPE_LDT|ACC_PRESENT
@@ -320,7 +320,7 @@ ptrTSSprot: ; pointer to the task state segment
 	dd 0
 	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x127              ; 16-bit limit
+	dw 0x12F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -371,6 +371,12 @@ initIDT:
 	mov    esi, CC_SEG_PROT32
 	mov    edi, kernelonlyconforminginterrupt
 	mov    dx,  ACC_DPL_0
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 25h: kernel mode interrupt, callable from user mode. Switches out of V86 mode
+	mov    esi, C_SEG_PROT32
+	mov    edi, V86modeexitinterrupt
+	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
 

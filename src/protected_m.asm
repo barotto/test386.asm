@@ -260,7 +260,6 @@
 		protModeExcCheckV86 %1, %2, %4, expectedCS
 	%endif
 	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
-	add    esp, 0x24 ;Clean up stack from the V86 mode. 
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
@@ -473,5 +472,5 @@ jmp %%startinglabel
 	%endif
 	cmp    [ss:esp+exc_errcode], dword %3
 	jne    error
-	add    esp, 12+exc_errcode
+	add    esp, 0x24+exc_errcode
 %endmacro

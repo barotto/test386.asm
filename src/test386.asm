@@ -826,6 +826,9 @@ protTests:
 	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
 	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)
 	testUserV86_3_Fault EX_GP, CU_SEG_PROT32, int 0x22
+	;HLT is privileged and raises #GP(0) no matter what IOPL is used
+	testUserV86_3_Fault EX_GP, 0, hlt
+	testUserV86_0_Fault EX_GP, 0, hlt
 	;iret with IOPL 3 proceeds as in real mode
 	;Now, validate simply exiting Virtual 8086 mode, using the interrupt
 	call switchToRing3V86_3

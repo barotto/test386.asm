@@ -282,8 +282,8 @@ initGDT:
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSS_PROT,      0x00004000,0x00000fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc TSS_PROT,      0x00004000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 
@@ -578,6 +578,20 @@ protTests:
 	mov    es, ax
 	mov    fs, ax
 	mov    gs, ax
+	pushfd
+	or word [esp],0x3000	;Make I/O ports available on user mode
+	popfd ;Make I/O ports availble now
+	call   switchToRing3
+	in al,0x64 ;Read some I/O port freely
+	; switch back to ring 0
+	call switchToRing0
+	; CS must be C_SEG_PROT32|0 (CPL=0)
+	mov    ax, cs
+	cmp    ax, C_SEG_PROT32
+	jne    error
+	pushfd
+	and word [esp],0xFFF ;Block ports on user mode again
+	popfd
 	call   switchToRing3
 	; CS must be CU_SEG_PROT32|3 (CPL=3)
 	mov    ax, cs
@@ -599,6 +613,8 @@ protTests:
 	; test some privileged ops
 	protModeFaultTest EX_GP, 0, cli
 	protModeFaultTest EX_GP, 0, hlt
+	; I/O ports are blocked
+	protModeFaultTest EX_GP, 0, in al,0x64
 	;Test invalid interrupt call
 	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
 	;We should have the intial user mode stack setup right now for the below checks to validate.
@@ -790,6 +806,11 @@ protTests:
 		userV86ireterrorfunclocationinstruction:
 		iret
 		jmp error
+
+	userV86ioinstruction0:
+		in al,0x64
+		jmp error
+
 		bits 32
 	userjmpfunc:
 	; switch back to ring 0
@@ -831,6 +852,8 @@ protTests:
 	;popf(d) isn't allowed with IOPL 0
 	testUserV86_0_Fault EX_GP, 0, popf
 	testUserV86_0_Fault EX_GP, 0, popfd
+	;port i/o isn't allowed with IOPL 0 and TSS I/O map set or out of range
+	testUserV86_0_FaultEx EX_GP, 0, userV86ioinstruction0, call userV86ioinstruction0
 	;iret without IOPL 3 faults with #GP(0)
 	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
 	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)

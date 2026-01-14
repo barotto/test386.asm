@@ -260,6 +260,7 @@
 		protModeExcCheckV86 %1, %2, %4, expectedCS
 	%endif
 	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
+	add    esp, 0x24 ;Clean up stack from the V86 mode. 
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
@@ -292,8 +293,10 @@ jmp %%startinglabel
 %%usercodelabel:
 	call  switchToRing3V86_0
 %%instructionlabel:
+	bits 16
 	%3
 	jmp   error
+	bits 32
 %%startinglabel:
 	loadProtModeStack
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
@@ -309,8 +312,10 @@ jmp %%startinglabel
 %%usercodelabel:
 	call  switchToRing3V86_3
 %%instructionlabel:
+	bits 16
 	%3
 	jmp   error
+	bits 32
 %%startinglabel:
 	loadProtModeStack
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
@@ -348,8 +353,10 @@ jmp %%startinglabel
 %%usercodelabel:
 	call  switchToRing3V86_0
 %%instructionlabel:
+	bits 16
 	%4
 	jmp   error
+	bits 32
 %%startinglabel:
 	loadProtModeStack
 	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
@@ -366,8 +373,10 @@ jmp %%startinglabel
 %%usercodelabel:
 	call  switchToRing3V86_3
 %%instructionlabel:
+	bits 16
 	%4
 	jmp   error
+	bits 32
 %%startinglabel:
 	loadProtModeStack
 	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
@@ -420,6 +429,25 @@ jmp %%startinglabel
 ; %4: expected pushed value of CS (optional)
 ;
 %macro protModeExcCheckV86 3-4 -1
+	;Validate if the segment registers are properly cleared.
+	push eax
+	push ds
+	pop eax
+	cmp ax,0
+	jne error
+	push es
+	pop eax
+	cmp ax,0
+	jne error
+	push fs
+	pop eax
+	cmp ax,0
+	jne error
+	push gs
+	pop eax
+	cmp ax,0
+	jne error
+	pop eax
 	%if %1 == 8 || (%1 > 10 && %1 <= 14)
 	%assign exc_errcode 4
 	cmp    [ss:esp], dword %2

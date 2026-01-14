@@ -756,6 +756,33 @@ protTests:
 		push error
 		userretferrorlocation:
 		retf
+	userV86exitfunclocation:
+		bits 16
+		push userV86exitfuncret ;Where to continue
+		jmp switchtoring0V86
+		bits 32
+	userV86iretinterrupttret:
+		bits 16
+		push dword userV86iretexitfunclocationret
+		jmp switchtoring0V86
+		bits 32
+
+	userV86iretrealmodefunc:
+		bits 16
+		pushf
+		push cs
+		push word userV86iretinterrupttret
+		iret
+		bits 32
+
+	userV86ireterrorfunclocation:
+		bits 16
+		push cs
+		push error
+		userV86ireterrorfunclocationinstruction:
+		iret
+		jmp error
+		bits 32
 	userjmpfunc:
 	; switch back to ring 0
 	call switchToRing0
@@ -781,7 +808,34 @@ protTests:
 	mov eax,esp ;Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
 	int 0x24
 	kernelonlyconforminginterruptreturn:
-	;User and kernel mode validated.
+	;Protected User and kernel mode validated.
+	
+	;Now, validate virtual 8086 mode
+	;Check invalid virtual 8086 mode interrupts
+	;interrupt without IOPL 3 faults with #GP(0)
+	testUserV86_0_Fault EX_GP, 0, int 0x22
+	;pushf isn't allowed with IOPL 0
+	testUserV86_0_Fault EX_GP, 0, pushf
+	;iret without IOPL 3 faults with #GP(0)
+	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
+	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)
+	testUserV86_3_Fault EX_GP, CU_SEG_PROT32, int 0x22
+	;iret with IOPL 3 proceeds as in real mode
+	;Now, validate simply exiting Virtual 8086 mode, using the interrupt
+	call switchToRing3V86_3
+	bits 16
+	jmp userV86iretrealmodefunc
+	jmp error
+	bits 32
+	userV86iretexitfunclocationret:
+	;Now, validate simply exiting Virtual 8086 mode, using the interrupt
+	call switchToRing3V86_3
+	bits 16
+	jmp userV86exitfunclocation
+	jmp error
+	bits 32
+	userV86exitfuncret:
+	;Virtual 8086 mode validated
 
 ;-------------------------------------------------------------------------------
 	POST B

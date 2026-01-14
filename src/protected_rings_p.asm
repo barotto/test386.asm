@@ -48,7 +48,7 @@ switchToRing3:
 	push dword SU_SEG_PROT32|3    ; push user stack with RPL=3
 	push dword ESP_R3_PROT        ; push user mode esp
 	pushfd                        ; push eflags
-	or   dword [ss:esp+4], 0x200  ; reenable interrupts in ring 3 (can't use privileged sti)
+	or   dword [ss:esp], 0x200  ; reenable interrupts in ring 3 (can't use privileged sti)
 	push dword CU_SEG_PROT32|3    ; push user code segment with RPL=3
 	push dword edx                ; push return EIP
 	iretd
@@ -94,8 +94,8 @@ switchToRing3V86_0:
 	push dword 0x1000    ; push user stack with RPL=3
 	push dword ESP_R3_PROT        ; push user mode esp
 	pushfd                        ; push eflags
-	or   dword [ss:esp+4], 0x20200  ; reenable interrupts in ring 3 (can't use privileged sti), V8086 flag set, IOPL 0
-	and   dword [ss:esp+4], 0xF0FFF  ; setup IOPL 0 properly
+	or   dword [ss:esp], 0x20200  ; reenable interrupts in ring 3 (can't use privileged sti), V8086 flag set, IOPL 0
+	and   dword [ss:esp], 0xF0FFF  ; setup IOPL 0 properly
 	push dword 0xF000    ; push user code segment with RPL=3
 	push dword edx                ; push return EIP
 	iretd
@@ -141,7 +141,7 @@ switchToRing3V86_3:
 	push dword 0x1000    ; push user stack with RPL=3
 	push dword ESP_R3_PROT        ; push user mode esp
 	pushfd                        ; push eflags
-	or   dword [ss:esp+4], 0x23200  ; reenable interrupts in ring 3 (can't use privileged sti), V8086 flag set, IOPL 3
+	or   dword [ss:esp], 0x23200  ; reenable interrupts in ring 3 (can't use privileged sti), V8086 flag set, IOPL 3
 	push dword 0xF000    ; push user code segment with RPL=3
 	push dword edx                ; push return EIP
 	iretd
@@ -183,7 +183,6 @@ switchToRing0:
 ; After calling this procedure consider all the registers and flags as trashed. Assumes that the error code has already been popped.
 ;
 switchedToRing0V86_cleanup:
-	add    esp, 0x24 ;Clean up stack from the V86 mode. 
 	push   ds
 	push   ebx
 	lds    ebx, [cs:ptrTSSprot]
@@ -203,15 +202,18 @@ switchedToRing0V86_cleanup:
 	ret
 
 V86modeexitinterrupt:
-	call    switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
+	call    switchedToRing0V86_cleanup ;Restore segment registers for kernel mode
+	add    esp, 0x24 ;Clean up stack from the V86 mode.
 	push    eax ;Push the return point
 	ret
 
-; Switches from Ring 3 to Ring 0 (V86 mode)
+; Switches from Ring 3 to Ring 0 (V86 mode). This is a jump target, not a call target.
 ;
 ; After calling this procedure consider all the registers and flags as trashed.
 ;
 switchtoring0V86:
+	bits 16
 	pop    eax ; read the return offset
 	int    0x25
+	bits 32
 

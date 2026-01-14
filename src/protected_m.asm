@@ -363,9 +363,9 @@ jmp %%startinglabel
 %%startinglabel:
 	loadProtModeStack
 	%if %3 = -1
-	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
-	%else
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
+	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
 	%endif
 	testCPL 0
 %endmacro

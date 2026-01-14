@@ -854,6 +854,29 @@ protTests:
 	testUserV86_0_Fault EX_GP, 0, popfd
 	;port i/o isn't allowed with IOPL 0 and TSS I/O map set or out of range
 	testUserV86_0_FaultEx EX_GP, 0, userV86ioinstruction0, call userV86ioinstruction0
+	;Manipulate TSS to allow port I/O for a bit.
+	push es
+	push ebp
+	les    ebp, [cs:ptrTSSprot] ;Load our TSS
+	mov word es:[ebp+0x66],0 ;Make it available temporarily
+	mov word es:[ebp+0xC],0 ;Make the port available
+	pop ebp
+	pop es
+	call switchToRing3V86_3 ;Switch to v86 mode to test
+	bits 16
+	in al,0x64 ;Some valid I/O port to use that is harmless.
+	push dword V86iosucceedfinish ;Return to kernel mode
+	jmp switchtoring0V86
+	bits 32
+	V86iosucceedfinish:
+	push es
+	push ebp
+	les    ebp, [cs:ptrTSSprot] ;Load our TSS
+	mov word es:[ebp+0x66],0x68 ;Make the port unavailable again
+	pop ebp
+	pop es
+
+	;If we reach here, the return to kernel mode was successful.
 	;iret without IOPL 3 faults with #GP(0)
 	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
 	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)

@@ -769,7 +769,12 @@ protTests:
 
 	userV86iretrealmodefunc:
 		bits 16
+		;Perform some pushf(d)/popf(d) with IOPL 3 test
 		pushf ;This doubles as a pushf IOPL 3 test
+		popf ;This doubles as a popf IOPL 3 test
+		pushfd ;This doubles as a pushfd IOPL3 test
+		popfd ;This doubles as a popfd IOPL3 test
+		pushf ;Real pushf we need for parameters now.
 		push cs
 		push word userV86iretinterrupttret
 		;Also, STI/CLI are allowed in this case, perform the test here.
@@ -820,8 +825,12 @@ protTests:
 	;CLI/STI without IOPL 3 faults with #GP(0)
 	testUserV86_0_Fault EX_GP, 0, cli
 	testUserV86_0_Fault EX_GP, 0, sti
-	;pushf isn't allowed with IOPL 0
+	;pushf(d) isn't allowed with IOPL 0
 	testUserV86_0_Fault EX_GP, 0, pushf
+	testUserV86_0_Fault EX_GP, 0, pushfd
+	;popf(d) isn't allowed with IOPL 0
+	testUserV86_0_Fault EX_GP, 0, popf
+	testUserV86_0_Fault EX_GP, 0, popfd
 	;iret without IOPL 3 faults with #GP(0)
 	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
 	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)

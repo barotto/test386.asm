@@ -286,6 +286,7 @@ initGDT:
 	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
+	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
 
 	jmp initIDT
 
@@ -819,6 +820,10 @@ protTests:
 	mov    ax, cs
 	cmp    ax, C_SEG_PROT32
 	jne    error
+
+	;Test call gates now
+	jmp testCallGateWithParameters ;Test call gate with parameters
+	ring0_2testend: ;End of ring call gate with parameters test
 
 	;Perform some user mode exception tests
 	;Basic jump from user mode to kernel mode

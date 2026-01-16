@@ -884,8 +884,10 @@ protTests:
 	;If we reach here, the return to kernel mode was successful.
 	;iret without IOPL 3 faults with #GP(0)
 	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
-	;interrupt with IOPL 3 faults with #GP(kernelmodesegment)
+	;interrupt with IOPL 3 to non-V86 privilege level 0 faults with #GP(usermodesegment)
 	testUserV86_3_Fault EX_GP, CU_SEG_PROT32, int 0x22
+	;interrupt with IOPL 3 to non-V86 monitor privilege level 0 faults with #GP(kernel conforming segment)
+	testUserV86_3_Fault EX_GP, CC_SEG_PROT32, int 0x21
 	;HLT is privileged and raises #GP(0) no matter what IOPL is used
 	testUserV86_3_Fault EX_GP, 0, hlt
 	testUserV86_0_Fault EX_GP, 0, hlt

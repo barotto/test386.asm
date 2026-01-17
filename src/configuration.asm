@@ -35,7 +35,7 @@ OUT_PORT equ 0
 ; Possible values: 1=enable, 0=disable
 TEST_UNDEF equ 0
 
-; The CPU family option is used only when POST E0 is enabled.
+; The CPU family option is used only when TEST_UNDEF is enabled.
 ; Possible values: 3=80386
 CPU_FAMILY equ 3
 

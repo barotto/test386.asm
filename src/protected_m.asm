@@ -235,6 +235,165 @@
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
 %endmacro
 
+; %1: vector
+; %2: expected error code
+; %3: the provilege level the test code will run in
+; %4: the expected value of pushed EIP (specify if %5 is a call, otherwise use -1)
+; %5: fault causing code (can be a call to procedure)
+;
+; The fault handler is executed in ring 0. The caller must reset the data segments.
+;
+%macro protModeFaultTestExV86 5+
+	setProtModeIntGate %1, %%continue, ACC_DPL_0
+%%test:
+	%5
+	jmp    error
+%%continue:
+	%if %3 = 0
+		%assign expectedCS C_SEG_PROT32
+	%else
+		%assign expectedCS 0xF000
+	%endif
+	%if %4 = -1
+		protModeExcCheckV86 %1, %2, %%test, expectedCS
+	%else
+		protModeExcCheckV86 %1, %2, %4, expectedCS
+	%endif
+	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
+	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
+%endmacro
+
+; Tests an user-mode exception
+;%1: exception number
+;%2: fault error code
+;%3 instruction to execute
+%macro testUserFault 3+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%3
+	jmp   error
+%%startinglabel:
+	loadProtModeStack
+	protModeFaultTestEx %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception (Virtual 8086 mode) under IOPL 0
+;%1: exception number
+;%2: fault error code
+;%3 instruction to execute
+%macro testUserV86_0_Fault 3+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3V86_0
+%%instructionlabel:
+	bits 16
+	%3
+	jmp   error
+	bits 32
+%%startinglabel:
+	loadProtModeStack
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception (Virtual 8086 mode) under IOPL 3
+;%1: exception number
+;%2: fault error code
+;%3 instruction to execute
+%macro testUserV86_3_Fault 3+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3V86_3
+%%instructionlabel:
+	bits 16
+	%3
+	jmp   error
+	bits 32
+%%startinglabel:
+	loadProtModeStack
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception with custom fault point
+;%1: exception number
+;%2: fault error code
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
+;%4 instruction to execute
+%macro testUserFaultEx 4+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%4
+	jmp   error
+%%startinglabel:
+	loadProtModeStack
+	%if %3 = -1
+	protModeFaultTestEx %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
+	protModeFaultTestEx %1, %2, 3, %3, call %%usercodelabel
+	%endif
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception with custom fault point (Virtual 8086 mode) under IOPL 0
+;%1: exception number
+;%2: fault error code
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
+;%4 instruction to execute
+%macro testUserV86_0_FaultEx 4+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3V86_0
+%%instructionlabel:
+	bits 16
+	%4
+	jmp   error
+	bits 32
+%%startinglabel:
+	loadProtModeStack
+	%if %3 = -1
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
+	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
+	%endif
+	testCPL 0
+%endmacro
+
+; Tests an user-mode exception with custom fault point (Virtual 8086 mode) under IOPL 3
+;%1: exception number
+;%2: fault error code
+;%3: the expected value of pushed EIP (specify if %4 is a call, otherwise use -1)
+;%4 instruction to execute
+%macro testUserV86_3_FaultEx 4+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3V86_3
+%%instructionlabel:
+	bits 16
+	%4
+	jmp   error
+	bits 32
+%%startinglabel:
+	loadProtModeStack
+	%if %3 = -1
+	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
+	protModeFaultTestExV86 %1, %2, 3, %3, call %%usercodelabel
+	%endif
+	testCPL 0
+%endmacro
+
 ;
 ; Checks exception result and restores the previous handler
 ;
@@ -270,4 +429,60 @@
 	cmp    [ss:esp+exc_errcode], dword %3
 	jne    error
 	add    esp, 12+exc_errcode
+%endmacro
+
+;
+; Checks exception result and restores the previous handler
+;
+; %1: vector
+; %2: expected error code
+; %3: expected pushed value of EIP
+; %4: expected pushed value of CS (optional)
+;
+%macro protModeExcCheckV86 3-4 -1
+	;Validate if the segment registers are properly cleared.
+	push eax
+	push ds
+	pop eax
+	cmp ax,0
+	jne error
+	push es
+	pop eax
+	cmp ax,0
+	jne error
+	push fs
+	pop eax
+	cmp ax,0
+	jne error
+	push gs
+	pop eax
+	cmp ax,0
+	jne error
+	pop eax
+	%if %1 == 8 || (%1 > 10 && %1 <= 14)
+	%assign exc_errcode 4
+	cmp    [ss:esp], dword %2
+	jne    error
+	%else
+	%assign exc_errcode 0
+	%endif
+	%if %4 != -1
+		cmp    [ss:esp+exc_errcode+4], dword %4
+		jne    error
+	%else
+		mov    bx, cs
+		test   bx, 7
+		jnz %%ring3
+		%%ring0:
+		cmp    [ss:esp+exc_errcode+4], dword 0xF000
+		jne    error
+		jmp %%continue
+		%%ring3:
+		cmp    [ss:esp+exc_errcode+4], dword 0xF000
+		jne    error
+		%%continue:
+	%endif
+	cmp    [ss:esp+exc_errcode], dword %3
+	jne    error
+	add    esp, 0x24+exc_errcode
 %endmacro

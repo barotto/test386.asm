@@ -68,9 +68,9 @@
 ;
 ; memory map:
 ;  00000-003FF real mode IDT
-;  00400-004FF protected mode IDT
-;  00500-0077F protected mode GDT
-;  00800-00FFF protected mode LDT
+;  00400-0052F protected mode IDT
+;  00600-0087F protected mode GDT
+;  00900-00FFF protected mode LDT
 ;  01000-01FFF page directory
 ;  02000-02FFF page table 0
 ;  03000-03FFF page table 1
@@ -89,7 +89,7 @@ TEST_BASE  equ 0x20000
 C_SEG_REAL   equ 0xf000
 S_SEG_REAL   equ 0x1000
 IDT_SEG_REAL equ 0x0040
-GDT_SEG_REAL equ 0x0050
+GDT_SEG_REAL equ 0x0060
 GDT_SEG_LIMIT equ 0x2FF
 %assign D1_SEG_REAL TEST_BASE1 >> 4
 %assign D2_SEG_REAL TEST_BASE2 >> 4
@@ -273,19 +273,20 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x000000ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc GDT_DSEG_PROT, 0x00000500,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc GDTU_DSEG_PROT,0x00000500,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc LDT_SEG_PROT,  0x00000800,0x000007ff,ACC_TYPE_LDT|ACC_PRESENT
-	defGDTDesc LDT_DSEG_PROT, 0x00000800,0x000007ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000012F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000012F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x000002ff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc LDT_SEG_PROT,  0x00000900,0x000006ff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_DSEG_PROT, 0x00000900,0x000006ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00002fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSS_PROT,      0x00004000,0x00000fff,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000fff,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc TSS_PROT,      0x00004000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
+	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
 
 	jmp initIDT
 
@@ -320,7 +321,7 @@ ptrTSSprot: ; pointer to the task state segment
 	dd 0
 	dw TSS_DSEG_PROT
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0xFF              ; 16-bit limit
+	dw 0x12F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -344,6 +345,41 @@ initIDT:
 	call   initIntGateReal
 %assign vector vector+1
 %endrep
+	;Install some interrupt handlers for user mode tests
+	;Interrupt 20h: non-conforming kernel interrupt, callable from user mode
+	mov    esi, C_SEG_PROT32
+	mov    edi, kernelinterrupt
+	mov    dx,  ACC_DPL_3
+	mov    eax, 0x20
+	call   initIntGateReal
+	;Interrupt 21h: conforming kernel interrupt, callable from user mode
+	mov    esi, CC_SEG_PROT32
+	mov    edi, kernelconforminginterrupt
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 22h: user mode only interrupt
+	mov    esi, CU_SEG_PROT32
+	mov    edi, usermodeinterrupt
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 23h: kernel mode only interrupt
+	mov    esi, C_SEG_PROT32
+	mov    edi, kernelonlyinterrupt
+	mov    dx,  ACC_DPL_0
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 24h: kernel mode only conforming interrupt
+	mov    esi, CC_SEG_PROT32
+	mov    edi, kernelonlyconforminginterrupt
+	mov    dx,  ACC_DPL_0
+	inc    eax
+	call   initIntGateReal
+	;Interrupt 25h: kernel mode interrupt, callable from user mode. Switches out of V86 mode
+	mov    esi, C_SEG_PROT32
+	mov    edi, V86modeexitinterrupt
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal
 
 	jmp initPaging
 
@@ -543,6 +579,20 @@ protTests:
 	mov    es, ax
 	mov    fs, ax
 	mov    gs, ax
+	pushfd
+	or word [esp],0x3000	;Make I/O ports available on user mode
+	popfd ;Make I/O ports availble now
+	call   switchToRing3
+	in al,0x64 ;Read some I/O port freely
+	; switch back to ring 0
+	call switchToRing0
+	; CS must be C_SEG_PROT32|0 (CPL=0)
+	mov    ax, cs
+	cmp    ax, C_SEG_PROT32
+	jne    error
+	pushfd
+	and word [esp],0xFFF ;Block ports on user mode again
+	popfd
 	call   switchToRing3
 	; CS must be CU_SEG_PROT32|3 (CPL=3)
 	mov    ax, cs
@@ -564,6 +614,206 @@ protTests:
 	; test some privileged ops
 	protModeFaultTest EX_GP, 0, cli
 	protModeFaultTest EX_GP, 0, hlt
+	; I/O ports are blocked
+	protModeFaultTest EX_GP, 0, in al,0x64
+	;Test invalid interrupt call
+	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
+	;We should have the intial user mode stack setup right now for the below checks to validate.
+	;Interrupt from user mode to kernel mode
+	int 0x20
+	kernelmodeinterruptreturn:
+	;Interrupt from user mode to kernel conforming
+	int 0x21
+	kernelconforminginterruptreturn:
+	;Interrupt from user mode to user mode
+	int 0x22
+	userinterruptreturn:
+	;Interupt from user mode to
+	;Perform user-mode far call test
+	call CU_SEG_PROT32|3:userfarfunc
+	;Perform user-mode far jump test
+	jmp CU_SEG_PROT32|3:userjmpfunc
+	userfarfunc:
+		retf ;Simply return to the caller on the same privilege level
+	kernelinterrupt: ;Kernel mode interrupt handler
+		testCPL 0 ;Elevates to CPL 0
+		push ebx
+		push ecx
+		push ds
+		lds ebx, [cs:ptrTSSprot] ;Get the TSS
+		mov ecx,[ebx+4] ;Get TSS ESP0
+		sub ecx,0x14+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		cmp cx,word [ebx+8] ;Did the stack pointer load correctly?
+		jne error
+		pop ds
+		pop ecx
+		mov bx,cs
+		cmp bx,C_SEG_PROT32 ;Did we end up in kernel mode correctly?
+		jne error
+		pop ebx
+		cmp dword [esp+0x00],kernelmodeinterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		cmp dword [esp+0x0C],ESP_R3_PROT
+		jne error ;Invalid return ESP
+		cmp dword [esp+0x10],SU_SEG_PROT32|3
+		jne error ;Invalid user stack segment
+		iret ;Simply return to user mode
+	kernelonlyinterrupt: ;Kernel mode interrupt handler
+		push ax
+		testCPL 0 ;Stays at CPL 0
+		pop ax
+		push ebx
+		push ds
+		push ecx
+		lds ebx, [cs:ptrTSSprot] ;Get the TSS
+		mov ecx,eax ;Get ESP for the kernel mode program (stored into eax)
+		sub ecx,0xC+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		mov bx,word [bx+8] ;Expected: kernel mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jne error
+		pop ecx
+		mov bx,cs
+		cmp bx,C_SEG_PROT32 ;Did we arrive at proper kernel code?
+		jne error
+		pop ds
+		pop ebx
+		cmp dword [esp+0x00],kernelmodeonlyinterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],C_SEG_PROT32
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to kernel mode
+	kernelconforminginterrupt: ;Kernel mode conforming interrupt handler
+		testCPL 3 ;Conforming stays at CPL 3
+		push ebx
+		push ecx
+		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
+		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jne error
+		pop ecx
+		mov bx,cs
+		cmp bx,CC_SEG_PROT32|3 ;Did we arrive at proper conforming code?
+		jne error
+		pop ebx
+		cmp dword [esp+0x00],kernelconforminginterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to user mode, stays at CPL 3
+	kernelonlyconforminginterrupt: ;Kernel mode interrupt handler
+		push ax
+		testCPL 0 ;Stays at CPL 0
+		pop ax
+		push ebx
+		push ds
+		push ecx
+		lds ebx, [cs:ptrTSSprot] ;Get the TSS
+		mov ecx,eax ;Get ESP for the kernel mode program (stored into eax)
+		sub ecx,0xC+0xC ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		mov bx,word [bx+8] ;Expected: kernel mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jne error
+		pop ecx
+		mov bx,cs
+		cmp bx,CC_SEG_PROT32 ;Did we arrive at proper conforming kernel code?
+		jne error
+		pop ds
+		pop ebx
+		cmp dword [esp+0x00],kernelonlyconforminginterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],C_SEG_PROT32
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to kernel mode
+	usermodeinterrupt: ;User mode interrupt handler
+		testCPL 3 ;User mode stays at CPL 3
+		push ebx
+		push ecx
+		mov ecx,ESP_R3_PROT ;Get ESP for the user mode program
+		sub ecx,0xC+0x8 ;Where we should end up on the kernel stack, taking into account what we just pushed
+		cmp esp,ecx ;Did the stack decrease correctly?
+		jne error
+		mov cx,ss
+		mov bx,SU_SEG_PROT32|3 ;Expected: user mode stack
+		cmp cx,bx ;Did the stack pointer load correctly?
+		jne error
+		pop ecx
+		mov bx,cs
+		cmp bx,CU_SEG_PROT32|3 ;Did we arrive at proper user mode code?
+		jne error
+		pop ebx
+		cmp dword [esp+0x00],userinterruptreturn
+		jne error ;Invalid return address
+		cmp dword [esp+0x04],CU_SEG_PROT32|3
+		jne error ;Invalid return code segment
+		;Ignore eflags
+		iret ;Simply return to caller, stays as user mode.
+
+	userretferrorfunction:
+		;From user mode to kernel mode error address, which isn't allowed.
+		push C_SEG_PROT32
+		push error
+		userretferrorlocation:
+		retf
+	userV86exitfunclocation:
+		bits 16
+		push userV86exitfuncret ;Where to continue
+		jmp switchtoring0V86
+		bits 32
+	userV86iretinterrupttret:
+		bits 16
+		push dword userV86iretexitfunclocationret
+		jmp switchtoring0V86
+		bits 32
+
+	userV86iretrealmodefunc:
+		bits 16
+		;Perform some pushf(d)/popf(d) with IOPL 3 test
+		pushf ;This doubles as a pushf IOPL 3 test
+		popf ;This doubles as a popf IOPL 3 test
+		pushfd ;This doubles as a pushfd IOPL3 test
+		popfd ;This doubles as a popfd IOPL3 test
+		pushf ;Real pushf we need for parameters now.
+		push cs
+		push word userV86iretinterrupttret
+		;Also, STI/CLI are allowed in this case, perform the test here.
+		sti
+		cli
+		iret
+		bits 32
+
+	userV86ireterrorfunclocation:
+		bits 16
+		push cs
+		push error
+		userV86ireterrorfunclocationinstruction:
+		iret
+		jmp error
+
+	userV86ioinstruction0:
+		in al,0x64
+		jmp error
+
+		bits 32
+	userjmpfunc:
 	; switch back to ring 0
 	call switchToRing0
 	; CS must be C_SEG_PROT32|0 (CPL=0)
@@ -571,6 +821,92 @@ protTests:
 	cmp    ax, C_SEG_PROT32
 	jne    error
 
+	;Test call gates now
+	jmp testCallGateWithParameters ;Test call gate with parameters
+	ring0_2testend: ;End of ring call gate with parameters test
+
+	;Perform some user mode exception tests
+	;Basic jump from user mode to kernel mode
+	testUserFault EX_GP, C_SEG_PROT32, jmp C_SEG_PROT32|3:0
+	;Basic call from user mode to kernel mode
+	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0
+	;Far return from user mode to kernel mode
+	testUserFaultEx EX_GP, C_SEG_PROT32, userretferrorlocation, jmp userretferrorfunction
+	;Test kernel mode only interrupt
+	mov eax,esp ;Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
+	int 0x23
+	kernelmodeonlyinterruptreturn:
+	;Interrupt from kernel mode to user mode is forbidden, so test for that.
+	protModeFaultTest EX_GP, CU_SEG_PROT32, int 0x22
+	;Interrupt from kernel mode to kernel mode (conforming)
+	mov eax,esp ;Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
+	int 0x24
+	kernelonlyconforminginterruptreturn:
+	;Protected User and kernel mode validated.
+	
+	;Now, validate virtual 8086 mode
+	;Check invalid virtual 8086 mode interrupts
+	;interrupt without IOPL 3 faults with #GP(0)
+	testUserV86_0_Fault EX_GP, 0, int 0x22
+	;CLI/STI without IOPL 3 faults with #GP(0)
+	testUserV86_0_Fault EX_GP, 0, cli
+	testUserV86_0_Fault EX_GP, 0, sti
+	;pushf(d) isn't allowed with IOPL 0
+	testUserV86_0_Fault EX_GP, 0, pushf
+	testUserV86_0_Fault EX_GP, 0, pushfd
+	;popf(d) isn't allowed with IOPL 0
+	testUserV86_0_Fault EX_GP, 0, popf
+	testUserV86_0_Fault EX_GP, 0, popfd
+	;port i/o isn't allowed with IOPL 0 and TSS I/O map set or out of range
+	testUserV86_0_FaultEx EX_GP, 0, userV86ioinstruction0, call userV86ioinstruction0
+	;Manipulate TSS to allow port I/O for a bit.
+	push es
+	push ebp
+	les    ebp, [cs:ptrTSSprot] ;Load our TSS
+	mov word es:[ebp+0x66],0 ;Make it available temporarily
+	mov word es:[ebp+0xC],0 ;Make the port available
+	pop ebp
+	pop es
+	call switchToRing3V86_3 ;Switch to v86 mode to test
+	bits 16
+	in al,0x64 ;Some valid I/O port to use that is harmless.
+	push dword V86iosucceedfinish ;Return to kernel mode
+	jmp switchtoring0V86
+	bits 32
+	V86iosucceedfinish:
+	push es
+	push ebp
+	les    ebp, [cs:ptrTSSprot] ;Load our TSS
+	mov word es:[ebp+0x66],0x68 ;Make the port unavailable again
+	pop ebp
+	pop es
+
+	;If we reach here, the return to kernel mode was successful.
+	;iret without IOPL 3 faults with #GP(0)
+	testUserV86_0_FaultEx EX_GP, 0, userV86ireterrorfunclocationinstruction, call userV86ireterrorfunclocation
+	;interrupt with IOPL 3 to non-V86 privilege level 0 faults with #GP(usermodesegment)
+	testUserV86_3_Fault EX_GP, CU_SEG_PROT32, int 0x22
+	;interrupt with IOPL 3 to non-V86 monitor privilege level 0 faults with #GP(kernel conforming segment)
+	testUserV86_3_Fault EX_GP, CC_SEG_PROT32, int 0x21
+	;HLT is privileged and raises #GP(0) no matter what IOPL is used
+	testUserV86_3_Fault EX_GP, 0, hlt
+	testUserV86_0_Fault EX_GP, 0, hlt
+	;iret with IOPL 3 proceeds as in real mode
+	;Now, validate simply exiting Virtual 8086 mode, using the interrupt
+	call switchToRing3V86_3
+	bits 16
+	jmp userV86iretrealmodefunc
+	jmp error
+	bits 32
+	userV86iretexitfunclocationret:
+	;Now, validate simply exiting Virtual 8086 mode, using the interrupt
+	call switchToRing3V86_3
+	bits 16
+	jmp userV86exitfunclocation
+	jmp error
+	bits 32
+	userV86exitfuncret:
+	;Virtual 8086 mode validated
 
 ;-------------------------------------------------------------------------------
 	POST B

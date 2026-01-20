@@ -62,7 +62,12 @@ clearTSS:
 	; initialize everything to 0
 	les    edi, [cs:ptrTSSprot]
 	xor    eax, eax
-	mov    ecx, 26*4
+	mov    ecx, 26
 	cld
 	rep stosd
+	push ebp
+	mov ebp,edi ;End of TSS
+	sub ebp,2 ;point to I/O map base
+	mov word es:[ebp],0x68 ;Make sure that the I/O map base is out of range to trigger faults properly!
+	pop ebp
 	ret

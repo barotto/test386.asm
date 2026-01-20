@@ -20,15 +20,12 @@ that bug that is keeping you up at night, sorry.
 For the full list of tested opcodes see **`intel-opcodes.ods`**.
 Those opcodes that are tested have the relevant diagnostic code in the "test in
 real mode" and/or "test in prot. mode" columns.  
-Besides the specific opcodes reported in the opcodes list file, other aspects of
-the x86 architecture are only partially tested or not tested at all:
 
-  - no virtual-8086 mode testing
-  - no task management testing
-  - partial testing of user mode (ring 3) operations
-  
-Also, even if the program can run on any x86 32-bit compatible CPU, its testing
-routines are limited to the functionality of the intel 80386 processor family.
+Please refer to the [How to use](#how-to-use) section for the list of
+performed tests. Note that task switching is currently not explicitly tested.
+
+Although the program can run on any x86 32-bit compatible CPU, its testing
+routines are limited to the functionality of the Intel 80386 processor family.
 
 ### Realistic expectations
 
@@ -45,13 +42,18 @@ CPU manufacturers are capable of such a feat, despite their infinite amount of
 engeenering resources.
 
 Nonetheless I hope you'll find this program useful (and correct) enough to be
-added to your unit tests and worthy to be used alongside tools like
-[s a n d s i f t e r](https://github.com/xoreaxeaxeax/sandsifter).  
+added to your unit tests.
+
+### Other projects
+
+ * [SingleStepTests/80386](https://github.com/SingleStepTests/80386) -
+   a set of emulator CPU tests for the Intel 80386 by Daniel Balsom.
+ * [s a n d s i f t e r](https://github.com/xoreaxeaxeax/sandsifter) -
+   a x86 processor fuzzer by Christopher Domas.
 
 ## How to assemble
 
-First of all grab the NASM assembler from http://www.nasm.us/ and follow its
-installation instructions.
+First of all install the [NASM assembler](https://www.nasm.us/).
 
 Then open `src/configuration.asm` and configure the EQUs with suitable
 values for your system.
@@ -117,7 +119,7 @@ This is the list of tests with their diagnostic code:
 | 0x06 | Load full pointer in real mode                                     |
 | 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
 | 0x09 | Stack functionality *                                              |
-| 0x0A | Test user mode (ring 3) switching                                  |
+| 0x0A | Test user mode (ring 3) switching and Virtual-8086 mode            |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
 | 0x0D | 16-bit addressing modes (LEA)                                      |
@@ -145,11 +147,11 @@ This is the list of tests with their diagnostic code:
 \** Test `0xEE` always completes successfully. It will print its computational
 ASCII results to the configured output ports.
 
-Once you reach POST 0xFF, you need to check the results of POST 0xEE with the
+Once you reach POST `0xFF` you need to check the results of POST 0xEE with the
 provided reference.  
-POST 0xEE executes a series of arithmetic and logical operations that affect the
-CPU's status flags. None of those operations is checked for correctness during
-execution.
+POST `0xEE` executes a series of arithmetic and logical operations that affect
+the CPU's status flags. None of those operations is checked for correctness
+during execution.
 
 Assuming your ouput file is called `my-EE-output.txt`, compare it with 
  **`test386-EE-reference.txt`** using a command like:
@@ -172,8 +174,8 @@ Every line of `test386-EE-reference.txt` is composed of:
   register, but only for the flags defined for the operation; undefined flags
   are masked out
 
-Use `test386.lst` and your emulator's logs as a guide to determine
-instruction and cause of any possible difference.
+Use `test386.lst` and your emulator's logs as a guide to determine instruction
+and cause of any possible difference.
 
 Remember that test386.asm is open-source. Take advantage of this and read the
 source code and its comments to know what's really going on. The entry point,
@@ -405,8 +407,8 @@ and `COUNT = 17` (word operand).
 
 ### Comparing memory dumps
 
-The execution of test386.asm is deterministic. This means that, at POST FFh, the
-program results in the same RAM content every time it's executed.
+The execution of test386.asm is deterministic. This means that, at POST `0xFF`,
+the program results in the same RAM content every time it's executed.
 
 If you have a known working emulator that you trust (preferably open-source),
 you can compare its memory dump with yours.
@@ -415,7 +417,8 @@ you can compare its memory dump with yours.
 should be disabled before comparing memory dumps by setting TEST_UNDEF equ to 0.
 
 In the following example I'll use **Bochs** as a reference.  
-**Beware**: this is just an example, I cannot guarantee that Bochs is bug free.
+Please note that this is just an example and I cannot guarantee that Bochs is
+bug free.
 
 I'll use commands and tools commonly found in Linux and other UNIX-like systems.
 I'm sure you can find similar tools for Windows, possibly with a GUI. 
@@ -447,8 +450,7 @@ You can use a combination of `cmp` and `gawk`:
 $ cmp -l my-640k-memdump.bin bochs-640k-memdump.bin | gawk '{printf "%08X %02X %02X\n", ($1-1), strtonum(0$2), strtonum(0$3)}'
 ```
 
-This is a possible output (the actual output of a comparison between my buggy
-emulator with Bochs):
+This is the actual output of a comparison between my emulator with Bochs:
 
 ```
 00002008 27 67
@@ -463,7 +465,7 @@ To roughly determine what's the memory area used for, compare your offsets with
 the current memory map of test386.asm, reported at the top of the 
 `src/test386.asm` file.
 
-In this example, there's a problem in the way the emulator updates a PTE and in
+In this example, there's a problem in the way my emulator updates a PTE and in
 particular the Dirty bit.
 
 To see what's going on, use your emulator's memory traps functionality and

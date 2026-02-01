@@ -1,0 +1,661 @@
+# POST A (0x0A) - Complete Expanded Assembly
+
+**Purpose:** Test user mode (ring 3) switching and Virtual-8086 mode
+**Location:** `test386.lst` lines 8891-12174
+**Address range:** `0x3EE1` - `0x58E2`
+
+---
+
+## Test 0: POST Code Output & TSS Clear
+**Address:** `0x3EE1-0x3EEC`
+
+```asm
+; Output POST code 0x0A to diagnostic port
+00003EE1  B00A               mov    al, 0x0A
+00003EE3  66BA9001           mov    dx, 0x190            ; POST_PORT
+00003EE7  EE                 out    dx, al
+
+; Clear TSS for fresh state
+00003EE8  E80DE3FFFF         call   clearTSS
+```
+
+---
+
+## Test 1: Setup Data Segments
+**Address:** `0x3EED-0x3EF8`
+
+```asm
+; Load protected mode data segment into all segment registers
+00003EED  66B80C00           mov    ax, D_SEG_PROT32     ; Selector 0x0C
+00003EF1  8ED8               mov    ds, ax
+00003EF3  8EC0               mov    es, ax
+00003EF5  8EE0               mov    fs, ax
+00003EF7  8EE8               mov    gs, ax
+```
+
+---
+
+## Test 2: Enable I/O Permissions for User Mode (IOPL=3)
+**Address:** `0x3EF9-0x3F00`
+
+```asm
+00003EF9  9C                 pushfd                       ; Save EFLAGS
+00003EFA  66810C240030       or     word [esp], 0x3000   ; Set IOPL=3 (bits 12-13)
+00003F00  9D                 popfd                        ; Restore with IOPL=3
+```
+
+---
+
+## Test 3: Switch to Ring 3 and Test I/O Access
+**Address:** `0x3F01-0x3F07`
+
+```asm
+00003F01  E814E3FFFF         call   switchToRing3        ; CPL 0 -> CPL 3
+00003F06  E464               in     al, 0x64             ; Keyboard controller port
+                                                          ; Should succeed with IOPL=3
+```
+
+---
+
+## Test 4: Switch Back to Ring 0 and Verify
+**Address:** `0x3F08-0x3F19`
+
+```asm
+00003F08  E83FE4FFFF         call   switchToRing0        ; CPL 3 -> CPL 0
+
+; Verify CS = C_SEG_PROT32 (0x10), CPL = 0
+00003F0D  668CC8             mov    ax, cs
+00003F10  6683F810           cmp    ax, 0x10             ; C_SEG_PROT32
+00003F14  0F858DB10000       jne    error
+```
+
+---
+
+## Test 5: Block I/O Ports (IOPL=0) and Switch to Ring 3
+**Address:** `0x3F1A-0x3F26`
+
+```asm
+00003F1A  9C                 pushfd
+00003F1B  66812424FF0F       and    word [esp], 0x0FFF   ; Clear IOPL bits (IOPL=0)
+00003F21  9D                 popfd
+00003F22  E8F3E2FFFF         call   switchToRing3        ; Back to user mode
+```
+
+---
+
+## Test 6: Verify Ring 3 State - CS Check
+**Address:** `0x3F27-0x3F33`
+
+```asm
+; Verify CS = CU_SEG_PROT32|3 (0x1B), CPL = 3
+00003F27  668CC8             mov    ax, cs
+00003F2A  6683F81B           cmp    ax, 0x1B             ; CU_SEG_PROT32|3
+00003F2E  0F8573B10000       jne    error
+```
+
+---
+
+## Test 7-9: Verify Data Segments are NULL After Ring Transition
+**Address:** `0x3F34-0x3F67`
+
+```asm
+; DS must be NULL after privilege level change
+00003F34  668CD8             mov    ax, ds
+00003F37  6683F800           cmp    ax, 0
+00003F3B  0F8566B10000       jne    error
+
+; ES must be NULL
+00003F41  668CC0             mov    ax, es
+00003F44  6683F800           cmp    ax, 0
+00003F48  0F8559B10000       jne    error
+
+; FS must be NULL
+00003F4E  668CE0             mov    ax, fs
+00003F51  6683F800           cmp    ax, 0
+00003F55  0F854CB10000       jne    error
+
+; GS must be NULL
+00003F5B  668CE8             mov    ax, gs
+00003F5E  6683F800           cmp    ax, 0
+00003F62  0F853FB10000       jne    error
+```
+
+---
+
+## Test 10: CLI in User Mode -> #GP(0)
+**Address:** `0x3F68-0x4001`
+
+```asm
+; Setup exception handler for #GP (exception 0x0D)
+00003F68  60                 pushad
+00003F69  9C                 pushf
+00003F6A  668CD8             mov    ax, ds
+00003F6D  6650               push   ax
+00003F6F  B80D000000         mov    eax, 0x0D            ; Exception #GP
+00003F74  BF[C13F0000]       mov    edi, continue_addr   ; Handler target
+00003F79  668CCA             mov    dx, cs
+00003F7C  6683E207           and    dx, 7                ; Get CPL
+00003F80  66C1E20D           shl    dx, 13               ; Shift to DPL position
+00003F84  6683FA00           cmp    dx, 0                ; ACC_DPL_0?
+00003F88  7507               jne    .dpl3
+00003F8A  BE10000000         mov    esi, 0x10            ; C_SEG_PROT32
+00003F8F  EB05               jmp    .cont
+00003F91  BE18000000         mov    esi, 0x18            ; CU_SEG_PROT32
+00003F96  668CC9             mov    cx, cs
+00003F99  66F7C10700         test   cx, 7                ; Check if ring 0 or 3
+00003F9E  7509               jnz    .ring3
+00003FA0  2EC51D[E81B0000]   lds    ebx, [cs:ptrIDTprot]
+00003FA7  EB07               jmp    .call
+00003FA9  2EC51D[EE1B0000]   lds    ebx, [cs:ptrIDTUprot]
+00003FB0  E856DEFFFF         call   initIntGateProt      ; Install handler
+00003FB5  6658               pop    ax
+00003FB7  8ED8               mov    ds, ax
+00003FB9  9D                 popf
+00003FBA  61                 popad
+
+; ===== THE ACTUAL TEST =====
+00003FBB  FA                 cli                          ; <- PRIVILEGED! Triggers #GP(0)
+00003FBC  E9E6B00000         jmp    error                ; Never reached
+
+; Exception handler continues here - verify exception details
+00003FC1  36833C2400         cmp    dword [ss:esp], 0    ; Error code must be 0
+00003FC6  0F85DBB00000       jne    error
+00003FCC  668CCB             mov    bx, cs
+00003FCF  66F7C30700         test   bx, 7
+00003FD4  750E               jnz    .ring3_check
+00003FD6  36837C240810       cmp    dword [ss:esp+4], 0x10  ; Return CS = C_SEG_PROT32
+00003FDC  0F85C5B00000       jne    error
+00003FE2  EB0C               jmp    .continue
+00003FE4  36837C24081B       cmp    dword [ss:esp+4], 0x1B  ; Return CS = CU_SEG_PROT32|3
+00003FEA  0F85B7B00000       jne    error
+00003FF0  36817C2404[BB3F..] cmp    dword [ss:esp], 0x3FBB  ; Return EIP = cli instruction
+00003FF9  0F85A8B00000       jne    error
+00003FFF  83C410             add    esp, 12              ; Clean exception frame
+
+; Restore default exception handler
+00004002  ...                [setProtModeIntGate for DefaultExcHandler]
+```
+
+---
+
+## Test 11: HLT in User Mode -> #GP(0)
+**Address:** `0x404E-0x4133`
+
+```asm
+; [Exception handler setup - same pattern as Test 10]
+0000404E  60                 pushad
+...
+000040A0  61                 popad
+
+; ===== THE ACTUAL TEST =====
+000040A1  F4                 hlt                          ; <- PRIVILEGED! Triggers #GP(0)
+000040A2  E900B00000         jmp    error                ; Never reached
+
+; [Exception verification - same pattern]
+000040A7  36833C2400         cmp    dword [ss:esp], 0    ; Error code = 0
+...
+```
+
+---
+
+## Test 12: IN Instruction in User Mode (IOPL=0) -> #GP(0)
+**Address:** `0x4134-0x421A`
+
+```asm
+; [Exception handler setup]
+00004134  60                 pushad
+...
+00004186  61                 popad
+
+; ===== THE ACTUAL TEST =====
+00004187  E464               in     al, 0x64             ; <- I/O not allowed with IOPL=0
+00004189  E919AF0000         jmp    error                ; Never reached
+
+; [Exception verification]
+0000418E  36833C2400         cmp    dword [ss:esp], 0    ; Error code = 0
+...
+```
+
+---
+
+## Test 13: Invalid INT from User Mode -> #GP(selector)
+**Address:** `0x421B-0x4304`
+
+```asm
+; [Exception handler setup for INT 0x23 with DPL=0 gate]
+0000421B  60                 pushad
+...
+0000426D  61                 popad
+
+; ===== THE ACTUAL TEST =====
+0000426E  CD23               int    0x23                 ; <- INT to DPL=0 gate from CPL=3
+00004270  E932AE0000         jmp    error                ; Never reached
+
+; [Exception verification]
+00004275  36813C241A010000   cmp    dword [ss:esp], 0x11A  ; Error code = selector|0x02
+...
+```
+
+---
+
+## Test 14: INT 0x20 - User Mode to Kernel Mode Interrupt
+**Address:** `0x4305-0x4391`
+
+```asm
+; ===== THE ACTUAL TEST =====
+00004305  CD20               int    0x20                 ; Trigger interrupt 0x20
+
+; === Handler: kernelInterrupt ===
+; Verify CPL changed to 0
+0000431A  668CC8             mov    ax, cs
+0000431D  6683E003           and    ax, 3
+00004321  6683F800           cmp    ax, 0                ; Must be CPL 0
+00004325  0F857CAD0000       jne    error
+
+; Verify stack switch occurred
+0000432B  53                 push   ebx
+0000432C  51                 push   ecx
+0000432D  1E                 push   ds
+0000432E  2EC51D[1E1C0000]   lds    ebx, [cs:ptrTSSprot] ; Load TSS pointer
+00004335  8B4B04             mov    ecx, [ebx+4]         ; Get TSS.ESP0
+00004338  83E920             sub    ecx, 0x20            ; Expected stack position
+0000433B  39CC               cmp    esp, ecx
+0000433D  0F8564AD0000       jne    error
+
+; Verify SS loaded from TSS
+00004343  668CD1             mov    cx, ss
+00004346  663B4B08           cmp    cx, word [ebx+8]     ; TSS.SS0
+0000434A  0F8557AD0000       jne    error
+00004350  1F                 pop    ds
+00004351  59                 pop    ecx
+
+; Verify CS is kernel code segment
+00004352  668CCB             mov    bx, cs
+00004355  6683FB10           cmp    bx, 0x10             ; C_SEG_PROT32
+00004359  0F8548AD0000       jne    error
+0000435F  5B                 pop    ebx
+
+; Verify interrupt frame on stack
+00004360  813C24[07430000]   cmp    dword [esp+0x00], kernelModeInterruptReturn
+00004367  0F853AAD0000       jne    error                ; Return EIP
+0000436D  837C24041B         cmp    dword [esp+0x04], 0x1B  ; Return CS (CU_SEG_PROT32|3)
+00004372  0F852FAD0000       jne    error
+00004378  817C240CFF7F0000   cmp    dword [esp+0x0C], 0x7FFF  ; Return ESP (ESP_R3_PROT)
+00004380  0F8521AD0000       jne    error
+00004386  837C24106B         cmp    dword [esp+0x10], 0x6B    ; Return SS (SU_SEG_PROT32|3)
+0000438B  0F8516AD0000       jne    error
+
+00004391  CF                 iret                         ; Return to user mode
+```
+
+---
+
+## Test 15: INT 0x21 - User Mode to Kernel Conforming Code
+**Address:** `0x4307-0x4452`
+
+```asm
+; ===== THE ACTUAL TEST =====
+00004307  CD21               int    0x21                 ; Trigger interrupt 0x21
+
+; === Handler: kernelConformingInterrupt ===
+; Verify CPL stays at 3 (conforming code)
+000043F8  668CC8             mov    ax, cs
+000043FB  6683E003           and    ax, 3
+000043FF  6683F803           cmp    ax, 3                ; Must stay CPL 3
+00004403  0F859EAC0000       jne    error
+
+; Verify no stack switch (stays on user stack)
+00004409  53                 push   ebx
+0000440A  51                 push   ecx
+0000440B  B9FF7F0000         mov    ecx, 0x7FFF          ; ESP_R3_PROT
+00004410  83E914             sub    ecx, 0x14            ; Expected position
+00004413  39CC               cmp    esp, ecx
+00004415  0F858CAC0000       jne    error
+
+; Verify still on user stack segment
+0000441B  668CD1             mov    cx, ss
+0000441E  66BB6B00           mov    bx, 0x6B             ; SU_SEG_PROT32|3
+00004422  6639D9             cmp    cx, bx
+00004425  0F857CAC0000       jne    error
+0000442B  59                 pop    ecx
+
+; Verify CS is conforming code segment with RPL=3
+0000442C  668CCB             mov    bx, cs
+0000442F  6683FB23           cmp    bx, 0x23             ; CC_SEG_PROT32|3
+00004433  0F856EAC0000       jne    error
+
+00004452  CF                 iret                         ; Return to user mode
+```
+
+---
+
+## Test 16: INT 0x22 - User Mode to User Mode Interrupt
+**Address:** `0x4309-0x4513`
+
+```asm
+; ===== THE ACTUAL TEST =====
+00004309  CD22               int    0x22                 ; Trigger interrupt 0x22
+
+; === Handler: userModeInterrupt ===
+; Verify CPL stays at 3
+000044B9  668CC8             mov    ax, cs
+000044BC  6683E003           and    ax, 3
+000044C0  6683F803           cmp    ax, 3                ; Must be CPL 3
+000044C4  0F85DDAB0000       jne    error
+
+; Verify no stack switch
+000044CA  53                 push   ebx
+000044CB  51                 push   ecx
+000044CC  B9FF7F0000         mov    ecx, 0x7FFF          ; ESP_R3_PROT
+000044D1  83E914             sub    ecx, 0x14
+000044D4  39CC               cmp    esp, ecx
+000044D6  0F85CBAB0000       jne    error
+
+; Verify SS is user stack
+000044DC  668CD1             mov    cx, ss
+000044DF  66BB6B00           mov    bx, 0x6B             ; SU_SEG_PROT32|3
+000044E3  6639D9             cmp    cx, bx
+000044E6  0F85BBAB0000       jne    error
+000044EC  59                 pop    ecx
+
+; Verify CS is user code segment
+000044ED  668CCB             mov    bx, cs
+000044F0  6683FB1B           cmp    bx, 0x1B             ; CU_SEG_PROT32|3
+000044F4  0F85ADAB0000       jne    error
+
+00004513  CF                 iret                         ; Return to user mode
+```
+
+---
+
+## Test 17: User Mode Far Call
+**Address:** `0x430B-0x4319`
+
+```asm
+; ===== THE ACTUAL TEST =====
+0000430B  9A[19430000]1B00   call   0x1B:0x4319          ; Far call to CU_SEG_PROT32|3:userFarFunc
+
+; === Handler: userFarFunc ===
+00004319  CB                 retf                         ; Return to caller (same privilege)
+```
+
+---
+
+## Test 18: User Mode Far Jump
+**Address:** `0x4312-0x4561`
+
+```asm
+; ===== THE ACTUAL TEST =====
+00004312  EA[50450000]1B00   jmp    0x1B:0x4550          ; Far jump to CU_SEG_PROT32|3:userJmpFunc
+
+; === Handler: userJmpFunc ===
+00004550  E8F7DDFFFF         call   switchToRing0        ; Switch back to kernel mode
+
+; Verify back in ring 0
+00004555  668CC8             mov    ax, cs
+00004558  6683F810           cmp    ax, 0x10             ; C_SEG_PROT32
+0000455C  0F8545AB0000       jne    error
+
+; Continue to call gate tests
+00004562  E942DEFFFF         jmp    testCallGateWithParameters
+```
+
+---
+
+## Tests 19-21: User Mode Fault Tests (JMP/CALL/RETF to Kernel)
+**Address:** `0x4567-0x4865`
+
+### Test 19: JMP from User to Kernel -> #GP
+```asm
+; Setup: Switch to ring 3, then attempt forbidden jump
+00004569  E8ACDCFFFF         call   switchToRing3
+0000456E  66B81700           mov    ax, 0x17             ; DU_SEG_PROT|3
+00004572  8ED0               mov    ss, ax
+00004574  BC04100000         mov    esp, 0x1004
+
+; ===== THE ACTUAL TEST =====
+00004579  EA000000001300     jmp    0x13:0x0000          ; <- JMP to C_SEG_PROT32|3:0
+00004580  E922AB0000         jmp    error                ; Never reached
+
+; Exception verification: #GP with error code = C_SEG_PROT32 (0x10)
+000045E3  36833C2410         cmp    dword [ss:esp], 0x10
+...
+```
+
+### Test 20: CALL from User to Kernel -> #GP
+```asm
+0000467B  9A000000001300     call   0x13:0x0000          ; <- CALL to C_SEG_PROT32|3:0
+...
+```
+
+### Test 21: RETF from User to Kernel -> #GP
+```asm
+; Setup: Push kernel CS:EIP on stack, then RETF
+0000451E  6A10               push   0x10                 ; C_SEG_PROT32
+00004520  68[A7F00000]       push   error
+00004525  CB                 retf                         ; <- Attempt return to ring 0
+...
+```
+
+---
+
+## Tests 22-28: Virtual-8086 Mode with IOPL=3
+
+### Test 22: Enter V86 Mode and Perform Basic Operations
+**Address:** `0x4535-0x454A`
+
+```asm
+; In V86 mode with IOPL=3, these are allowed:
+00004535  9C                 pushf                        ; PUSHF allowed
+00004536  9D                 popf                         ; POPF allowed
+00004537  669C               pushfd                       ; PUSHFD allowed
+00004539  669D               popfd                        ; POPFD allowed
+0000453B  9C                 pushf                        ; Setup for IRET
+0000453C  0E                 push   cs
+0000453D  68[2C45]           push   word returnAddr
+
+; STI/CLI allowed with IOPL=3
+00004540  FB                 sti
+00004541  FA                 cli
+00004542  CF                 iret                         ; Return from interrupt
+```
+
+---
+
+## Tests 29-36: Virtual-8086 Mode with IOPL=0 Fault Tests
+
+### Test 29: CLI in V86 Mode (IOPL=0) -> #GP(0)
+**Address:** `0x4AB8-0x4BCC`
+
+```asm
+; Switch to V86 mode with IOPL=0
+00004ABA  E8ADD7FFFF         call   switchToRing3V86_0
+
+; ===== THE ACTUAL TEST (16-bit code) =====
+00004ABF  FA                 cli                          ; <- #GP(0) with IOPL=0 in V86
+00004AC0  E9E4A5              jmp    error
+
+; Exception verification in V86 context
+00004AC5  50                 push   eax
+00004AC6  1E                 push   ds
+00004AC7  58                 pop    eax
+00004AC8  6683F800           cmp    ax, 0                ; DS nullified
+00004ACC  0F85D5A50000       jne    error
+00004AD2  06                 push   es
+00004AD3  58                 pop    eax
+00004AD4  6683F800           cmp    ax, 0                ; ES nullified
+...
+00004B03  36833C2400         cmp    dword [ss:esp], 0    ; Error code = 0
+00004B08  0F8599A50000       jne    error
+00004B0E  36817C240800F00000 cmp    dword [ss:esp+4], 0xF000  ; V86 CS = 0xF000
+...
+00004B2C  83C428             add    esp, 0x24            ; Clean V86 exception frame (36 bytes)
+```
+
+### Test 30: STI in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00004B93  FB                 sti                          ; <- #GP(0)
+...
+```
+
+### Test 31: PUSHF in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00004CE3  9C                 pushf                        ; <- #GP(0)
+...
+```
+
+### Test 32: PUSHFD in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00004E0E  669C               pushfd                       ; <- #GP(0)
+...
+```
+
+### Test 33: POPF in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00004F3A  9D                 popf                         ; <- #GP(0)
+...
+```
+
+### Test 34: POPFD in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00005067  669D               popfd                        ; <- #GP(0)
+...
+```
+
+### Test 35: INT in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00005194  CD21               int    0x21                  ; <- #GP(0)
+...
+```
+
+### Test 36: IRET in V86 Mode (IOPL=0) -> #GP(0)
+```asm
+00004547  CF                 iret                         ; <- #GP(0)
+...
+```
+
+---
+
+## Tests 37-44: Virtual-8086 Mode with IOPL=3 (Privileged Instructions)
+
+### Test 37: I/O Access in V86 (IOPL=3) - Allowed
+```asm
+; With IOPL=3, I/O is allowed in V86 mode
+0000454B  E464               in     al, 0x64             ; <- Allowed
+...
+```
+
+### Test 38-43: CLI/STI/PUSHF/POPF/INT/IRET in V86 (IOPL=3) - Allowed
+```asm
+; These are all allowed with IOPL=3 in V86 mode
+00005540  FA                 cli                          ; <- Allowed
+00005541  FB                 sti                          ; <- Allowed
+...
+```
+
+### Test 44: HLT in V86 Mode -> #GP(0) (Always Privileged)
+**Address:** `0x5677-0x578F`
+
+```asm
+; HLT is ALWAYS privileged regardless of IOPL
+0000567E  F4                 hlt                          ; <- #GP(0) even with IOPL=3
+...
+```
+
+---
+
+## Tests 45-46: V86 Mode Exit Tests
+
+### Test 45: Exit V86 via IRET to Protected Mode
+**Address:** `0x58CD-0x58D7`
+
+```asm
+000058CD  E80ECAFFFF         call   switchToRing3V86_3   ; Enter V86 mode
+; 16-bit V86 code:
+000058D2  E960EC             jmp    userV86IretRealModeFunc
+; Handler performs IRET back to protected mode
+```
+
+### Test 46: Exit V86 via Interrupt Call
+**Address:** `0x58D8-0x58E2`
+
+```asm
+000058D8  E803CAFFFF         call   switchToRing3V86_3   ; Enter V86 mode
+; 16-bit V86 code:
+000058DD  E946EC             jmp    userV86ExitFuncLocation
+; Handler calls switchToRing0V86 to exit
+```
+
+---
+
+## Summary Table: All POST A (0x0A) Tests
+
+| Test # | Address | Description | Exception | Error Code |
+|--------|---------|-------------|-----------|------------|
+| 0 | 0x3EE1 | Output POST code, clear TSS | - | - |
+| 1 | 0x3EED | Setup data segments (DS,ES,FS,GS) | - | - |
+| 2 | 0x3EF9 | Enable IOPL=3 for I/O access | - | - |
+| 3 | 0x3F01 | Switch to Ring 3, test I/O (IOPL=3) | - | - |
+| 4 | 0x3F08 | Switch to Ring 0, verify CS | - | - |
+| 5 | 0x3F1A | Set IOPL=0, switch to Ring 3 | - | - |
+| 6 | 0x3F27 | Verify CS = CU_SEG_PROT32|3 | - | - |
+| 7-9 | 0x3F34 | Verify DS,ES,FS,GS = NULL | - | - |
+| 10 | 0x3FBB | CLI in Ring 3 | #GP | 0 |
+| 11 | 0x40A1 | HLT in Ring 3 | #GP | 0 |
+| 12 | 0x4187 | IN al,0x64 in Ring 3 (IOPL=0) | #GP | 0 |
+| 13 | 0x426E | INT 0x23 (DPL=0 gate) from Ring 3 | #GP | 0x11A |
+| 14 | 0x4305 | INT 0x20: User->Kernel interrupt | - | - |
+| 15 | 0x4307 | INT 0x21: User->Conforming interrupt | - | - |
+| 16 | 0x4309 | INT 0x22: User->User interrupt | - | - |
+| 17 | 0x430B | User mode far CALL | - | - |
+| 18 | 0x4312 | User mode far JMP | - | - |
+| 19 | 0x4579 | JMP to kernel from user | #GP | 0x10 |
+| 20 | 0x467B | CALL to kernel from user | #GP | 0x10 |
+| 21 | 0x4525 | RETF to kernel from user | #GP | 0x10 |
+| 22-28 | 0x4535 | V86 IOPL=3: PUSHF/POPF/CLI/STI/IRET | - | - |
+| 29 | 0x4ABF | V86 IOPL=0: CLI | #GP | 0 |
+| 30 | 0x4B93 | V86 IOPL=0: STI | #GP | 0 |
+| 31 | 0x4CE3 | V86 IOPL=0: PUSHF | #GP | 0 |
+| 32 | 0x4E0E | V86 IOPL=0: PUSHFD | #GP | 0 |
+| 33 | 0x4F3A | V86 IOPL=0: POPF | #GP | 0 |
+| 34 | 0x5067 | V86 IOPL=0: POPFD | #GP | 0 |
+| 35 | 0x5194 | V86 IOPL=0: INT | #GP | 0 |
+| 36 | 0x4547 | V86 IOPL=0: IRET | #GP | 0 |
+| 37-43 | 0x5540 | V86 IOPL=3: Various (allowed) | - | - |
+| 44 | 0x567E | V86: HLT (always privileged) | #GP | 0 |
+| 45 | 0x58D2 | Exit V86 via IRET | - | - |
+| 46 | 0x58DD | Exit V86 via INT handler | - | - |
+
+---
+
+## Segment Selectors Reference
+
+| Name | Value | Description |
+|------|-------|-------------|
+| C_SEG_PROT32 | 0x10 | Kernel code segment (DPL=0) |
+| CU_SEG_PROT32 | 0x18 | User code segment (DPL=3) |
+| CC_SEG_PROT32 | 0x20 | Conforming code segment (DPL=0) |
+| D_SEG_PROT32 | 0x0C | Kernel data segment (DPL=0) |
+| DU_SEG_PROT | 0x14 | User data segment (DPL=3) |
+| SU_SEG_PROT32 | 0x68 | User stack segment (DPL=3) |
+
+## Exception Numbers Reference
+
+| Name | Value | Description |
+|------|-------|-------------|
+| EX_DE | 0x00 | Divide Error |
+| EX_DB | 0x01 | Debug |
+| EX_NMI | 0x02 | NMI |
+| EX_BP | 0x03 | Breakpoint |
+| EX_OF | 0x04 | Overflow |
+| EX_BR | 0x05 | Bound Range |
+| EX_UD | 0x06 | Invalid Opcode |
+| EX_NM | 0x07 | Device Not Available |
+| EX_DF | 0x08 | Double Fault |
+| EX_TS | 0x0A | Invalid TSS |
+| EX_NP | 0x0B | Segment Not Present |
+| EX_SS | 0x0C | Stack Fault |
+| EX_GP | 0x0D | General Protection |
+| EX_PF | 0x0E | Page Fault |
+| EX_MF | 0x10 | Math Fault |
+| EX_AC | 0x11 | Alignment Check |

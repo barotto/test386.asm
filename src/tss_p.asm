@@ -162,7 +162,7 @@ initTSS16:
 	mov    word [es:ebp+0xA], S_SEG_PROT32_R2 ;R2 Stack
 	mov    [es:ebp+0xC], word ESP_R2_PROT
 	; User mode pointers
-	mov    ax, CU_SEG_PROT32_3                   ;Code segment
+	mov    ax, CU_SEG_PROT16CS                   ;Code segment
 	mov    [es:ebp+0x24], ax
 	mov    [es:ebp+0x10], word 2              ;FLAGS
 	mov    [es:ebp+0x0E], TSS286entrypoint    ;Code entry point
@@ -170,14 +170,14 @@ initTSS16:
 	mov    [es:ebp+0x22], SU_SEG_PROT16ES     ;ES
 	mov    [es:ebp+0x28], SU_SEG_PROT16DS     ;DS
 	; General purpose registers (TODO: test patterns)
-	mov    [es:ebp+0x12],0                    ;AX
-	mov    [es:ebp+0x14],0                    ;CX
-	mov    [es:ebp+0x16],0                    ;DX
-	mov    [es:ebp+0x18],0                    ;BX
+	mov    [es:ebp+0x12],word 0               ;AX
+	mov    [es:ebp+0x14],word 0               ;CX
+	mov    [es:ebp+0x16],word 0               ;DX
+	mov    [es:ebp+0x18],word 0               ;BX
 	mov    [es:ebp+0x1A],word ESP_R3_PROT     ;SP
-	mov    [es:ebp+0x1C],0                    ;BP
-	mov    [es:ebp+0x1E],0                    ;SI
-	mov    [es:ebp+0x20],0                    ;DI
+	mov    [es:ebp+0x1C],word 0               ;BP
+	mov    [es:ebp+0x1E],word 0               ;SI
+	mov    [es:ebp+0x20],word 0               ;DI
         pop    ds
         pop    ebp
         pop    eax

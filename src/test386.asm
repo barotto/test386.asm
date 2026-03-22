@@ -296,6 +296,7 @@ initGDT:
 	defGDTDesc TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT
 	defGDTDesc TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT
 	defGDTDesc CU_SEG_PROT16CS, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
 	defGDTDesc SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
@@ -915,6 +916,12 @@ userV86IretExitFuncLocationRet:
 	jmp   userV86ExitFuncLocation
 	jmp   error
 	bits 32
+errorInTSS32Load:
+	mov ax,D_SEG_PROT32FLAT|3  ;SS safe value
+	mov ss,ax
+	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer
+	jmp error               ;Error out!	
+
 userV86ExitFuncRet:
 
 	; Validate the TSS task switching functionality
@@ -926,9 +933,81 @@ userV86ExitFuncRet:
 	;Now, switch to flat user mode to start our tests
 	call switchToRing3FLATuser
 	;Perform tests for 386 mode parts below
-	;TODO: Actual tests using TSS task switching
+	;Loading patterns for the 386 data segments
+	mov ax,SU_SEG_PROT32DS     ;DS
+	mov ds,ax
+	mov ax,SU_SEG_PROT32ES     ;ES
+	mov es,ax
+	mov ax,SU_SEG_PROT32FS     ;FS
+	mov ss,ax
+	mov ax,SU_SEG_PROT32GS     ;GS
+	mov gs,ax
+	
+	;Loading patterns for the 386 data segments.
+	mov eax,0x12347654
+	mov ecx,0x5678CBA9
+	mov edx,0x9ABC3333
+	mov ebx,0xDEF02222
+	mov esp,0x11221111
+	mov ebp,0x33447777
+	mov esi,0x55665555
+	mov edi,0x7788AAAA
+	clc ;Clear carry flag for the test
+	;Now, all test patterns are loaded. Trigger a switch to the 16-bit task.
+	int 0x28
+	jc errorInTSS32Load     ;Invalid flags
+	;We've returned from the test task. Verify if our registers are loaded correctly.
+	cmp esp,0x11221111      ;Validate the stack pointer first
+	jnz errorInTSS32Load
+	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer, so we regain stack functionality.
+	cmp eax,0x12347654
+	jnz error
+	cmp ecx,0x5678CBA9
+	jnz error
+	cmp edx,0x9ABC3333
+	jnz error
+	cmp ebx,0xDEF02222
+	jnz error
+	cmp ebp,0x33447777
+	jnz error
+	cmp esi,0x55665555
+	jnz error
+	cmp edi,0x7788AAAA
+	jnz error
+	;Now, validate the segment registers
+	mov ax,ss
+	cmp ax,D_SEG_PROT32FLAT|3  ;SS OK?
+	jnz errorTSS32_1
+	mov ax,cs
+	cmp ax,CU_SEG_PROT32FLAT|3 ;CS OK?
+	jnz errorTSS32_1
+	mov ax,ds
+	cmp ax,SU_SEG_PROT32DS     ;DS OK?
+	jnz errorTSS32_1
+	mov ax,es
+	cmp ax,SU_SEG_PROT32ES     ;ES OK?
+	jnz errorTSS32_1
+	mov ax,fs
+	cmp ax,SU_SEG_PROT32FS     ;FS OK?
+	jnz errorTSS32_1
+	mov ax,gs
+	cmp ax,SU_SEG_PROT32GS     ;GS OK?
+	jnz errorTSS32_1
+	jmp TSStest1finished
+errorTSS32_1:
+	mov ax,D_SEG_PROT32FLAT|3  ;SS safe value
+	mov ss,ax
+	mov esp,ESP_R3_PROTFLAT   ;ESP safe value
+	jmp error                  ;Error out	
 
-	;Finishes 386 mode parts tests, return to normal protected mode
+TSStest1finished:
+	;Test the flags register during task switches now.
+	stc	;With carry flag set.
+	int 0x28
+	jnc errorTSS32_1
+	;32-bit eflags register loaded OK.
+
+	;Finishes 386 mode and 286 mode TSS tests, return to normal protected mode
 	call switchToRing0FromFlatUser
 	;Restore the segment registers to compatible values
 	call switchedToRing0FromFlat_cleanup

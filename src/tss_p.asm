@@ -164,20 +164,20 @@ initTSS16:
 	; User mode pointers
 	mov    ax, CU_SEG_PROT16CS                   ;Code segment
 	mov    [es:ebp+0x24], ax
-	mov    [es:ebp+0x10], word 2              ;FLAGS
+	mov    [es:ebp+0x10], word 3              ;FLAGS with carry flag set to initialize tests
 	mov    [es:ebp+0x0E], TSS286entrypoint    ;Code entry point
 	mov    [es:ebp+0x26], SU_SEG_PROT16SS     ;Stack segment
 	mov    [es:ebp+0x22], SU_SEG_PROT16ES     ;ES
 	mov    [es:ebp+0x28], SU_SEG_PROT16DS     ;DS
 	; General purpose registers (TODO: test patterns)
-	mov    [es:ebp+0x12],word 0               ;AX
-	mov    [es:ebp+0x14],word 0               ;CX
-	mov    [es:ebp+0x16],word 0               ;DX
-	mov    [es:ebp+0x18],word 0               ;BX
-	mov    [es:ebp+0x1A],word ESP_R3_PROT     ;SP
-	mov    [es:ebp+0x1C],word 0               ;BP
-	mov    [es:ebp+0x1E],word 0               ;SI
-	mov    [es:ebp+0x20],word 0               ;DI
+	mov    [es:ebp+0x12],word 0x1234          ;AX
+	mov    [es:ebp+0x14],word 0x5678          ;CX
+	mov    [es:ebp+0x16],word 0x9ABC          ;DX
+	mov    [es:ebp+0x18],word 0xDEF0          ;BX
+	mov    [es:ebp+0x1A],word 0x1122          ;SP
+	mov    [es:ebp+0x1C],word 0x3344          ;BP
+	mov    [es:ebp+0x1E],word 0x5566          ;SI
+	mov    [es:ebp+0x20],word 0x7788          ;DI
         pop    ds
         pop    ebp
         pop    eax

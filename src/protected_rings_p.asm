@@ -98,7 +98,7 @@ switchToRing3FLATkernel:
 	or     dword [ss:esp], 0x200    ; reenable interrupts in ring 3 (can't use privileged sti)
 	push   dword CU_SEG_PROT32|3    ; push user code segment with RPL=3
 	push   dword edx                ; push return EIP
-	iretd	
+	iretd
 
 ;
 ; Switches from Ring 0 to Ring 3 in flat mode
@@ -132,17 +132,17 @@ switchToRing3FLATuser:
 	mov    [ebx+0x6E], ax ; save GS
 	; set ring 0 SS:ESP
 	mov    ax,ss
-	mov    [ebx],ax
+	mov    [ebx+8],ax
 	mov    [ebx+4], esp
 	cli                             ; disable ints during switching
 	push   dword D_SEG_PROT32FLAT|3    ; push user stack with RPL=3
 	push   dword ESP_R3_PROTFLAT        ; push user mode esp
 	pushfd                          ; push eflags
 	or     dword [ss:esp], 0x200    ; reenable interrupts in ring 3 (can't use privileged sti)
-	push   dword CU_SEG_PROT32|3    ; push user code segment with RPL=3
+	push   dword CU_SEG_PROT32FLAT|3    ; push user code segment with RPL=3
 	or     edx,0xF0000              ; Fix flat instruction address
 	push   dword edx                ; push return EIP
-	iretd	
+	iretd
 
 
 ;

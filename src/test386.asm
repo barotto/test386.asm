@@ -247,8 +247,10 @@ cpuTest:
 	jmp initGDT
 
 ESP_R0_PROT equ 0x0000FFFF
+ESP_R2_PROT equ 0x00001FFF
 ESP_R0_PROTFLAT equ 0xE001FFFF
 ESP_R3_PROT equ 0x00007FFF
+ESP_R3_PROTFLAT equ 0x0001FFFF
 
 %include "protected_m.asm"
 
@@ -276,18 +278,31 @@ initGDT:
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
 	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000013F,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000013F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x0000030f,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000030f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_SEG_PROT,  0x00000A00,0x000005ff,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDesc S_SEG_PROT32_R2,  0x00010000,0x0008ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc TSS_PROT,      0x00004000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc TSS_PROT16,    0x00004200,0x0000002C,ACC_TYPE_TSS16|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc TSS_DSEG_PROT, 0x00004000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc TSS_DSEG_PROT16, 0x00004200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT
+	defGDTDesc TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT
+	defGDTDesc CU_SEG_PROT32_3, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT32GS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT16SS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT16DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT16ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
@@ -330,8 +345,17 @@ ptrSSprotFLAT: ; pointer to the stack for pmode
 ptrTSSprot: ; pointer to the task state segment
 	dd 0
 	dw TSS_DSEG_PROT
+ptrTSSprot16: ; pointer to the 16-bit task state segment
+	dd 0
+	dw TSS_DSEG_PROT16
+ptrTSSprot32Gate: ; pointer to the 32-bit task state segment gate
+	dd 0
+	dw TSS_GSEG_PROT32
+ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
+	dd 0
+	dw TSS_GSEG_PROT16
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x13F              ; 16-bit limit
+	dw 0x14F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -341,6 +365,12 @@ addrGDT: ; address of GDT to be used with lgdt
 initIntGateReal:
 	pushad
 	initIntGate
+	popad
+	ret
+
+initIntTaskGateReal:
+	pushad
+	initIntTaskGate
 	popad
 	ret
 
@@ -413,6 +443,22 @@ initIDT:
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal286
+
+	; Interrupt 28h: task switch to 286, callable from user mode.
+	mov    esi, TSS_PROT16
+	mov    edi, 0
+	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntTaskGateReal
+
+	; Interrupt 29h: task switch to 386, callable from user mode.
+	mov    esi, TSS_PROT
+	mov    edi, 0
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntTaskGateReal
+
 
 	jmp initPaging
 
@@ -706,6 +752,11 @@ userFarFunc:
 	;
 %include "protected_inth.asm"
 
+	;
+	; 286 TSS handler
+	;
+%include "protected_tssh.asm"
+
 
 userRetfErrorFunction:
 	; From user mode to kernel mode error address, which isn't allowed.
@@ -860,6 +911,21 @@ userV86IretExitFuncLocationRet:
 	bits 32
 userV86ExitFuncRet:
 
+	; Validate the TSS task switching functionality
+	;First, enter a valid 32-bit protected flat mode for testing
+	;Prepare 32-bit TSS ROM fields
+	call initTSS32
+	;Prepare 16-bit TSS ROM/RAM fields
+	call initTSS16
+	;Now, switch to flat user mode to start our tests
+	call switchToRing3FLATuser
+	;Perform tests for 386 mode parts below
+	;TODO: Actual tests using TSS task switching
+
+	;Finishes 386 mode parts tests, return to normal protected mode
+	call switchToRing0FromFlatUser
+	;Restore the segment registers to compatible values
+	call switchedToRing0FromFlat_cleanup
 
 ;-------------------------------------------------------------------------------
 	POST B

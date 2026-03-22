@@ -4,6 +4,10 @@ initIntGateProt:
 	initIntGate
 	ret
 
+initIntTaskGateProt:
+	initIntTaskGate
+	ret
+
 initDescriptorProt:
 	initDescriptor
 	ret

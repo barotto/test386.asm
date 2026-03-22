@@ -71,3 +71,115 @@ clearTSS:
 	mov [es:ebp],word 0x68 ;Make sure that the I/O map base is out of range to trigger faults properly!
 	pop ebp
 	ret
+
+
+; Prepare 32-bit TSS for task switching
+
+initTSS32:
+	call clearTSS
+	; initialize everything to 0
+	push   eax
+	push   ebp
+	push   ds
+	les    ebx,[cs:ptrTSSprot]
+        mov    eax, cr3
+	mov    [es:ebp+0x1C],eax ;Static field: CR3!
+	sldt   ax
+	mov    word [es:ebp+0x60], ax ;Static field: LDTR!
+	;Ring 0 SS:ESP is loaded by the ring switching function
+	mov    eax,0xFFFFFFFF
+	mov    [es:ebp+0x20],eax ;Initial EIP, should be overwritten by the task switch.
+	mov    word [es:ebp+4], S_SEG_PROT32_R2 ;R2 Stack
+	mov    [es:ebp+8], word ESP_R2_PROT
+        pop    ds
+        pop    ebp
+        pop    eax
+	ret
+
+; 16-bit Task State Segment
+;
+;      31              23              15              7             0
+;     ╔═══════════════╪═══════════════╬═══════════════╪═════════════╦═╗
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              LDT              ║2A
+;     ╟───────────────┼───────────────╫───────────────┼───────────────╢
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              DS               ║28
+;     ╟───────────────┼───────────────╫───────────────┼───────────────╢
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              SS               ║26
+;     ╟───────────────┼───────────────╫───────────────┼───────────────╢
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              CS               ║24
+;     ╟───────────────┼───────────────╫───────────────┼───────────────╢
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              ES               ║22
+;     ╟───────────────┼───────────────╫───────────────┼───────────────╢
+;     ║                               DI                              ║20
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               SI                              ║1E
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               BP                              ║1C
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               SP                              ║1A
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               BX                              ║18
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               DX                              ║16
+;     ╠═══════════════╪═══════════════╪═══════════════╪═══════════════╣
+;     ║                               CX                              ║14
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                               AX                              ║12
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                             FLAGS                             ║10
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                    INSTRUCTION POINTER (IP)                   ║E
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0║              SS2              ║C
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                             ESP2                              ║A
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                                              SS1              ║8
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                             ESP1                              ║6
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                                              SS0              ║4
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                             ESP0                              ║2
+;     ╟───────────────┼───────────────┼───────────────┼───────────────╢
+;     ║                                   BACK LINK TO PREVIOUS TSS   ║0
+;     ╚═══════════════╪═══════════════╬═══════════════╪═══════════════╝
+
+initTSS16:
+	; initialize everything to predefined values
+	push   eax
+	push   ebp
+	push   ds
+	les    ebx,[cs:ptrTSSprot]
+	xor    eax, eax
+	mov    ecx, 0x15
+	cld
+	rep stosw                                 ;Clear the TSS
+	mov    [es:ebp+0],word 0                  ;No back link yet!
+	mov    ax, ss                             ;R0 Stack
+	mov    word [es:ebp+2], ss
+	mov    [es:ebp+4], word ESP_R0_PROT
+	mov    word [es:ebp+0xA], S_SEG_PROT32_R2 ;R2 Stack
+	mov    [es:ebp+0xC], word ESP_R2_PROT
+	; User mode pointers
+	mov    ax, CU_SEG_PROT32_3                   ;Code segment
+	mov    [es:ebp+0x24], ax
+	mov    [es:ebp+0x10], word 2              ;FLAGS
+	mov    [es:ebp+0x0E], TSS286entrypoint    ;Code entry point
+	mov    [es:ebp+0x26], SU_SEG_PROT16SS     ;Stack segment
+	mov    [es:ebp+0x22], SU_SEG_PROT16ES     ;ES
+	mov    [es:ebp+0x28], SU_SEG_PROT16DS     ;DS
+	; General purpose registers (TODO: test patterns)
+	mov    [es:ebp+0x12],0                    ;AX
+	mov    [es:ebp+0x14],0                    ;CX
+	mov    [es:ebp+0x16],0                    ;DX
+	mov    [es:ebp+0x18],0                    ;BX
+	mov    [es:ebp+0x1A],word ESP_R3_PROT     ;SP
+	mov    [es:ebp+0x1C],0                    ;BP
+	mov    [es:ebp+0x1E],0                    ;SI
+	mov    [es:ebp+0x20],0                    ;DI
+        pop    ds
+        pop    ebp
+        pop    eax
+	ret
+	

@@ -40,6 +40,38 @@
 	mov    word [ebx+6], di ; OFFSET 31-16
 %endmacro
 
+;
+; Initializes an task gate in system memory.
+; This is the body of procedures used in 16 and 32-bit code segments.
+;
+;    7                             0 7                             0
+;   ╔═══════════════════════════════╤═══════════════════════════════╗
+; +7║                          UNUSED                               ║+6
+;   ╟───┬───────┬───┬───────────────┬───────────────────────────────╢
+; +5║ P │  DPL  │ 0 │ 0   1   0   1 │            UNUSED             ║+4
+;   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
+; +3║                           SELECTOR                            ║+2
+;   ╟───────────────────────────────┴───────────────────────────────╢
+; +1║                          UNUSED                               ║ 0
+;   ╚═══════════════════════════════╧═══════════════════════════════╝
+;    15                                                            0
+;
+; DS:EBX pointer to IDT
+; EAX vector
+; ESI selector
+; DX DPL (use ACC_DPL_* equs)
+;
+%macro initIntTaskGate 0
+	shl    eax, 3
+	add    ebx, eax
+	mov    word [ebx], 0 ; OFFSET 15-0
+	mov    word [ebx+2], si ; SELECTOR
+	or     dx, ACC_TYPE_GATE_TSS | ACC_PRESENT
+	mov    word [ebx+4], dx
+	shr    edi, 16
+	mov    word [ebx+6], 0 ; OFFSET 31-16
+%endmacro
+
 %macro initIntGate286 0
 	shl    eax, 3
 	add    ebx, eax

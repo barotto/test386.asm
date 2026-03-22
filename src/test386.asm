@@ -344,16 +344,22 @@ ptrSSprotFLAT: ; pointer to the stack for pmode
 	dw D_SEG_PROT32FLAT
 ptrTSSprot: ; pointer to the task state segment
 	dd 0
-	dw TSS_DSEG_PROT
+	dw TSS_DSEG_PROT|3
 ptrTSSprot16: ; pointer to the 16-bit task state segment
 	dd 0
-	dw TSS_DSEG_PROT16
+	dw TSS_DSEG_PROT16|3
+ptrTSSprotRaw: ; pointer to the task state segment itself
+	dd 0
+	dw TSS_PROT|3
+ptrTSSprot16Raw: ; pointer to the 16-bit task state segment itself
+	dd 0
+	dw TSS_PROT16|3
 ptrTSSprot32Gate: ; pointer to the 32-bit task state segment gate
 	dd 0
-	dw TSS_GSEG_PROT32
+	dw TSS_GSEG_PROT32|3
 ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
 	dd 0
-	dw TSS_GSEG_PROT16
+	dw TSS_GSEG_PROT16|3
 addrProtIDT: ; address of pmode IDT to be used with lidt
 	dw 0x14F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address

@@ -9,6 +9,10 @@ errorTSS16:
 
 TSS286entrypoint:
 	jnc errorTSS16         ;eflags loaded incorrectly?
+	mov [0], eax
+	lahf
+	mov byte [4],ah        ;Store the flags for checking later
+	mov eax,[0]
 	cmp esp,0x1122         ;SP loaded correctly?
 	jnz errorTSS16
 	mov sp,ESP_R3_PROT     ;Fixup SP
@@ -27,27 +31,29 @@ TSS286entrypoint:
 	cmp edi,0x7788
 	jnz errorTSS16
 	;General purpose registers are loaded OK. Now check the segment registers.
+	movzx eax,byte [4]   ;Validate the flags
+	sahf                 ;Restore the original flags of the task
 	pushfd
-	pop eax   ;Validate the flags
-	cmp eax,2 ;Flags OK?
+	pop eax
+	cmp eax,0x4002 ;Flags OK?
 	jnz errorTSS16_1
 	mov ax,ss
-	cmp ax,SU_SEG_PROT16SS  ;SS OK?
+	cmp ax,SU_SEG_PROT16SS|3  ;SS OK?
 	jnz errorTSS16_1
 	mov ax,cs
-	cmp ax,CU_SEG_PROT16CS	;CS OK?
+	cmp ax,CU_SEG_PROT16CS|3  ;CS OK?
 	jnz errorTSS16_1
 	mov ax,ds
-	cmp ax,SU_SEG_PROT16DS  ;DS OK?
+	cmp ax,SU_SEG_PROT16DS|3  ;DS OK?
 	jnz errorTSS16_1
 	mov ax,es
-	cmp ax,SU_SEG_PROT16ES  ;ES OK?
+	cmp ax,SU_SEG_PROT16ES|3  ;ES OK?
 	jnz errorTSS16_1
 	mov ax,fs
-	cmp ax,0                ;FS OK?
+	cmp ax,0                  ;FS OK?
 	jnz errorTSS16_1
 	mov ax,gs
-	cmp ax,0                ;GS OK?
+	cmp ax,0                  ;GS OK?
 	jnz errorTSS16_1
 	clc
 	iret                    ;Return to the calling task

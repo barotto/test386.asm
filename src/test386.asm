@@ -965,6 +965,10 @@ userV86ExitFuncRet:
 	;Now, all test patterns are loaded. Trigger a switch to the 16-bit task.
 	int 0x28
 	jc errorInTSS32Load     ;Invalid flags
+	mov dword [0x10000],eax
+	lahf
+	mov byte [0x10004],ah
+	mov eax,dword [0x10000]
 	;We've returned from the test task. Verify if our registers are loaded correctly.
 	cmp esp,0x11221111      ;Validate the stack pointer first
 	jnz errorInTSS32Load

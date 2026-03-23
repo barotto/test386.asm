@@ -122,7 +122,7 @@ switchToRing3FLATuser:
 	pop    edx ; read the return offset
 	mov    ax, ds
 	lds    ebx, [cs:ptrTSSprot]
-	; save ring 0 data segments, they'll be restored with switchToRing0
+	; save ring 0 data segments, they'll be restored with switchedToRing0FromFlat_cleanup
 	mov    [ebx+0x68], ax ; save DS
 	mov    ax, es
 	mov    [ebx+0x6A], ax ; save ES

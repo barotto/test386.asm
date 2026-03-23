@@ -285,7 +285,8 @@ switchToRing0FromFlatUser:
 	; In order to swich to kernel mode (ring 0) we'll use a Call Gate.
 	; A placeholder for a Call Gate is already present in the GDT.
 	pop    ecx ; read the return offset
-	lfs    ebx, [cs:ptrGDTUprot]
+	and    ecx,0xffff ;Make sure it's a 16-bit code offset.
+	lfs    ebx, [cs:ptrGDTUprot+0xF0000]
 	mov    eax, RING0_GATE
 	mov    esi, C_SEG_PROT32
 	mov    edi, .ring0_fromflatuser

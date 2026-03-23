@@ -91,8 +91,8 @@ initTSS32:
 	;Ring 0 SS:ESP is loaded by the ring switching function
 	mov    eax,0xFFFFFFFF
 	mov    [es:ebp+0x20],eax ;Initial EIP, should be overwritten by the task switch.
-	mov    word [es:ebp+4], S_SEG_PROT32_R2 ;R2 Stack
-	mov    [es:ebp+8], word ESP_R2_PROT
+	mov    word [es:ebp+0x14], S_SEG_PROT32_R2 ;R2 Stack
+	mov    word [es:ebp+0x18], ESP_R2_PROT
         pop    ds
         pop    ebp
         pop    eax
@@ -155,34 +155,34 @@ initTSS16:
 	push   edi
 	les    edi,[cs:ptrTSSprot]
 	xor    eax, eax
-	mov    ecx, 0x15
+	mov    ecx, 0x16
 	cld
-	rep stosw                                 ;Clear the TSS
+	rep stosw                                     ;Clear the TSS
 	pop    edi
 	les    ebp,[cs:ptrTSSprot16]
-	mov    [es:ebp+0],word 0                  ;No back link yet!
-	mov    ax, ss                             ;R0 Stack
+	mov    [es:ebp+0],word 0                       ;No back link yet!
+	mov    ax, ss                                  ;R0 Stack
 	mov    word [es:ebp+2], ss
 	mov    [es:ebp+4], word ESP_R0_PROT
-	mov    word [es:ebp+0xA], S_SEG_PROT32_R2 ;R2 Stack
+	mov    word [es:ebp+0xA], S_SEG_PROT32_R2      ;R2 Stack
 	mov    [es:ebp+0xC], word ESP_R2_PROT
 	; User mode pointers
-	mov    ax, CU_SEG_PROT16CS                   ;Code segment
+	mov    ax, CU_SEG_PROT16CS|3                   ;Code segment
 	mov    [es:ebp+0x24], ax
-	mov    [es:ebp+0x10], word 3              ;FLAGS with carry flag set to initialize tests
-	mov    [es:ebp+0x0E], TSS286entrypoint    ;Code entry point
-	mov    [es:ebp+0x26], SU_SEG_PROT16SS     ;Stack segment
-	mov    [es:ebp+0x22], SU_SEG_PROT16ES     ;ES
-	mov    [es:ebp+0x28], SU_SEG_PROT16DS     ;DS
+	mov    [es:ebp+0x10], word 3                   ;FLAGS with carry flag set to initialize tests
+	mov    [es:ebp+0x0E], TSS286entrypoint         ;Code entry point
+	mov    [es:ebp+0x26], word SU_SEG_PROT16SS|3   ;Stack segment
+	mov    [es:ebp+0x22], word SU_SEG_PROT16ES|3   ;ES
+	mov    [es:ebp+0x28], word SU_SEG_PROT16DS|3   ;DS
 	; General purpose registers (TODO: test patterns)
-	mov    [es:ebp+0x12],word 0x1234          ;AX
-	mov    [es:ebp+0x14],word 0x5678          ;CX
-	mov    [es:ebp+0x16],word 0x9ABC          ;DX
-	mov    [es:ebp+0x18],word 0xDEF0          ;BX
-	mov    [es:ebp+0x1A],word 0x1122          ;SP
-	mov    [es:ebp+0x1C],word 0x3344          ;BP
-	mov    [es:ebp+0x1E],word 0x5566          ;SI
-	mov    [es:ebp+0x20],word 0x7788          ;DI
+	mov    [es:ebp+0x12],word 0x1234               ;AX
+	mov    [es:ebp+0x14],word 0x5678               ;CX
+	mov    [es:ebp+0x16],word 0x9ABC               ;DX
+	mov    [es:ebp+0x18],word 0xDEF0               ;BX
+	mov    [es:ebp+0x1A],word 0x1122               ;SP
+	mov    [es:ebp+0x1C],word 0x3344               ;BP
+	mov    [es:ebp+0x1E],word 0x5566               ;SI
+	mov    [es:ebp+0x20],word 0x7788               ;DI
         pop    ds
         pop    ebp
         pop    eax

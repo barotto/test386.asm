@@ -159,7 +159,7 @@ initTSS16:
 	cld
 	rep stosw                                 ;Clear the TSS
 	pop    edi
-	les    ebp,[cs:ptrTSSprot]
+	les    ebp,[cs:ptrTSSprot16]
 	mov    [es:ebp+0],word 0                  ;No back link yet!
 	mov    ax, ss                             ;R0 Stack
 	mov    word [es:ebp+2], ss

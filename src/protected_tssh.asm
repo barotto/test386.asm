@@ -2,10 +2,10 @@
 ; 16-bit TSS execution path, in parallel with test386.asm tests running in 386 mode
 ;
 errorTSS16:
-	mov ax,SU_SEG_PROT16SS ;SS OK?
-	mov ss,ax              ;Fixup SS
-	mov esp,ESP_R3_PROT    ;Fixup SP
-	jmp error              ;Error out!
+	mov ax,SU_SEG_PROT16SS|3 ;SS OK?
+	mov ss,ax                ;Fixup SS
+	mov esp,ESP_R3_PROT      ;Fixup SP
+	jmp error                ;Error out!
 
 TSS286entrypoint:
 	jnc errorTSS16         ;eflags loaded incorrectly?
@@ -34,8 +34,9 @@ TSS286entrypoint:
 	movzx eax,byte [4]   ;Validate the flags
 	sahf                 ;Restore the original flags of the task
 	pushfd
+	and word [esp],0x40FF  ;Make sure that the flags are properly tested.
 	pop eax
-	cmp eax,0x4002 ;Flags OK?
+	cmp eax,0x4003 ;Flags OK?
 	jnz errorTSS16_1
 	mov ax,ss
 	cmp ax,SU_SEG_PROT16SS|3  ;SS OK?

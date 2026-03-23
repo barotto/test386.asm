@@ -131,9 +131,9 @@ switchToRing3FLATuser:
 	mov    ax, gs
 	mov    [ebx+0x6E], ax ; save GS
 	; set ring 0 SS:ESP
-	mov    ax,ss
-	mov    [ebx+8],ax
 	mov    [ebx+4], esp
+	mov    eax, ss
+	mov    [ebx+8], eax
 	cli                             ; disable ints during switching
 	push   dword DU_SEG_PROT32FLAT|3    ; push user stack with RPL=3
 	push   dword ESP_R3_PROTFLAT        ; push user mode esp

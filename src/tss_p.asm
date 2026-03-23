@@ -85,14 +85,14 @@ initTSS32:
 	push   ds
 	les    ebp,[cs:ptrTSSprot]
         mov    eax, cr3
-	mov    [es:ebp+0x1C],eax ;Static field: CR3!
+	mov    dword [es:ebp+0x1C],eax ;Static field: CR3!
 	sldt   ax
 	mov    word [es:ebp+0x60], ax ;Static field: LDTR!
 	;Ring 0 SS:ESP is loaded by the ring switching function
 	mov    eax,0xFFFFFFFF
 	mov    [es:ebp+0x20],eax ;Initial EIP, should be overwritten by the task switch.
 	mov    word [es:ebp+0x14], S_SEG_PROT32_R2 ;R2 Stack
-	mov    word [es:ebp+0x18], ESP_R2_PROT
+	mov    dword [es:ebp+0x18], ESP_R2_PROT
         pop    ds
         pop    ebp
         pop    eax
@@ -153,7 +153,7 @@ initTSS16:
 	push   ebp
 	push   ds
 	push   edi
-	les    edi,[cs:ptrTSSprot]
+	les    edi,[cs:ptrTSSprot16]
 	xor    eax, eax
 	mov    ecx, 0x16
 	cld

@@ -288,6 +288,7 @@ initGDT:
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc S_SEG_PROT32_R2,  0x00010000,0x0008ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
+	defGDTDesc DU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc TSS_PROT,      0x00005000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc TSS_PROT16,    0x00005200,0x0000002C,ACC_TYPE_TSS16|ACC_PRESENT|ACC_DPL_3
@@ -296,7 +297,7 @@ initGDT:
 	defGDTDesc TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc CU_SEG_PROT16CS, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
+	defGDTDesc CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
 	defGDTDesc SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
@@ -925,7 +926,7 @@ userV86IretExitFuncLocationRet:
 	jmp   error
 	bits 32
 errorInTSS32Load:
-	mov ax,D_SEG_PROT32FLAT|3  ;SS safe value
+	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
 	mov ss,ax
 	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer
 	jmp error               ;Error out!	
@@ -942,13 +943,13 @@ userV86ExitFuncRet:
 	call switchToRing3FLATuser
 	;Perform tests for 386 mode parts below
 	;Loading patterns for the 386 data segments
-	mov ax,SU_SEG_PROT32DS     ;DS
+	mov ax,SU_SEG_PROT32DS|3   ;DS
 	mov ds,ax
-	mov ax,SU_SEG_PROT32ES     ;ES
+	mov ax,SU_SEG_PROT32ES|3   ;ES
 	mov es,ax
-	mov ax,SU_SEG_PROT32FS     ;FS
+	mov ax,SU_SEG_PROT32FS|3   ;FS
 	mov ss,ax
-	mov ax,SU_SEG_PROT32GS     ;GS
+	mov ax,SU_SEG_PROT32GS|3   ;GS
 	mov gs,ax
 	
 	;Loading patterns for the 386 data segments.
@@ -984,26 +985,26 @@ userV86ExitFuncRet:
 	jnz error
 	;Now, validate the segment registers
 	mov ax,ss
-	cmp ax,D_SEG_PROT32FLAT|3  ;SS OK?
+	cmp ax,DU_SEG_PROT32FLAT|3 ;SS OK?
 	jnz errorTSS32_1
 	mov ax,cs
 	cmp ax,CU_SEG_PROT32FLAT|3 ;CS OK?
 	jnz errorTSS32_1
 	mov ax,ds
-	cmp ax,SU_SEG_PROT32DS     ;DS OK?
+	cmp ax,SU_SEG_PROT32DS|3   ;DS OK?
 	jnz errorTSS32_1
 	mov ax,es
-	cmp ax,SU_SEG_PROT32ES     ;ES OK?
+	cmp ax,SU_SEG_PROT32ES|3   ;ES OK?
 	jnz errorTSS32_1
 	mov ax,fs
-	cmp ax,SU_SEG_PROT32FS     ;FS OK?
+	cmp ax,SU_SEG_PROT32FS|3   ;FS OK?
 	jnz errorTSS32_1
 	mov ax,gs
-	cmp ax,SU_SEG_PROT32GS     ;GS OK?
+	cmp ax,SU_SEG_PROT32GS|3   ;GS OK?
 	jnz errorTSS32_1
 	jmp TSStest1finished
 errorTSS32_1:
-	mov ax,D_SEG_PROT32FLAT|3  ;SS safe value
+	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
 	mov ss,ax
 	mov esp,ESP_R3_PROTFLAT   ;ESP safe value
 	jmp error                  ;Error out	

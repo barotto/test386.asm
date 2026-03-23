@@ -135,7 +135,7 @@ switchToRing3FLATuser:
 	mov    [ebx+8],ax
 	mov    [ebx+4], esp
 	cli                             ; disable ints during switching
-	push   dword D_SEG_PROT32FLAT|3    ; push user stack with RPL=3
+	push   dword DU_SEG_PROT32FLAT|3    ; push user stack with RPL=3
 	push   dword ESP_R3_PROTFLAT        ; push user mode esp
 	pushfd                          ; push eflags
 	or     dword [ss:esp], 0x200    ; reenable interrupts in ring 3 (can't use privileged sti)

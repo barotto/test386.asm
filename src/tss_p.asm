@@ -76,12 +76,14 @@ clearTSS:
 ; Prepare 32-bit TSS for task switching
 
 initTSS32:
+	push   edi
 	call clearTSS
+	pop    edi
 	; initialize everything to 0
 	push   eax
 	push   ebp
 	push   ds
-	les    ebx,[cs:ptrTSSprot]
+	les    ebp,[cs:ptrTSSprot]
         mov    eax, cr3
 	mov    [es:ebp+0x1C],eax ;Static field: CR3!
 	sldt   ax
@@ -150,11 +152,14 @@ initTSS16:
 	push   eax
 	push   ebp
 	push   ds
-	les    ebx,[cs:ptrTSSprot]
+	push   edi
+	les    edi,[cs:ptrTSSprot]
 	xor    eax, eax
 	mov    ecx, 0x15
 	cld
 	rep stosw                                 ;Clear the TSS
+	pop    edi
+	les    ebp,[cs:ptrTSSprot]
 	mov    [es:ebp+0],word 0                  ;No back link yet!
 	mov    ax, ss                             ;R0 Stack
 	mov    word [es:ebp+2], ss

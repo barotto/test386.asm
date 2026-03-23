@@ -948,7 +948,7 @@ userV86ExitFuncRet:
 	mov ax,SU_SEG_PROT32ES|3   ;ES
 	mov es,ax
 	mov ax,SU_SEG_PROT32FS|3   ;FS
-	mov ss,ax
+	mov fs,ax
 	mov ax,SU_SEG_PROT32GS|3   ;GS
 	mov gs,ax
 	

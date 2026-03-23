@@ -170,7 +170,8 @@ initTSS16:
 	mov    ax, CU_SEG_PROT16CS|3                   ;Code segment
 	mov    [es:ebp+0x24], ax
 	mov    [es:ebp+0x10], word 3                   ;FLAGS with carry flag set to initialize tests
-	mov    [es:ebp+0x0E], TSS286entrypoint         ;Code entry point
+	mov    ax,TSS286entrypoint
+	mov    [es:ebp+0x0E], ax                       ;Code entry point
 	mov    [es:ebp+0x26], word SU_SEG_PROT16SS|3   ;Stack segment
 	mov    [es:ebp+0x22], word SU_SEG_PROT16ES|3   ;ES
 	mov    [es:ebp+0x28], word SU_SEG_PROT16DS|3   ;DS

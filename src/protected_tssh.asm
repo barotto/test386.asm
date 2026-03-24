@@ -31,7 +31,7 @@ TSS286entrypoint:
 	cmp edi,0x7788
 	jnz errorTSS16
 	;General purpose registers are loaded OK. Now check the segment registers.
-	movzx eax,byte [4]   ;Validate the flags
+	mov ah,[4]   ;Validate the flags
 	sahf                 ;Restore the original flags of the task
 	pushfd
 	and word [esp],0x40FF  ;Make sure that the flags are properly tested.
@@ -56,7 +56,10 @@ TSS286entrypoint:
 	mov ax,gs
 	cmp ax,0                  ;GS OK?
 	jnz errorTSS16_1
-	clc
+	sldt ax
+	cmp ax,LDT_SEG_PROT286    ;LDT OK?
+	jnz errorTSS16_1
+	clc                     ;Prepare test for us
 	iret                    ;Return to the calling task
 	jmp TSS1_returned
 errorTSS16_1: ;Error occurred?
@@ -64,4 +67,10 @@ errorTSS16_1: ;Error occurred?
 ;We return here after check #1.
 TSS1_returned:
 	jc errorTSS16_1        ;flags register not loaded correctly if carry is set
+	clc                    ; Clear carry flag for set test in 32-bit task.
 	iret                   ;return to the calling 32-bit task
+	clc                    ; Clear carry flag for set test in 32-bit task.
+	iret                   ;return to the calling 32-bit task
+	stc                    ; Set carry flag for set test in 32-bit task
+	iret                   ;return to the calling 32-bit task
+	

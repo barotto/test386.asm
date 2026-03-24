@@ -282,7 +282,8 @@ initGDT:
 	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc LDT_SEG_PROT,  0x00000A00,0x000005ff,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_SEG_PROT,  0x00000A00,0x000005f7,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDesc LDT_SEG_PROT286,  0x00000FF8,0x00000000,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
@@ -961,14 +962,9 @@ userV86ExitFuncRet:
 	mov ebp,0x33447777
 	mov esi,0x55665555
 	mov edi,0x7788AAAA
-	clc ;Clear carry flag for the test
+	clc ;Clear carry flag for the 286 test and us
 	;Now, all test patterns are loaded. Trigger a switch to the 16-bit task.
 	int 0x28
-	jc errorInTSS32Load     ;Invalid flags
-	mov dword [0x10000],eax
-	lahf
-	mov byte [0x10004],ah
-	mov eax,dword [0x10000]
 	;We've returned from the test task. Verify if our registers are loaded correctly.
 	cmp esp,0x11221111      ;Validate the stack pointer first
 	jnz errorInTSS32Load
@@ -1006,6 +1002,9 @@ userV86ExitFuncRet:
 	mov ax,gs
 	cmp ax,SU_SEG_PROT32GS|3   ;GS OK?
 	jnz errorTSS32_1
+	sldt ax
+	cmp ax,LDT_SEG_PROT        ;LDT OK?
+	jnz errorTSS16_1
 	jmp TSStest1finished
 errorTSS32_1:
 	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
@@ -1015,9 +1014,15 @@ errorTSS32_1:
 
 TSStest1finished:
 	;Test the flags register during task switches now.
-	stc	;With carry flag set.
+	stc	;With carry flag set for testing the 286 task.
 	int 0x28
-	jnc errorTSS32_1
+	;Now the 286 flags are tested. Now test ours.
+	stc     ;With carry flag set in our task.
+	int 0x28
+	jnc error ;Carry got set?
+	clc     ;With carry flag cleared in our task.
+	int 0x28
+	jc error  ;Carry got cleared?
 	;32-bit eflags register loaded OK.
 
 	;Finishes 386 mode and 286 mode TSS tests, return to normal protected mode

@@ -175,7 +175,9 @@ initTSS16:
 	mov    [es:ebp+0x26], word SU_SEG_PROT16SS|3   ;Stack segment
 	mov    [es:ebp+0x22], word SU_SEG_PROT16ES|3   ;ES
 	mov    [es:ebp+0x28], word SU_SEG_PROT16DS|3   ;DS
-	; General purpose registers (TODO: test patterns)
+	mov    ax,LDT_SEG_PROT286                      ;LDT
+	mov    [es:ebp+0x2A],ax
+	; General purpose registers (they are zero extended into 32-bits)
 	mov    [es:ebp+0x12],word 0x1234               ;AX
 	mov    [es:ebp+0x14],word 0x5678               ;CX
 	mov    [es:ebp+0x16],word 0x9ABC               ;DX

@@ -2,10 +2,10 @@
 ; 16-bit TSS execution path, in parallel with test386.asm tests running in 386 mode
 ;
 errorTSS16:
-	mov ax,SU_SEG_PROT16SS|3 ;SS OK?
-	mov ss,ax                ;Fixup SS
-	mov esp,ESP_R3_PROT      ;Fixup SP
-	jmp error                ;Error out!
+	mov ax,SU_SEG_PROT16SS|3              ;SS OK?
+	mov ss,ax                             ;Fixup SS
+	mov esp,(ESP_R3_PROT|0xFFFF0000)      ;Fixup SP
+	jmp error                             ;Error out!
 
 TSS286entrypoint:
 	cmp esp,0xFFFF1122         ;SP loaded correctly?
@@ -27,8 +27,8 @@ TSS286entrypoint:
 	jnz errorTSS16
 	;General purpose registers are loaded OK. Now check the segment registers.
 	pushfd
-	and word [esp],0x4000  ;Make sure that the flags are properly tested.
 	pop eax
+	and eax,0x4000  ;Make sure that the flags are properly tested.
 	cmp eax,0x4000 ;Flags OK?
 	jnz errorTSS16_1
 	mov ax,ss
@@ -68,15 +68,15 @@ TSS1_returned:
 	iret                   ;return to the calling 32-bit task
 	;Now the flags should have been set.
 	pushfd
-	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
+	pop eax
+	cmp eax,dword (FLAGS_SET|PS_NT) ;Correct?
 	jnz errorTSS16_1
-	popfd
 	push dword (FLAGS_CLEARED|PS_NT)
 	popfd ;Clear the flags to test
 	iret                   ;return to the calling 32-bit task
 	pushfd
-	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
-	popfd ;Restore the flags
+	pop eax
+	cmp eax,dword (FLAGS_SET|PS_NT) ;Correct?
 	iret                   ;return to the calling 32-bit task
 	
 	;Now, we switched sides to test.

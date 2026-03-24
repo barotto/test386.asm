@@ -1040,13 +1040,14 @@ TSStest1finished:
 	;Now the flags should have been set.
 	pushfd
 	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
-	jnz errorTSS16_1
+	jnz errorTSS32_1
 	popfd
 	push dword (FLAGS_CLEARED|PS_NT)
 	popfd ;Clear the flags to test
 	iretd                   ;return to the calling 16-bit task
 	pushfd
-	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
+	cmp [esp],dword (FLAGS_CLEARED|PS_NT) ;Correct?
+	jnz errorTSS32_1
 	popfd ;Restore the flags
 	iretd                   ;return to the calling 16-bit task
 

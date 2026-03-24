@@ -8,22 +8,22 @@ errorTSS16:
 	jmp error                ;Error out!
 
 TSS286entrypoint:
-	cmp esp,0x1122         ;SP loaded correctly?
+	cmp esp,0xFFFF1122         ;SP loaded correctly?
 	jnz errorTSS16
 	mov sp,ESP_R3_PROT     ;Fixup SP
-	cmp eax,0x1234         ;EAX loaded correctly?
+	cmp eax,0xFFFF1234         ;EAX loaded correctly?
 	jnz errorTSS16
-	cmp ecx,0x5678
+	cmp ecx,0xFFFF5678
 	jnz errorTSS16
-	cmp edx,0x9ABC
+	cmp edx,0xFFFF9ABC
 	jnz errorTSS16
-	cmp ebx,0xDEF0
+	cmp ebx,0xFFFFDEF0
 	jnz errorTSS16
-	cmp ebp,0x3344
+	cmp ebp,0xFFFF3344
 	jnz errorTSS16
-	cmp esi,0x5566
+	cmp esi,0xFFFF5566
 	jnz errorTSS16
-	cmp edi,0x7788
+	cmp edi,0xFFFF7788
 	jnz errorTSS16
 	;General purpose registers are loaded OK. Now check the segment registers.
 	pushfd

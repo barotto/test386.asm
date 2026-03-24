@@ -138,7 +138,7 @@ switchToRing3FLATuser:
 	push   dword DU_SEG_PROT32FLAT|3    ; push user stack with RPL=3
 	push   dword ESP_R3_PROTFLAT        ; push user mode esp
 	pushfd                          ; push eflags
-	or     dword [ss:esp], 0x200    ; reenable interrupts in ring 3 (can't use privileged sti)
+	; don't reenable interrupts in ring 3 (can't use privileged sti) for ease of testing
 	push   dword CU_SEG_PROT32FLAT|3    ; push user code segment with RPL=3
 	or     edx,0xF0000              ; Fix flat instruction address
 	push   dword edx                ; push return EIP

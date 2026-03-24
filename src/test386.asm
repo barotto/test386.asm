@@ -774,7 +774,6 @@ userFarFunc:
 	;
 %include "protected_tssh.asm"
 
-
 userRetfErrorFunction:
 	; From user mode to kernel mode error address, which isn't allowed.
 	push   C_SEG_PROT32
@@ -933,7 +932,11 @@ errorInTSS32Load:
 	jmp error               ;Error out!	
 
 userV86ExitFuncRet:
-
+	pushfd
+	pop eax
+	and eax,0xCDFF ;Clear IOPL and interrupt flag again, as it cannot be changed in user mode
+	push eax
+	popfd
 	; Validate the TSS task switching functionality
 	;First, enter a valid 32-bit protected flat mode for testing
 	;Prepare 32-bit TSS ROM fields
@@ -1014,15 +1017,50 @@ errorTSS32_1:
 
 TSStest1finished:
 	;Test the flags register during task switches now.
-	stc	;With carry flag set for testing the 286 task.
-	int 0x28
-	;Now the 286 flags are tested. Now test ours.
-	stc     ;With carry flag set in our task.
-	int 0x28
-	jnc error ;Carry got set?
-	clc     ;With carry flag cleared in our task.
-	int 0x28
-	jc error  ;Carry got cleared?
+	int 0x28 ;Start testing the 286 flags
+	push dword FLAGS_CLEARED
+	popfd    ;Clear the flags to test.
+	int 0x28 ;Continue testing the 286 flags
+	push dword FLAGS_SET
+	popfd    ;Set the flags to test.
+	int 0x28 ;Third stage of the flags test.
+	;286 flags test completed.
+
+	;Now, we switch sides
+	jmp far [cs:ptrTSSprot16Gate+0xF0000]
+
+	;Now we start our TSS flags test
+	pushfd
+	pop eax
+	test ax,PS_NT         ;Task properly nested?
+	jz error
+	push dword (FLAGS_SET|PS_NT)
+	popfd    ;Set the flags to test.
+	iretd                   ;return to the calling 16-bit task
+	;Now the flags should have been set.
+	pushfd
+	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
+	jnz errorTSS16_1
+	popfd
+	push dword (FLAGS_CLEARED|PS_NT)
+	popfd ;Clear the flags to test
+	iretd                   ;return to the calling 16-bit task
+	pushfd
+	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
+	popfd ;Restore the flags
+	iretd                   ;return to the calling 16-bit task
+
+	;We're the parent task again.
+	;Perform call tests now
+	call far [cs:ptrTSSprot16Gate+0xF0000]
+	;Now, we switch sides
+	jmp far [cs:ptrTSSprot16Gate+0xF0000]
+	;We've been far called. Return.
+	iretd
+	;We're the parent task again.
+	
+
+
 	;32-bit eflags register loaded OK.
 
 	;Finishes 386 mode and 286 mode TSS tests, return to normal protected mode

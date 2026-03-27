@@ -97,6 +97,174 @@ GDT_SEG_LIMIT equ 0x31F
 
 ESP_REAL    equ 0xffff
 
+%if ROM128
+	; Protected mode prototype support to support GDT entry references in the remainder of the code
+%include "protected_m.asm"
+	; Always start with the NULL segment selector.
+	defGDTDescPrototype NULL
+	defGDTDescPrototype LDT_SEG_PROT
+	defGDTDescPrototype LDT_SEG_PROT286
+	defGDTDescPrototype DU_SEG_PROT32FLAT
+	defGDTDescPrototype TSS_DSEG_PROT16
+	defGDTDescPrototype TSS_PROT
+	defGDTDescPrototype TSS_PROT16
+	defGDTDescPrototype TSS_GSEG_PROT32
+	defGDTDescPrototype TSS_GSEG_PROT16
+	defGDTDescPrototype CU_SEG_PROT32FLAT
+	defGDTDescPrototype SU_SEG_PROT32DS
+	defGDTDescPrototype SU_SEG_PROT32ES
+	defGDTDescPrototype SU_SEG_PROT32FS
+	defGDTDescPrototype SU_SEG_PROT32GS
+	defGDTDescPrototype SU_SEG_PROT16SS
+	defGDTDescPrototype SU_SEG_PROT16DS
+	defGDTDescPrototype SU_SEG_PROT16ES
+	defGDTDescPrototype CU_SEG_PROT16CS
+	defGDTDescPrototype TSSU_DSEG_PROT32
+	defGDTDescPrototype TSSU_DSEG_PROT16
+
+section .high_bios start=0x00000
+;Start of high BIOS
+	;
+	; 286 TSS handler
+	;
+%include "protected_tssh.asm"
+BITS 32
+	;
+	; 386 TSS user mode code
+	;
+test386TSSstart:
+	;Loading patterns for the 386 data segments
+	mov ax,SU_SEG_PROT32DS|3   ;DS
+	mov ds,ax
+	mov ax,SU_SEG_PROT32ES|3   ;ES
+	mov es,ax
+	mov ax,SU_SEG_PROT32FS|3   ;FS
+	mov fs,ax
+	mov ax,SU_SEG_PROT32GS|3   ;GS
+	mov gs,ax
+	
+	;Loading patterns for the 386 data segments.
+	mov eax,0x12347654
+	mov ecx,0x5678CBA9
+	mov edx,0x9ABC3333
+	mov ebx,0xDEF02222
+	mov esp,0x11221111
+	mov ebp,0x33447777
+	mov esi,0x55665555
+	mov edi,0x7788AAAA
+	clc ;Clear carry flag for the 286 test and us
+	;Now, all test patterns are loaded. Trigger a switch to the 16-bit task.
+	int 0x28
+	;We've returned from the test task. Verify if our registers are loaded correctly.
+	cmp esp,0x11221111      ;Validate the stack pointer first
+	jnz errorInTSS32Load
+	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer, so we regain stack functionality.
+	cmp eax,0x12347654
+	jnz error
+	cmp ecx,0x5678CBA9
+	jnz error
+	cmp edx,0x9ABC3333
+	jnz error
+	cmp ebx,0xDEF02222
+	jnz error
+	cmp ebp,0x33447777
+	jnz error
+	cmp esi,0x55665555
+	jnz error
+	cmp edi,0x7788AAAA
+	jnz error
+	;Now, validate the segment registers
+	mov ax,ss
+	cmp ax,DU_SEG_PROT32FLAT|3 ;SS OK?
+	jnz errorTSS32_1
+	mov ax,cs
+	cmp ax,CU_SEG_PROT32FLAT|3 ;CS OK?
+	jnz errorTSS32_1
+	mov ax,ds
+	cmp ax,SU_SEG_PROT32DS|3   ;DS OK?
+	jnz errorTSS32_1
+	mov ax,es
+	cmp ax,SU_SEG_PROT32ES|3   ;ES OK?
+	jnz errorTSS32_1
+	mov ax,fs
+	cmp ax,SU_SEG_PROT32FS|3   ;FS OK?
+	jnz errorTSS32_1
+	mov ax,gs
+	cmp ax,SU_SEG_PROT32GS|3   ;GS OK?
+	jnz errorTSS32_1
+	sldt ax
+	cmp ax,LDT_SEG_PROT        ;LDT OK?
+	jnz errorTSS16_1
+	jmp TSStest1finished
+errorTSS32_1:
+	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
+	mov ss,ax
+	mov esp,ESP_R3_PROTFLAT   ;ESP safe value
+	jmp error                  ;Error out	
+
+TSStest1finished:
+	;Test the flags register during task switches now.
+	int 0x28 ;Start testing the 286 flags
+	push dword FLAGS_CLEARED
+	popfd    ;Clear the flags to test.
+	int 0x28 ;Continue testing the 286 flags
+	push dword FLAGS_SET
+	popfd    ;Set the flags to test.
+	int 0x28 ;Third stage of the flags test.
+	;286 flags test completed.
+
+	;Now, we switch sides
+	jmp far [cs:ptrTSSprot16Gate+0xF0000]
+
+	;Now we start our TSS flags test
+	pushfd
+	pop eax
+	test ax,PS_NT         ;Task properly nested?
+	jz error
+	push dword (FLAGS_SET|PS_NT)
+	popfd    ;Set the flags to test.
+	iretd                   ;return to the calling 16-bit task
+	;Now the flags should have been set.
+	pushfd
+	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
+	jnz errorTSS32_1
+	popfd
+	push dword (FLAGS_CLEARED|PS_NT)
+	popfd ;Clear the flags to test
+	iretd                   ;return to the calling 16-bit task
+	pushfd
+	cmp [esp],dword (FLAGS_CLEARED|PS_NT) ;Correct?
+	jnz errorTSS32_1
+	popfd ;Restore the flags
+	iretd                   ;return to the calling 16-bit task
+
+	;We're the parent task again.
+	;Perform call tests now
+	call far [cs:ptrTSSprot16Gate+0xF0000]
+	;Now, we switch sides
+	jmp far [cs:ptrTSSprot16Gate+0xF0000]
+	;We've been far called. Return.
+	iretd
+	;We're the parent task again.
+	
+
+
+	;32-bit eflags register loaded OK.
+	pushfd
+	push cs
+	call nextlowbios
+	nextlowbios:
+	mov dword [esp],test386TSSend+0xF0000 ;Return to the F0000 segment in flat protected mode
+	retfd ;Actually return
+	
+;End of high BIOS
+	;Pad to 64KB
+	times 0x10000-($-$$) nop
+	;Restart counting for the upper 64KB block
+section .low_bios start=0x10000
+;Start of low BIOS
+	BITS 16
+%endif
 
 header:
 	db COPYRIGHT
@@ -252,8 +420,9 @@ ESP_R0_PROTFLAT equ 0xE001FFFF
 ESP_R3_PROT equ 0x00007FFF
 ESP_R3_PROTFLAT equ 0x0001FFFF
 
+%if !ROM128
 %include "protected_m.asm"
-
+%endif
 
 ;;; support for ROM based GDT (currently unused)
 romGDT:
@@ -271,8 +440,28 @@ ptrIDTreal: ; pointer to the pmode IDT for real mode code
 	dw IDT_SEG_REAL
 
 initGDT:
-	; the first descriptor in the GDT is always a dud (the null selector)
-	defGDTDesc NULL
+	;Implementation is automatically used for earlier defined cases if needed. Keep those at the start of the table.
+	; the first descriptor in the GDT is always a dud (the null selector).
+	defGDTDescImplementation NULL
+	defGDTDescImplementation LDT_SEG_PROT,  0x00000A00,0x000005f7,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDescImplementation LDT_SEG_PROT286,  0x00000FF8,0x00000000,ACC_TYPE_LDT|ACC_PRESENT
+	defGDTDescImplementation DU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
+	defGDTDescImplementation TSS_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDescImplementation TSS_PROT,      0x00005000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation TSS_PROT16,    0x00005200,0x0000002C,ACC_TYPE_TSS16|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
+	defGDTDescImplementation SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32GS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16SS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
+	defGDTDescImplementation SU_SEG_PROT16DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation CU_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation TSSU_DSEG_PROT32, 0x00005000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDescImplementation TSSU_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
@@ -282,32 +471,13 @@ initGDT:
 	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc LDT_SEG_PROT,  0x00000A00,0x000005f7,ACC_TYPE_LDT|ACC_PRESENT
-	defGDTDesc LDT_SEG_PROT286,  0x00000FF8,0x00000000,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc S_SEG_PROT32_R2,  0x00010000,0x0008ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc DU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
 	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSS_PROT,      0x00005000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc TSS_PROT16,    0x00005200,0x0000002C,ACC_TYPE_TSS16|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc TSS_DSEG_PROT, 0x00005000,0x0000006F,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc TSS_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
-	defGDTDesc CU_SEG_PROT16CS, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
-	defGDTDesc SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc SU_SEG_PROT32GS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc SU_SEG_PROT16SS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
-	defGDTDesc SU_SEG_PROT16DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc SU_SEG_PROT16ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSSU_DSEG_PROT32, 0x00005000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc TSSU_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
@@ -365,9 +535,6 @@ ptrTSSprotRaw: ; pointer to the task state segment itself
 ptrTSSprot16Raw: ; pointer to the 16-bit task state segment itself
 	dd 0
 	dw TSS_PROT16|3
-ptrTSSprot32Gate: ; pointer to the 32-bit task state segment gate
-	dd 0
-	dw TSS_GSEG_PROT32|3
 ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
 	dd 0
 	dw TSS_GSEG_PROT16|3
@@ -769,11 +936,6 @@ userFarFunc:
 	;
 %include "protected_inth.asm"
 
-	;
-	; 286 TSS handler
-	;
-%include "protected_tssh.asm"
-
 userRetfErrorFunction:
 	; From user mode to kernel mode error address, which isn't allowed.
 	push   C_SEG_PROT32
@@ -946,123 +1108,17 @@ userV86ExitFuncRet:
 	;Now, switch to flat user mode to start our tests
 	call switchToRing3FLATuser
 	;Perform tests for 386 mode parts below
-	;Loading patterns for the 386 data segments
-	mov ax,SU_SEG_PROT32DS|3   ;DS
-	mov ds,ax
-	mov ax,SU_SEG_PROT32ES|3   ;ES
-	mov es,ax
-	mov ax,SU_SEG_PROT32FS|3   ;FS
-	mov fs,ax
-	mov ax,SU_SEG_PROT32GS|3   ;GS
-	mov gs,ax
-	
-	;Loading patterns for the 386 data segments.
-	mov eax,0x12347654
-	mov ecx,0x5678CBA9
-	mov edx,0x9ABC3333
-	mov ebx,0xDEF02222
-	mov esp,0x11221111
-	mov ebp,0x33447777
-	mov esi,0x55665555
-	mov edi,0x7788AAAA
-	clc ;Clear carry flag for the 286 test and us
-	;Now, all test patterns are loaded. Trigger a switch to the 16-bit task.
-	int 0x28
-	;We've returned from the test task. Verify if our registers are loaded correctly.
-	cmp esp,0x11221111      ;Validate the stack pointer first
-	jnz errorInTSS32Load
-	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer, so we regain stack functionality.
-	cmp eax,0x12347654
-	jnz error
-	cmp ecx,0x5678CBA9
-	jnz error
-	cmp edx,0x9ABC3333
-	jnz error
-	cmp ebx,0xDEF02222
-	jnz error
-	cmp ebp,0x33447777
-	jnz error
-	cmp esi,0x55665555
-	jnz error
-	cmp edi,0x7788AAAA
-	jnz error
-	;Now, validate the segment registers
-	mov ax,ss
-	cmp ax,DU_SEG_PROT32FLAT|3 ;SS OK?
-	jnz errorTSS32_1
-	mov ax,cs
-	cmp ax,CU_SEG_PROT32FLAT|3 ;CS OK?
-	jnz errorTSS32_1
-	mov ax,ds
-	cmp ax,SU_SEG_PROT32DS|3   ;DS OK?
-	jnz errorTSS32_1
-	mov ax,es
-	cmp ax,SU_SEG_PROT32ES|3   ;ES OK?
-	jnz errorTSS32_1
-	mov ax,fs
-	cmp ax,SU_SEG_PROT32FS|3   ;FS OK?
-	jnz errorTSS32_1
-	mov ax,gs
-	cmp ax,SU_SEG_PROT32GS|3   ;GS OK?
-	jnz errorTSS32_1
-	sldt ax
-	cmp ax,LDT_SEG_PROT        ;LDT OK?
-	jnz errorTSS16_1
-	jmp TSStest1finished
-errorTSS32_1:
-	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
-	mov ss,ax
-	mov esp,ESP_R3_PROTFLAT   ;ESP safe value
-	jmp error                  ;Error out	
 
-TSStest1finished:
-	;Test the flags register during task switches now.
-	int 0x28 ;Start testing the 286 flags
-	push dword FLAGS_CLEARED
-	popfd    ;Clear the flags to test.
-	int 0x28 ;Continue testing the 286 flags
-	push dword FLAGS_SET
-	popfd    ;Set the flags to test.
-	int 0x28 ;Third stage of the flags test.
-	;286 flags test completed.
-
-	;Now, we switch sides
-	jmp far [cs:ptrTSSprot16Gate+0xF0000]
-
-	;Now we start our TSS flags test
+	%if ROM128
+	;Switch to segment E0000 in flat mode for more advanced tests.
 	pushfd
-	pop eax
-	test ax,PS_NT         ;Task properly nested?
-	jz error
-	push dword (FLAGS_SET|PS_NT)
-	popfd    ;Set the flags to test.
-	iretd                   ;return to the calling 16-bit task
-	;Now the flags should have been set.
-	pushfd
-	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
-	jnz errorTSS32_1
-	popfd
-	push dword (FLAGS_CLEARED|PS_NT)
-	popfd ;Clear the flags to test
-	iretd                   ;return to the calling 16-bit task
-	pushfd
-	cmp [esp],dword (FLAGS_CLEARED|PS_NT) ;Correct?
-	jnz errorTSS32_1
-	popfd ;Restore the flags
-	iretd                   ;return to the calling 16-bit task
-
-	;We're the parent task again.
-	;Perform call tests now
-	call far [cs:ptrTSSprot16Gate+0xF0000]
-	;Now, we switch sides
-	jmp far [cs:ptrTSSprot16Gate+0xF0000]
-	;We've been far called. Return.
-	iretd
-	;We're the parent task again.
-	
-
-
-	;32-bit eflags register loaded OK.
+	push cs
+	call nexthighbios
+	nexthighbios:
+	mov dword [esp],test386TSSstart+0xE0000 ;Return to the E0000 segment in flat protected mode
+	retfd ;Actually return
+	test386TSSend:
+	%endif
 
 	;Finishes 386 mode and 286 mode TSS tests, return to normal protected mode
 	call switchToRing0FromFlatUser

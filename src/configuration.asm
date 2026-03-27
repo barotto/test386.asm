@@ -53,5 +53,7 @@ IBM_PS1 equ 0
 ; debugging).
 DEBUG equ 0
 
+; Enable additional tests using a 128KB ROM.
+ROM128 equ 0
 
 ; == END OF CONFIGURATION ======================================================

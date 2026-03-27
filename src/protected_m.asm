@@ -64,6 +64,37 @@
 %endmacro
 
 ;
+;   Defines an (earlier) defined GDT descriptor in RAM, given a name (%1), base (%2), limit (%3),
+;   acc byte (%4), and ext nibble (%5)
+;
+
+;First, the prototype version, used in earlier code
+%macro defGDTDescPrototype 1
+	%assign %1 GDTSelDesc
+	%assign GDTSelDesc GDTSelDesc+8
+	;The GDT is prototyped.
+	%define GDTprototyped
+%endmacro
+;Second, the implementation
+%macro defGDTDescImplementation 1-5 0,0,0,0
+	%ifndef GDTprototyped
+	%assign %1 GDTSelDesc
+	%assign nested 0
+	%else
+	%assign nested 1
+	%endif
+	lds  ebx, [cs:ptrGDTreal] ; this macro is used in real mode to set up prot mode env.
+	mov  eax, %1
+	mov  esi, %2
+	mov  edi, %3
+	mov  dx,  %4|%5
+	initDescriptor
+	%if nested==0
+	%assign GDTSelDesc GDTSelDesc+8
+	%endif
+%endmacro
+
+;
 ;   Defines a LDT descriptor, given a name (%1), base (%2), limit (%3), type (%4), and ext (%5)
 ;
 %assign LDTSelDesc 4

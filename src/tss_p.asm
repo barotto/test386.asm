@@ -148,6 +148,7 @@ initTSS32:
 ;     ╚═══════════════════════════════╬═══════════════════════════════╝
 
 initTSS16:
+	%if ROM128
 	; initialize everything to predefined values
 	push   eax
 	push   ebp
@@ -189,5 +190,6 @@ initTSS16:
 	pop    ds
 	pop    ebp
 	pop    eax
+	%endif
 	ret
 	

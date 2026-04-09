@@ -6,6 +6,7 @@ ptrTSSprot32Gate: ; pointer to the 32-bit task state segment gate
 	dd 0
 	dw TSS_GSEG_PROT32|3
 
+BITS 32
 errorTSS16:
 	mov ax,SU_SEG_PROT16SS|3              ;SS OK?
 	mov ss,ax                             ;Fixup SS

@@ -132,6 +132,10 @@ BITS 32
 	;
 	; 386 TSS user mode code
 	;
+%include "protected_tsshelpers.asm"
+
+
+
 test386TSSstart:
 	;Loading patterns for the 386 data segments
 	mov ax,SU_SEG_PROT32DS|3   ;DS

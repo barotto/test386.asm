@@ -122,7 +122,7 @@ ESP_REAL    equ 0xffff
 	defGDTDescPrototype TSSU_DSEG_PROT32
 	defGDTDescPrototype TSSU_DSEG_PROT16
 
-section .high_bios start=0x00000
+section .system_bios_extensions_area start=0x00000
 ;Start of high BIOS
 	;
 	; 286 TSS handler
@@ -261,7 +261,7 @@ TSStest1finished:
 	;Pad to 64KB
 	times 0x10000-($-$$) nop
 	;Restart counting for the upper 64KB block
-section .low_bios start=0x10000
+section .system_bios_area start=0x10000 vstart=0
 ;Start of low BIOS
 	BITS 16
 %endif

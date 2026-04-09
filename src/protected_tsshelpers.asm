@@ -108,7 +108,6 @@ validateCurrentTSSNT: ;Selector 0 specified.
 	push ds ;Save
 	push eax ;Save
 	push ebx ;Save
-	pushfd ;Push the flags
-	pop ebx ;Load it into EBX
+	mov ebx,[esp+0xC] ;Load the EFLAGS register into EBX.
 	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS (unused))
 	jmp commonvalidateTSSNTbit ;Common validation point

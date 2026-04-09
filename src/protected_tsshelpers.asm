@@ -37,7 +37,7 @@ validateTSSbusy:
 	popfd
 	retfd
 LARerror:
-	jmp error ;Goto error
+	jmp error+0xF0000 ;Goto error
 
 TSSisBusy:
 	shr eax,0x10 ;Get the busy bit that's expected.
@@ -47,7 +47,7 @@ TSSisBusy:
 
 errorTSSbusy: ;Error in the TSS while checking the busy bit
 	pop eax ;Restore
-	jmp error
+	jmp error+0xF0000
 
 ; ValidateTSSbacklink: Validate the backlink field of a TSS
 ; Parameters:
@@ -67,7 +67,7 @@ validateTSSbacklink:
 	popfd
 	retfd
 errorTSSbacklink: ;An error occurred during validating the TSS backlink field?
-	jmp error
+	jmp error+0xF0000
 	
 ; ValidateTSSNT: Validate the NT flag of a TSS
 ; Parameters:
@@ -101,7 +101,7 @@ validateTSSNT:
 	popfd
 	retfd
 errorTSSNT: ;An error occurred during validating the NT bit?
-	jmp error
+	jmp error+0xF0000
 	
 		
 validateCurrentTSSNT: ;Selector 0 specified.

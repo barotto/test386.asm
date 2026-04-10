@@ -58,7 +58,7 @@
 	push eax
 	pushfd
 	pop eax
-	and ax,NOT PS_NT
+	and ax,0xBFFF
 	or ax,(%1<<14)
 	push eax
 	popfd

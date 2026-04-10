@@ -139,6 +139,17 @@ BITS 32
 
 
 test386TSSstart:
+	; Verify we start clean
+	setTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
+	setTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
+	setNTflag 0
+	validateTSSbusy386 TSSU_DSEG_PROT32,1
+	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
+	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
+	validateTSSNT386 TSSU_DSEG_PROT32,0
+	validateTSSNT386 TSSU_DSEG_PROT16,0
+
 	;Loading patterns for the 386 data segments
 	mov ax,SU_SEG_PROT32DS|3   ;DS
 	mov ds,ax

@@ -53,15 +53,14 @@
 
 ; setNTflag: Set the NT bit of the current TSS
 ; Parameters:
-; %1 backlink bit to set
-%macro setNTflag 1
-	push eax
-	pushfd
-	pop eax
-	and ax,0xBFFF
-	or ax,(%1<<14)
-	push eax
-	popfd
-	pop eax
+; %1 selector of TSS to use. 0 for current task FLAGS register.
+; %2 NT bit to set
+%macro setNTflag286 2
+	mov eax,(%1 | (%2<<16))
+	o32 call far [cs:ptrTSSprot32validateNT]
+%endmacro
+%macro setNTflag386 2
+	mov eax,(%1 | (%2<<16))
+	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
 %endmacro
 

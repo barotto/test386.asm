@@ -3,20 +3,24 @@
 ;
 
 ;Define some far call pointers to execute in the proper mode no matter what TSS we're in.
-ptrTSSprot32validatebusy: ; pointer to the 32-bit task state segment gate
+ptrTSSprot32validatebusy: ; pointer to the 32-bit task state segment function
 	dd validateTSSbusy+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
-ptrTSSprot32validatebacklink: ; pointer to the 32-bit task state segment gate
+ptrTSSprot32validatebacklink: ; pointer to the 32-bit task state segment function
 	dd validateTSSbacklink+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
-ptrTSSprot32setbacklink: ; pointer to the 32-bit task state segment gate
+ptrTSSprot32setbacklink: ; pointer to the 32-bit task state segment function
 	dd setTSSbacklink+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
-ptrTSSprot32validateNT: ; pointer to the 32-bit task state segment gate
+ptrTSSprot32validateNT: ; pointer to the 32-bit task state segment function
 	dd validateTSSNT+0xE0000
+	dw CU_SEG_PROT32FLAT|3
+
+ptrTSSprot32setNT: ; pointer to the 32-bit task state segment function
+	dd setTSSNT+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
 BITS 32
@@ -132,3 +136,62 @@ validateCurrentTSSNT: ;Selector 0 specified.
 	mov ebx,[esp+0xC] ;Load the EFLAGS register into EBX.
 	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS (unused))
 	jmp commonvalidateTSSNTbit ;Common validation point
+
+; setTSSNT: Set the NT flag of a TSS
+; Parameters:
+; EAX: lower half: TSS data descriptor to check. Zeroed for current TSS (EFLAGS register). bit 16: NT to set, bit 17: 32-bit TSS.
+setTSSNT:
+	push ecx ;Type determination
+	mov ecx,0 ;Default: type TSS.
+	pushfd
+	cmp ax,0 ;Active TSS to validate?
+	jz validateCurrentTSSNT
+	;Validate specified TSS
+	push ds ;Save
+	push eax ;Save
+	push ebx ;Save
+	mov ds,ax ;Load the TSS
+	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS)
+	test eax,0x8000 ;32-bit TSS?
+	jnz get32bitTSSNT
+	mov bx,[0x10] ;Load flags register
+	and ebx,0xFFFF ;Mask off unused bits
+	jmp commonsetTSSNTbit ;Common code again
+	get32bitTSSNT:
+	mov ebx,[0x24] ;Load eflags register
+	commonsetTSSNTbit: ;All NT flag checks end up here. EBX is loaded with the EFLAGS register of the requested task.
+	and bx,0xBFFF ;Mask off the NT bit
+	and eax,PS_NT ;Mask off the NT bit
+	or bx,ax ;Set the NT bit only.
+	cmp ecx,1 ;Type EFLAGS?
+	jnz finishTSStypeEFLAGS
+	;Type TSS.
+	test eax,0x8000 ;32-bit TSS?
+	jnz set32bitsTSSNT
+	;16-bit TSS to write.
+	mov [0x10], bx ;Set the FLAGS register.
+	jmp commonfinishTSSNTbit
+	set32bitsTSSNT:
+	;32-bits TSS to write.
+	mov [0x24], bx ;Set the FLAGS register.
+	commonfinishTSSNTbit:
+	;Clean up and return.
+	pop ebx
+	pop eax
+	pop ds
+	popfd
+	pop ecx
+	retfd
+finishTSStypeEFLAGS:
+	mov [esp+0xC], bx ;Update on the stack instead.
+	jmp commonfinishTSSNTbit
+		
+setCurrentTSSNT: ;Selector 0 specified.
+	mov ecx,1 ;Type is requested to be EFLAGS instead.
+	push ds ;Save
+	push eax ;Save
+	push ebx ;Save
+	mov ebx,[esp+0xC] ;Load the EFLAGS register into EBX.
+	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS (unused))
+	jmp commonvalidateTSSNTbit ;Common validation point
+

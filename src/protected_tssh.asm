@@ -105,7 +105,7 @@ TSS1_returned:
 	;We're the parent task again.
 	call far [cs:ptrTSSprot32Gate]
 	and esp,0xFFFF ;Safe ESP usage!
-	setNTflag286 0,0 ;Clear the NT flag for our bits and back-link tests.
+	setNTflag286 0,0,0 ;Clear the NT flag for our bits and back-link tests.
 	;Now, we switch sides
 	jmp far [cs:ptrTSSprot32Gate]
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
@@ -113,19 +113,19 @@ TSS1_returned:
 	validateTSSbusy286 TSS_PROT,1
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
-	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT16
-	validateTSSNT286 TSSU_DSEG_PROT32,0
-	validateTSSNT286 TSSU_DSEG_PROT16,0 ;Not written yet, so left at 0.
-	validateTSSNT286 0,1 ;Set currently in register only.
+	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT
+	validateTSSNT286 TSSU_DSEG_PROT32,1,0
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0 ;Not written yet, so left at 0.
+	validateTSSNT286 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
 	and esp,0xFFFF ;Safe ESP usage!
 	validateTSSbusy286 TSS_PROT,1
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
-	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT16
-	validateTSSNT286 TSSU_DSEG_PROT32,1 ;Set to 1 in source task.
-	validateTSSNT286 TSSU_DSEG_PROT16,0 ;Left at 0.
-	validateTSSNT286 0,1 ;Set currently in register only.
+	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT
+	validateTSSNT286 TSSU_DSEG_PROT32,1,1 ;Set to 1 in source task.
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0 ;Left at 0.
+	validateTSSNT286 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
 	;Now testing JMP from 32-bit task to 16-bit task, NT going from set to cleared in the source task. 16-bit task keeps it cleared.
 	;TSS test 3: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
@@ -134,9 +134,9 @@ TSS1_returned:
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT286 TSSU_DSEG_PROT32,1 ;Set to 1 in source task.
-	validateTSSNT286 TSSU_DSEG_PROT16,0 ;Left at 0.
-	validateTSSNT286 0,0 ;Cleared currently in register only.
+	validateTSSNT286 TSSU_DSEG_PROT32,1,1 ;Set to 1 in source task.
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0 ;Left at 0.
+	validateTSSNT286 0,0,0 ;Cleared currently in register only.
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
 	;TSS test 3.2 Same as before, but NT in 386 is cleared.
 	and esp,0xFFFF ;Safe ESP usage!
@@ -144,10 +144,10 @@ TSS1_returned:
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT286 TSSU_DSEG_PROT32,0 ;Set to 0 in source task.
-	validateTSSNT286 TSSU_DSEG_PROT16,1 ;Left at 1.
-	validateTSSNT286 0,0 ;Cleared currently in register only.
-	setNTflag286 0,1 ;Set NT flag to test.
+	validateTSSNT286 TSSU_DSEG_PROT32,1,0 ;Set to 0 in source task.
+	validateTSSNT286 TSSU_DSEG_PROT16,0,1 ;Left at 1.
+	validateTSSNT286 0,0,0 ;Cleared currently in register only.
+	setNTflag286 0,0,1 ;Set NT flag to test.
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
 	
 	;Now, we have switched sides to check CALL from 16-bit to 32-bit.
@@ -157,37 +157,37 @@ TSS1_returned:
 	and esp,0xFFFF ;Safe ESP usage!
 	setTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	setTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
-	setNTflag286 0,0
-	validateTSSbusy286 TSS_PROT,1
-	validateTSSbusy286 TSS_PROT16,0
+	setNTflag286 0,0,0
+	validateTSSbusy286 TSS_PROT16,1
+	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT286 TSSU_DSEG_PROT32,0
-	validateTSSNT286 TSSU_DSEG_PROT16,0
-	validateTSSNT286 0,0
+	validateTSSNT286 TSSU_DSEG_PROT32,1,0
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0
+	validateTSSNT286 0,0,0
 	call far [cs:ptrTSSprot32Gate] ;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, setup the second test for call, this time with NT set.
 	;First, validate IRET did it's job correctly. 
 	and esp,0xFFFF ;Safe ESP usage!
-	validateTSSbusy286 TSS_PROT,1
-	validateTSSbusy286 TSS_PROT16,0
-	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
-	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT16
-	validateTSSNT286 TSSU_DSEG_PROT32,0
-	validateTSSNT286 TSSU_DSEG_PROT16,0
+	validateTSSbusy286 TSS_PROT16,1
+	validateTSSbusy286 TSS_PROT,0
+	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
+	validateTSSbacklink286 TSSU_DSEG_PROT32,TSS_PROT16
+	validateTSSNT286 TSSU_DSEG_PROT32,1,0
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0
 	;Reset state for detection.
 	setTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
 	;Now, with NT bit set.
-	setNTflag286 0,1
+	setNTflag286 0,0,1
 	call far [cs:ptrTSSprot32Gate] ;TSS test 2: CALL busy bit set in both tasks, NT set to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, validate IRET did it's job correctly. 
 	and esp,0xFFFF ;Safe ESP usage!
-	validateTSSbusy286 TSS_PROT,1
-	validateTSSbusy286 TSS_PROT16,0
+	validateTSSbusy286 TSS_PROT16,1
+	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,TSS_PROT16
-	validateTSSNT286 TSSU_DSEG_PROT32,1
-	validateTSSNT286 TSSU_DSEG_PROT16,0
+	validateTSSNT286 TSSU_DSEG_PROT32,1,1
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0
 	;Reset state for detection.
 	setTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
 

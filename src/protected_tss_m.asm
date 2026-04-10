@@ -41,26 +41,28 @@
 ; validateTSSNT: Validate the NT bit of a TSS
 ; Parameters:
 ; %1 TSS data descriptor to validate. 0 for current task.
-; %2 backlink bit to validate
-%macro validateTSSNT286 2
-	mov eax,(%1 | (%2<<16))
+; %2 TSS size (0 for 16-bit, 1 for 32-bit)
+; %3 NT bit to validate
+%macro validateTSSNT286 3
+	mov eax,(%1 | ((%2|(%3<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT]
 %endmacro
-%macro validateTSSNT386 2
-	mov eax,(%1 | (%2<<16))
+%macro validateTSSNT386 3
+	mov eax,(%1 | ((%2|(%3<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
 %endmacro
 
 ; setNTflag: Set the NT bit of the current TSS
 ; Parameters:
 ; %1 selector of TSS to use. 0 for current task FLAGS register.
-; %2 NT bit to set
-%macro setNTflag286 2
-	mov eax,(%1 | (%2<<16))
+; %2 TSS size (0 for 16-bit, 1 for 32-bit)
+; %3 NT bit to set
+%macro setNTflag286 3
+	mov eax,(%1 | ((%2|(%3<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT]
 %endmacro
-%macro setNTflag386 2
-	mov eax,(%1 | (%2<<16))
+%macro setNTflag386 3
+	mov eax,(%1 | ((%2|(%3<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
 %endmacro
 

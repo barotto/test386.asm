@@ -40,7 +40,7 @@ validateTSSbusy:
 	jnz TSSisBusy
 	;TSS is idle
 	shr eax,0x10 ;Get the busy bit that's expected.
-	jz errorTSSbusy ;If incorrect, error out
+	jnz errorTSSbusy ;If incorrect, error out
 	pop eax ;Success, return.
 	popfd
 	retfd
@@ -49,7 +49,7 @@ LARerror:
 
 TSSisBusy:
 	shr eax,0x10 ;Get the busy bit that's expected.
-	jnz errorTSSbusy ;If incorrect, error out
+	jz errorTSSbusy ;If incorrect, error out
 	pop eax ;Success, return.
 	retfd
 

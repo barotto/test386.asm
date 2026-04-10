@@ -44,11 +44,11 @@
 ; %2 TSS size (0 for 16-bit, 1 for 32-bit)
 ; %3 NT bit to validate
 %macro validateTSSNT286 3
-	mov eax,(%1 | ((%2|(%3<<1))<<16))
+	mov eax,(%1 | ((%3|(%2<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT]
 %endmacro
 %macro validateTSSNT386 3
-	mov eax,(%1 | ((%2|(%3<<1))<<16))
+	mov eax,(%1 | ((%3|(%2<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
 %endmacro
 
@@ -58,11 +58,11 @@
 ; %2 TSS size (0 for 16-bit, 1 for 32-bit)
 ; %3 NT bit to set
 %macro setNTflag286 3
-	mov eax,(%1 | ((%2|(%3<<1))<<16))
+	mov eax,(%1 | ((%3|(%2<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT]
 %endmacro
 %macro setNTflag386 3
-	mov eax,(%1 | ((%2|(%3<<1))<<16))
+	mov eax,(%1 | ((%3|(%2<<1))<<16))
 	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
 %endmacro
 

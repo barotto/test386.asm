@@ -121,6 +121,7 @@ ESP_REAL    equ 0xffff
 	defGDTDescPrototype CU_SEG_PROT16CS
 	defGDTDescPrototype TSSU_DSEG_PROT32
 	defGDTDescPrototype TSSU_DSEG_PROT16
+	defGDTDescPrototype CU_SEG_PROT32
 
 section .system_bios_extensions_area start=0x00000
 ;Start of high BIOS
@@ -143,8 +144,8 @@ test386TSSstart:
 	setTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	setTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	setNTflag386 0,0
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT386 TSSU_DSEG_PROT32,0
@@ -271,8 +272,8 @@ TSStest1finished:
 	setTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	setTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	setNTflag386 0,0
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT386 TSSU_DSEG_PROT32,0
@@ -281,8 +282,8 @@ TSStest1finished:
 	call far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, setup the second test for call, this time with NT set.
 	;First, validate IRET did it's job correctly. 
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT16
 	validateTSSNT386 TSSU_DSEG_PROT32,0
@@ -293,8 +294,8 @@ TSStest1finished:
 	setNTflag386 0,1
 	call far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 2: CALL busy bit set in both tasks, NT set to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, validate IRET did it's job correctly. 
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT16
 	validateTSSNT386 TSSU_DSEG_PROT32,1
@@ -307,8 +308,8 @@ TSStest1finished:
 	setNTflag386 TSSU_DSEG_PROT32,0 ;This is going to be set.
 	setNTflag386 TSSU_DSEG_PROT16,1 ;This is going to be cleared.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT386 TSSU_DSEG_PROT32,1
@@ -318,8 +319,8 @@ TSStest1finished:
 	setNTflag386 TSSU_DSEG_PROT32,1 ;This is going to be cleared.
 	setNTflag386 TSSU_DSEG_PROT16,1 ;This is going to be cleared.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
-	validateTSSbusy386 TSSU_DSEG_PROT16,0
+	validateTSSbusy386 TSS_PROT,1
+	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT386 TSSU_DSEG_PROT32,0 ;Set to 0 in destination task.
@@ -331,8 +332,8 @@ TSStest1finished:
 	
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
 	and esp,0xFFFF ;Safe ESP usage!
-	validateTSSbusy386 TSSU_DSEG_PROT16,1
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
+	validateTSSbusy386 TSS_PROT16,1
+	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT32,TSS_PROT16
 	validateTSSNT386 TSSU_DSEG_PROT16,0
@@ -340,8 +341,8 @@ TSStest1finished:
 	validateTSSNT386 0,1 ;Set currently in register only.
 	iretd ;Return to caller.
 	and esp,0xFFFF ;Safe ESP usage!
-	validateTSSbusy386 TSSU_DSEG_PROT16,1
-	validateTSSbusy386 TSSU_DSEG_PROT32,1
+	validateTSSbusy386 TSS_PROT16,1
+	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT32,TSS_PROT16
 	validateTSSNT386 TSSU_DSEG_PROT16,1 ;Set to 1 in source task.
@@ -565,10 +566,10 @@ initGDT:
 	defGDTDescImplementation CU_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDescImplementation TSSU_DSEG_PROT32, 0x00005000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSSU_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
 	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3

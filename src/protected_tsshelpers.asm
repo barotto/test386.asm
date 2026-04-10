@@ -23,6 +23,10 @@ ptrTSSprot32setNT: ; pointer to the 32-bit task state segment function
 	dd setTSSNT+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
+TSShelpererrorptr: ;An error occurred while validating task state segment information
+	dd error
+	dw CU_SEG_PROT32
+
 BITS 32
 
 ;Call below functions using a 32-bit far call.
@@ -33,29 +37,26 @@ BITS 32
 validateTSSbusy:
 	pushfd
 	push eax
+	push ebx
+	mov ebx,eax ;Copy of the bit
 	or ax,3 ;Make sure it's in user mode
 	lar ax,ax ;Load the B-bit of the TSS
-	jnz LARerror
-	test al,2 ;Check the B-bit
-	jnz TSSisBusy
+	jnz errorTSSbusy ;Error executing LAR
 	;TSS is idle
-	shr eax,0x10 ;Get the busy bit that's expected.
+	shr ebx,7 ;Get the busy bit that's expected to match positions.
+	and ah,2 ;Get the bit to inspect
+	and bh,2 ;Get the bit to inspect
+	cmp ah,bh ;Compare the bits to their expected results
 	jnz errorTSSbusy ;If incorrect, error out
+	pop ebx
 	pop eax ;Success, return.
 	popfd
 	retfd
-LARerror:
-	jmp error+0xF0000 ;Goto error
-
-TSSisBusy:
-	shr eax,0x10 ;Get the busy bit that's expected.
-	jz errorTSSbusy ;If incorrect, error out
-	pop eax ;Success, return.
-	retfd
-
-errorTSSbusy: ;Error in the TSS while checking the busy bit
-	pop eax ;Restore
-	jmp error+0xF0000
+errorTSSbusy: ;Error in the TSS while checking the expected busy bit
+	pop ebx ;Restore
+	pop eax
+	popfd
+	jmp far [TSShelpererrorptr+0xE0000]
 
 ; validateTSSbacklink: Validate the backlink field of a TSS
 ; Parameters:
@@ -75,7 +76,7 @@ validateTSSbacklink:
 	popfd
 	retfd
 errorTSSbacklink: ;An error occurred during validating the TSS backlink field?
-	jmp error+0xF0000
+	jmp far [TSShelpererrorptr+0xE0000]
 	
 ; setTSSbacklink: Clear the backlink field of a TSS
 ; Parameters:
@@ -126,7 +127,7 @@ validateTSSNT:
 	popfd
 	retfd
 errorTSSNT: ;An error occurred during validating the NT bit?
-	jmp error+0xF0000
+	jmp far [TSShelpererrorptr+0xE0000]
 	
 		
 validateCurrentTSSNT: ;Selector 0 specified.

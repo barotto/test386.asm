@@ -124,6 +124,8 @@ ESP_REAL    equ 0xffff
 
 section .system_bios_extensions_area start=0x00000
 ;Start of high BIOS
+	; TSS helper macros
+%include "protected_tss_m.asm"
 	;
 	; 286 TSS handler
 	;

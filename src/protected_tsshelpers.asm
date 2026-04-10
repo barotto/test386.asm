@@ -11,6 +11,10 @@ ptrTSSprot32validatebacklink: ; pointer to the 32-bit task state segment gate
 	dd validateTSSbacklink+0xE0000
 	dw CU_SEG_PROT32FLAT|3
 
+ptrTSSprot32setbacklink: ; pointer to the 32-bit task state segment gate
+	dd setTSSbacklink+0xE0000
+	dw CU_SEG_PROT32FLAT|3
+
 ptrTSSprot32validateNT: ; pointer to the 32-bit task state segment gate
 	dd validateTSSNT+0xE0000
 	dw CU_SEG_PROT32FLAT|3
@@ -49,7 +53,7 @@ errorTSSbusy: ;Error in the TSS while checking the busy bit
 	pop eax ;Restore
 	jmp error+0xF0000
 
-; ValidateTSSbacklink: Validate the backlink field of a TSS
+; validateTSSbacklink: Validate the backlink field of a TSS
 ; Parameters:
 ; EAX: lower half: TSS data descriptor to validate. upper half: expected backlink field.
 validateTSSbacklink:
@@ -69,7 +73,24 @@ validateTSSbacklink:
 errorTSSbacklink: ;An error occurred during validating the TSS backlink field?
 	jmp error+0xF0000
 	
-; ValidateTSSNT: Validate the NT flag of a TSS
+; setTSSbacklink: Clear the backlink field of a TSS
+; Parameters:
+; EAX: lower half: TSS data descriptor to validate. upper half: expected backlink field.
+setTSSbacklink:
+	pushfd
+	push ds
+	push eax
+	or eax,3 ;Make sure we're in user mode
+	mov ds,eax ;Load the TSS user-mode descriptor specified into DS
+	shr eax,0x10 ;Get the value to set.
+	mov word [0], ax ;Set the backlink field
+	;Clean up and return.
+	pop eax
+	pop ds
+	popfd
+	retfd
+
+; validateTSSNT: Validate the NT flag of a TSS
 ; Parameters:
 ; EAX: lower half: TSS data descriptor to check. Zeroed for current TSS (EFLAGS register). bit 16: expected NT field, bit 17: 32-bit TSS.
 validateTSSNT:

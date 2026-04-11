@@ -151,8 +151,10 @@ setTSSNT:
 	push ds ;Save
 	push eax ;Save
 	push ebx ;Save
+	push edx ;Save
 	mov ds,ax ;Load the TSS
 	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS)
+	mov edx,eax ;Backup
 	test eax,0x8000 ;32-bit TSS?
 	jnz get32bitTSSNT
 	mov bx,[0x10] ;Load flags register
@@ -167,7 +169,7 @@ setTSSNT:
 	cmp ecx,0 ;Type TSS?
 	jnz finishTSSsetEFLAGS
 	;Type TSS.
-	test eax,0x8000 ;32-bit TSS?
+	test edx,0x8000 ;32-bit TSS?
 	jnz set32bitsTSSNT
 	;16-bit TSS to write.
 	mov [0x10], bx ;Set the FLAGS register.
@@ -177,6 +179,7 @@ setTSSNT:
 	mov [0x24], bx ;Set the FLAGS register.
 	commonfinishTSSsetNTbit:
 	;Clean up and return.
+	pop edx
 	pop ebx
 	pop eax
 	pop ds
@@ -184,7 +187,7 @@ setTSSNT:
 	pop ecx
 	retfd
 finishTSSsetEFLAGS:
-	mov [esp+0xC], bx ;Update on the stack instead.
+	mov [esp+0x10], bx ;Update on the stack instead.
 	jmp commonfinishTSSsetNTbit
 		
 setCurrentTSSNT: ;Selector 0 specified.
@@ -192,7 +195,9 @@ setCurrentTSSNT: ;Selector 0 specified.
 	push ds ;Save
 	push eax ;Save
 	push ebx ;Save
-	mov ebx,[esp+0xC] ;Load the EFLAGS register into EBX.
+	push edx ;Save
+	mov ebx,[esp+0x10] ;Load the EFLAGS register into EBX.
 	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS (unused))
+	mov edx,eax ;Backup
 	jmp commonsetTSSNTbit ;Common validation point
 

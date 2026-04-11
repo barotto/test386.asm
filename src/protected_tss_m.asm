@@ -59,10 +59,10 @@
 ; %3 NT bit to set
 %macro setNTflag286 3
 	mov eax,(%1 | ((%3|(%2<<1))<<16))
-	o32 call far [cs:ptrTSSprot32validateNT]
+	o32 call far [cs:ptrTSSprot32setNT]
 %endmacro
 %macro setNTflag386 3
 	mov eax,(%1 | ((%3|(%2<<1))<<16))
-	o32 call far [cs:ptrTSSprot32validateNT+0xE0000]
+	o32 call far [cs:ptrTSSprot32setNT+0xE0000]
 %endmacro
 

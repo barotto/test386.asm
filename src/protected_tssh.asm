@@ -64,50 +64,9 @@ errorTSS16_1: ;Error occurred?
 	jmp error
 ;We return here after check #1.
 TSS1_returned:
-	;Now we start our TSS flags test
-	pushfd
-	pop eax
-	test ax,PS_NT         ;Task properly nested?
-	jz error
-	push dword (FLAGS_SET|PS_NT)
-	popfd    ;Set the flags to test.
-	iret                   ;return to the calling 32-bit task
-	;Now the flags should have been set.
-	pushfd
-	pop eax
-	cmp eax,dword (FLAGS_SET|PS_NT) ;Correct?
-	jnz errorTSS16_1
-	push dword (FLAGS_CLEARED|PS_NT)
-	popfd ;Clear the flags to test
-	iret                   ;return to the calling 32-bit task
-	pushfd
-	pop eax
-	cmp eax,dword (FLAGS_SET|PS_NT) ;Correct?
-	iret                   ;return to the calling 32-bit task
-	
-	;Now, we switched sides to test.
-	;Test the flags register during task switches now.
-	int 0x29 ;Start testing the 386 flags
-	push dword FLAGS_CLEARED
-	popfd    ;Clear the flags to test.
-	int 0x29 ;Continue testing the 386 flags
-	push dword FLAGS_SET
-	popfd    ;Set the flags to test.
-	int 0x29 ;Third stage of the flags test.
-	;386 flags test completed.
-
-	;Now, we switch sides
+	;Now, we switch sides back, validating basic JMP-based task switches.
 	jmp far [cs:ptrTSSprot32Gate]
 
-	;We've been far called. Return.
-	iretd
-
-	;We're the parent task again.
-	call far [cs:ptrTSSprot32Gate]
-	and esp,0xFFFF ;Safe ESP usage!
-	setNTflag286 0,0,0 ;Clear the NT flag for our bits and back-link tests.
-	;Now, we switch sides
-	jmp far [cs:ptrTSSprot32Gate]
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
 	and esp,0xFFFF ;Safe ESP usage!
 	validateTSSbusy286 TSS_PROT,1

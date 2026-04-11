@@ -143,10 +143,10 @@ validateCurrentTSSNT: ;Selector 0 specified.
 ; EAX: lower half: TSS data descriptor to check. Zeroed for current TSS (EFLAGS register). bit 16: NT to set, bit 17: 32-bit TSS.
 setTSSNT:
 	push ecx ;Type determination
-	mov ecx,0 ;Default: type TSS.
 	pushfd
 	cmp ax,0 ;Active TSS to validate?
-	jz validateCurrentTSSNT
+	jz setCurrentTSSNT
+	mov ecx,0 ;Default: type TSS.
 	;Validate specified TSS
 	push ds ;Save
 	push eax ;Save
@@ -164,18 +164,18 @@ setTSSNT:
 	and bx,0xBFFF ;Mask off the NT bit
 	and eax,PS_NT ;Mask off the NT bit
 	or bx,ax ;Set the NT bit only.
-	cmp ecx,1 ;Type EFLAGS?
-	jnz finishTSStypeEFLAGS
+	cmp ecx,0 ;Type TSS?
+	jnz finishTSSsetEFLAGS
 	;Type TSS.
 	test eax,0x8000 ;32-bit TSS?
 	jnz set32bitsTSSNT
 	;16-bit TSS to write.
 	mov [0x10], bx ;Set the FLAGS register.
-	jmp commonfinishTSSNTbit
+	jmp commonfinishTSSsetNTbit
 	set32bitsTSSNT:
 	;32-bits TSS to write.
 	mov [0x24], bx ;Set the FLAGS register.
-	commonfinishTSSNTbit:
+	commonfinishTSSsetNTbit:
 	;Clean up and return.
 	pop ebx
 	pop eax
@@ -183,9 +183,9 @@ setTSSNT:
 	popfd
 	pop ecx
 	retfd
-finishTSStypeEFLAGS:
+finishTSSsetEFLAGS:
 	mov [esp+0xC], bx ;Update on the stack instead.
-	jmp commonfinishTSSNTbit
+	jmp commonfinishTSSsetNTbit
 		
 setCurrentTSSNT: ;Selector 0 specified.
 	mov ecx,1 ;Type is requested to be EFLAGS instead.
@@ -194,5 +194,5 @@ setCurrentTSSNT: ;Selector 0 specified.
 	push ebx ;Save
 	mov ebx,[esp+0xC] ;Load the EFLAGS register into EBX.
 	shr eax,2 ;Move the data to validate into bits 14(expected NT bit) and 15(32-bit TSS (unused))
-	jmp commonvalidateTSSNTbit ;Common validation point
+	jmp commonsetTSSNTbit ;Common validation point
 

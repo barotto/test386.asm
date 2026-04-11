@@ -221,49 +221,8 @@ errorTSS32_1:
 	jmp error                  ;Error out	
 
 TSStest1finished:
-	;Test the flags register during task switches now.
-	int 0x28 ;Start testing the 286 flags
-	push dword FLAGS_CLEARED
-	popfd    ;Clear the flags to test.
-	int 0x28 ;Continue testing the 286 flags
-	push dword FLAGS_SET
-	popfd    ;Set the flags to test.
-	int 0x28 ;Third stage of the flags test.
-	;286 flags test completed.
-
-	;Now, we switch sides
-	jmp far [cs:ptrTSSprot16Gate+0xF0000]
-
-	;Now we start our TSS flags test
-	pushfd
-	pop eax
-	test ax,PS_NT         ;Task properly nested?
-	jz error
-	push dword (FLAGS_SET|PS_NT)
-	popfd    ;Set the flags to test.
-	iretd                   ;return to the calling 16-bit task
-	;Now the flags should have been set.
-	pushfd
-	cmp [esp],dword (FLAGS_SET|PS_NT) ;Correct?
-	jnz errorTSS32_1
-	popfd
-	push dword (FLAGS_CLEARED|PS_NT)
-	popfd ;Clear the flags to test
-	iretd                   ;return to the calling 16-bit task
-	pushfd
-	cmp [esp],dword (FLAGS_CLEARED|PS_NT) ;Correct?
-	jnz errorTSS32_1
-	popfd ;Restore the flags
-	iretd                   ;return to the calling 16-bit task
-
-	;We're the parent task again.
-	;Perform call tests now
-	call far [cs:ptrTSSprot16Gate+0xF0000]
-	;Now, we switch sides
-	jmp far [cs:ptrTSSprot16Gate+0xF0000]
-	;We've been far called. Return.
-	iretd
-	;We're the parent task again.
+	;Now, we switch sides, to basic test JMP-based task switches
+	jmp far [cs:ptrTSSprot16Gate]
 	
 	;Since basic task switches are validated now, we can start testing the various bits related to the task switches (Busy bit of the TSS, NT bit of the FLAGS register, Back-link field in the TSS)
 

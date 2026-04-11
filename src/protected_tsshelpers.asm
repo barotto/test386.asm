@@ -56,7 +56,7 @@ errorTSSbusy: ;Error in the TSS while checking the expected busy bit
 	pop ebx ;Restore
 	pop eax
 	popfd
-	jmp far [TSShelpererrorptr+0xE0000]
+	jmp far [cs:TSShelpererrorptr+0xE0000]
 
 ; validateTSSbacklink: Validate the backlink field of a TSS
 ; Parameters:
@@ -76,7 +76,7 @@ validateTSSbacklink:
 	popfd
 	retfd
 errorTSSbacklink: ;An error occurred during validating the TSS backlink field?
-	jmp far [TSShelpererrorptr+0xE0000]
+	jmp far [cs:TSShelpererrorptr+0xE0000]
 	
 ; setTSSbacklink: Clear the backlink field of a TSS
 ; Parameters:
@@ -127,7 +127,7 @@ validateTSSNT:
 	popfd
 	retfd
 errorTSSNT: ;An error occurred during validating the NT bit?
-	jmp far [TSShelpererrorptr+0xE0000]
+	jmp far [cs:TSShelpererrorptr+0xE0000]
 	
 		
 validateCurrentTSSNT: ;Selector 0 specified.

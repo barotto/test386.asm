@@ -222,7 +222,7 @@ errorTSS32_1:
 
 TSStest1finished:
 	;Now, we switch sides, to basic test JMP-based task switches
-	jmp far [cs:ptrTSSprot16Gate]
+	jmp far [cs:ptrTSSprot16Gate+0xF0000]
 	
 	;Since basic task switches are validated now, we can start testing the various bits related to the task switches (Busy bit of the TSS, NT bit of the FLAGS register, Back-link field in the TSS)
 
@@ -244,7 +244,7 @@ TSStest1finished:
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
-	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT16
+	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT
 	validateTSSNT386 TSSU_DSEG_PROT32,1,0
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0
 	;Reset state for detection.
@@ -256,7 +256,7 @@ TSStest1finished:
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
-	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT16
+	validateTSSbacklink386 TSSU_DSEG_PROT16,TSS_PROT
 	validateTSSNT386 TSSU_DSEG_PROT32,1,1
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0
 	;Reset state for detection.

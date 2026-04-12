@@ -332,7 +332,7 @@ TSStest1finished:
 	;Now, we have switched sides to finish the tests.
 	;We're the parent task again.
 
-	setNTflag386 0,1,1 ;Set NT flag to test.
+	setNTflag386 0,1,0 ;Clear NT flag to finish.
 
 	;32-bit eflags register loaded OK.
 	pushfd

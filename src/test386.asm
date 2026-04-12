@@ -225,6 +225,7 @@ TSStest1finished:
 	jmp far [cs:ptrTSSprot16Gate+0xF0000]
 	
 	;Since basic task switches are validated now, we can start testing the various bits related to the task switches (Busy bit of the TSS, NT bit of the FLAGS register, Back-link field in the TSS)
+	;80386 and 80486 programmer's reference manuals mention that the NT flag after a JMP instruction to another task is cleared. It is in fact, unaffected on 80386/80486 processors, due to a misprint of the manuals.
 
 	;Start of the 32-bit to 16-bit TSS tests.
 	;Step 1: validate 16-bit TSS outgoing/incoming B-bit, NT bit, Back-link during CALL.
@@ -265,20 +266,20 @@ TSStest1finished:
 	;Now, the 32-bit task to 16-bit task backlink is properly filled, NT properly updating for CALL and matching IRET.
 	;Now, test JMP instruction task switches.
 	setNTflag386 0,1,1 ;This is going to be kept in the 32-bit TSS.
-	setNTflag386 TSSU_DSEG_PROT32,1,0 ;This is going to be set.
-	setNTflag386 TSSU_DSEG_PROT16,0,1 ;This is going to be cleared.
-	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	setNTflag386 TSSU_DSEG_PROT32,1,0 ;This is going to be set to 1.
+	setNTflag386 TSSU_DSEG_PROT16,0,0 ;This is going to be loaded.
+	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT386 TSSU_DSEG_PROT32,1,1
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0
-	validateTSSNT386 0,1,0 ;The JMP instruction to our TSS cleared us.
+	validateTSSNT386 0,1,1 ;The JMP instruction to our TSS cleared us.
 	setNTflag386 0,1,0 ;This is going to be kept in the 32-bit TSS.
 	setNTflag386 TSSU_DSEG_PROT32,1,1 ;This is going to be cleared.
-	setNTflag386 TSSU_DSEG_PROT16,0,1 ;This is going to be cleared.
-	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	setNTflag386 TSSU_DSEG_PROT16,0,1 ;This is going to be loaded.
+	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -288,7 +289,7 @@ TSStest1finished:
 	validateTSSNT386 0,1,0 ;Cleared currently in register only.
 
 	;End of the 32-bit to 16-bit TSS tests. Now, switch sides to verify CALL from 16-bit to 32-bit.
-	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Switch sides
 	
 	;Start of the 32-bit side of the 16-bit to 32-bit TSS tests.
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
@@ -309,26 +310,27 @@ TSStest1finished:
 	validateTSSNT386 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
 	;Now testing JMP from 32-bit task to 32-bit task, NT going from set to cleared in the source task. 32-bit task keeps it cleared.
-	;TSS test 3: JMP busy bit set in 32-bit task, busy bit cleared in 16-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	;TSS test 3: JMP busy bit set in 32-bit task, busy bit cleared in 16-bit task, NT in 386 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	;TSS test 3.1: JMP busy bit set in 32-bit task, busy bit cleared in 16-bit task, NT in 386 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT386 TSSU_DSEG_PROT32,1,1 ;Left at 1.
 	validateTSSNT386 TSSU_DSEG_PROT16,0,1 ;Set to 1 in source task.
-	validateTSSNT386 0,0,0 ;Cleared currently in register only.
-	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Return to the 32-bit task.
+	validateTSSNT386 TSSU_DSEG_PROT32,1,0 ;Loaded as 0.
+	validateTSSNT386 0,1,0 ;Set in destination task from the TSS.
+	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Return to the 16-bit task.
 	;TSS test 3.2 Same as before, but NT in 286 is cleared.
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT386 TSSU_DSEG_PROT32,1,1 ;Left at 1.
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0 ;Set to 0 in source task.
-	validateTSSNT386 0,0,0 ;Cleared currently in register only.
+	validateTSSNT386 TSSU_DSEG_PROT32,1,1 ;Loaded as 1.
+	validateTSSNT386 0,1,1 ;Set in destination task from the TSS.
 	setNTflag386 0,1,1 ;Set NT flag to test.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Return to the 16-bit task.
-	
+
 	;Now, we have switched sides to finish the tests.
 	;We're the parent task again.
 

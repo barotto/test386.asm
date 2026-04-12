@@ -87,16 +87,16 @@ TSS1_returned:
 	validateTSSNT286 TSSU_DSEG_PROT16,0,0 ;Left at 0.
 	validateTSSNT286 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
-	;Now testing JMP from 32-bit task to 16-bit task, NT going from set to cleared in the source task. 16-bit task keeps it cleared.
-	;TSS test 3: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	;Now testing JMP from 32-bit task to 16-bit task, NT in 286 task kept as-is. 16-bit task keeps it cleared.
+	;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT286 TSSU_DSEG_PROT32,1,1 ;Set to 1 in source task.
-	validateTSSNT286 TSSU_DSEG_PROT16,0,1 ;Left at 1.
-	validateTSSNT286 0,0,0 ;Cleared currently in register only.
+	validateTSSNT286 TSSU_DSEG_PROT16,0,0 ;Loaded as 0.
+	validateTSSNT286 0,0,0 ;Set in destination task from the TSS.
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
 	;TSS test 3.2 Same as before, but NT in 386 is cleared.
 	and esp,0xFFFF ;Safe ESP usage!
@@ -105,8 +105,8 @@ TSS1_returned:
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
 	validateTSSNT286 TSSU_DSEG_PROT32,1,0 ;Set to 0 in source task.
-	validateTSSNT286 TSSU_DSEG_PROT16,0,1 ;Left at 1.
-	validateTSSNT286 0,0,0 ;Cleared currently in register only.
+	validateTSSNT286 TSSU_DSEG_PROT16,0,1 ;Loaded as 1.
+	validateTSSNT286 0,0,1 ;Set in destination task from the TSS.
 	setNTflag286 0,0,1 ;Set NT flag to test.
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
 	
@@ -154,21 +154,21 @@ TSS1_returned:
 	;Now, the 32-bit task to 16-bit task backlink is properly filled, NT properly updating for CALL and matching IRET.
 	;Now, test JMP instruction task switches.
 	setNTflag286 0,0,1 ;This is going to be kept in the 32-bit TSS.
-	setNTflag286 TSSU_DSEG_PROT32,1,1 ;This is going to be cleared.
-	setNTflag286 TSSU_DSEG_PROT16,0,0 ;This is going to be set.
-	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	setNTflag286 TSSU_DSEG_PROT16,0,0 ;This is going to be set to 1.
+	setNTflag286 TSSU_DSEG_PROT32,1,0 ;This is going to be loaded.
+	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	validateTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
-	validateTSSNT286 TSSU_DSEG_PROT32,1,0
 	validateTSSNT286 TSSU_DSEG_PROT16,0,1
-	validateTSSNT286 0,0,0 ;The JMP instruction to our TSS cleared us.
-	setNTflag286 0,0,0 ;This is going to be kept in the 32-bit TSS.
-	setNTflag286 TSSU_DSEG_PROT32,1,1 ;This is going to be cleared.
+	validateTSSNT286 TSSU_DSEG_PROT32,1,0
+	validateTSSNT286 0,0,1 ;The JMP instruction to our TSS kept us.
+	setNTflag286 0,0,0 ;This is going to be kept in the 16-bit TSS.
 	setNTflag286 TSSU_DSEG_PROT16,0,1 ;This is going to be cleared.
-	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task cleared, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	setNTflag286 TSSU_DSEG_PROT32,1,1 ;This is going to be loaded.
+	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0

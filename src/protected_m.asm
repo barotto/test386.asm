@@ -1,4 +1,31 @@
 ;
+; Tests the Current Privilege Level value
+;
+; %1 the value (0-3) to compare to; jumps to error if not equal.
+;
+%macro testCPL_E 2
+	push eax
+	mov  ax, cs
+	and  ax, 3
+	cmp  ax, %1
+	jne  %2
+	pop eax
+%endmacro
+
+
+;
+; Tests the Current Privilege Level value
+;
+; %1 the value (0-3) to compare to; jumps to error if not equal.
+;
+%macro testCPL 1
+	mov  ax, cs
+	and  ax, 3
+	cmp  ax, %1
+	jne  error
+%endmacro
+
+;
 ; Advances the base address of data segments used by tests, D1_SEG_PROT and
 ; D2_SEG_PROT.
 ;

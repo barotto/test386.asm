@@ -105,6 +105,7 @@ ESP_REAL    equ 0xffff
 	defGDTDescPrototype LDT_SEG_PROT
 	defGDTDescPrototype LDT_SEG_PROT286
 	defGDTDescPrototype DU_SEG_PROT32FLAT
+	defGDTDescPrototype TSS_DSEG_PROT
 	defGDTDescPrototype TSS_DSEG_PROT16
 	defGDTDescPrototype TSS_PROT
 	defGDTDescPrototype TSS_PROT16
@@ -122,11 +123,18 @@ ESP_REAL    equ 0xffff
 	defGDTDescPrototype TSSU_DSEG_PROT32
 	defGDTDescPrototype TSSU_DSEG_PROT16
 	defGDTDescPrototype CU_SEG_PROT32
+	defGDTDescPrototype C_SEG_PROT32_R2
+	defGDTDescPrototype S_SEG_PROT32_R2
+	defGDTDescPrototype C_SEG_PROT16CS
 
 section .system_bios_extensions_area start=0x00000
 ;Start of high BIOS
 	; TSS helper macros
 %include "protected_tss_m.asm"
+	;
+	; TSS interrupt handlers
+	;
+%include "protected_tssinth.asm"
 	;
 	; 286 TSS handler
 	;
@@ -151,6 +159,24 @@ test386TSSstart:
 	validateTSSNT386 TSSU_DSEG_PROT32,1,0
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0
 
+	int 0x2A ;Validate 386 interrupts to Ring 2
+	kernelModeInterruptR2Return:
+	validateTSandClear 0 ;Expect no TS bit set yet.
+	;Transfer the ring 0 stack from the 32-bit TSS to the 16-bit TSS to be able to call it and validate the TS flag.
+	push ds
+	push ebx
+	push ecx
+	lds ebx,[cs:ptrTSSprot_R2+0xE0000] ;Get the 32-bit TSS
+	mov cx,[ebx+4] ;Get ring 0 ESP
+	shl ecx,16 ;Move SP high
+	mov cx,[ebx+8] ;Get ring 0 SS
+	lds ebx,[cs:ptrTSSprot16_R2+0xE0000] ;Get the 16-bit TSS
+	mov [ebx+4],cx ;Set ring 0 SS
+	shr ecx,16 ;Move SP low
+	mov [ebx+2],cx ;Set ring 0 SP
+	pop ecx
+	pop ebx
+	pop ds
 	;Loading patterns for the 386 data segments
 	mov ax,SU_SEG_PROT32DS|3   ;DS
 	mov ds,ax
@@ -213,6 +239,7 @@ test386TSSstart:
 	sldt ax
 	cmp ax,LDT_SEG_PROT        ;LDT OK?
 	jnz errorTSS16_1
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	jmp TSStest1finished
 errorTSS32_1:
 	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
@@ -230,6 +257,7 @@ TSStest1finished:
 	;Start of the 32-bit to 16-bit TSS tests.
 	;Step 1: validate 16-bit TSS outgoing/incoming B-bit, NT bit, Back-link during CALL.
 	;First, setup initial task state.
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	setTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
 	setTSSbacklink386 TSSU_DSEG_PROT16,0xDEAD
 	setNTflag386 0,1,0
@@ -243,6 +271,7 @@ TSStest1finished:
 	call far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, setup the second test for call, this time with NT set.
 	;First, validate IRET did it's job correctly. 
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -255,6 +284,7 @@ TSStest1finished:
 	setNTflag386 0,1,1
 	call far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 2: CALL busy bit set in both tasks, NT set to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, validate IRET did it's job correctly. 
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -269,6 +299,7 @@ TSStest1finished:
 	setNTflag386 TSSU_DSEG_PROT32,1,0 ;This is going to be set to 1.
 	setNTflag386 TSSU_DSEG_PROT16,0,0 ;This is going to be loaded.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -280,6 +311,7 @@ TSStest1finished:
 	setNTflag386 TSSU_DSEG_PROT32,1,1 ;This is going to be cleared.
 	setNTflag386 TSSU_DSEG_PROT16,0,1 ;This is going to be loaded.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -293,6 +325,7 @@ TSStest1finished:
 	
 	;Start of the 32-bit side of the 16-bit to 32-bit TSS tests.
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,TSS_PROT16
@@ -301,6 +334,7 @@ TSStest1finished:
 	validateTSSNT386 TSSU_DSEG_PROT16,0,0
 	validateTSSNT386 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbusy386 TSS_PROT16,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,TSS_PROT16
@@ -312,6 +346,7 @@ TSStest1finished:
 	;Now testing JMP from 32-bit task to 32-bit task, NT going from set to cleared in the source task. 32-bit task keeps it cleared.
 	;TSS test 3: JMP busy bit set in 32-bit task, busy bit cleared in 16-bit task, NT in 386 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	;TSS test 3.1: JMP busy bit set in 32-bit task, busy bit cleared in 16-bit task, NT in 386 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -321,6 +356,7 @@ TSStest1finished:
 	validateTSSNT386 0,1,0 ;Set in destination task from the TSS.
 	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Return to the 16-bit task.
 	;TSS test 3.2 Same as before, but NT in 286 is cleared.
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy386 TSS_PROT16,0
 	validateTSSbusy386 TSS_PROT,1
 	validateTSSbacklink386 TSSU_DSEG_PROT32,0xDEAD
@@ -334,10 +370,10 @@ TSStest1finished:
 	;Now, we have switched sides to finish the tests.
 	;We're the parent task again.
 
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	setNTflag386 0,1,0 ;Clear NT flag to finish.
 
 	;32-bit eflags register loaded OK.
-	pushfd
 	push cs
 	call nextlowbios
 	nextlowbios:
@@ -502,7 +538,7 @@ cpuTest:
 	jmp initGDT
 
 ESP_R0_PROT equ 0x0000FFFF
-ESP_R2_PROT equ 0x00001FFF
+ESP_R2_PROT equ 0x0000EFFE
 ESP_R0_PROTFLAT equ 0xE001FFFF
 ESP_R3_PROT equ 0x00007FFF
 ESP_R3_PROTFLAT equ 0x0001FFFF
@@ -533,23 +569,27 @@ initGDT:
 	defGDTDescImplementation LDT_SEG_PROT,  0x00000A00,0x000005f7,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDescImplementation LDT_SEG_PROT286,  0x00000FF8,0x00000000,ACC_TYPE_LDT|ACC_PRESENT
 	defGDTDescImplementation DU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
+	defGDTDescImplementation TSS_DSEG_PROT, 0x00005000,0x0000006F,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDescImplementation TSS_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDescImplementation TSS_PROT,      0x00005000,0x00000067,ACC_TYPE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSS_PROT16,    0x00005200,0x0000002C,ACC_TYPE_TSS16|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
-	defGDTDescImplementation SU_SEG_PROT32DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32FS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32GS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT16SS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
-	defGDTDescImplementation SU_SEG_PROT16DS, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT16ES, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32DS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32ES, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32FS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32GS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16SS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
+	defGDTDescImplementation SU_SEG_PROT16DS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16ES, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDescImplementation CU_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDescImplementation TSSU_DSEG_PROT32, 0x00005000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSSU_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation CU_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation C_SEG_PROT32_R2, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_2,EXT_32BIT
+	defGDTDescImplementation S_SEG_PROT32_R2,  0x00010000,0x0000ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation C_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
@@ -560,11 +600,9 @@ initGDT:
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc S_SEG_PROT32,  0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defGDTDesc S_SEG_PROT32_R2,  0x00010000,0x0008ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDesc S_SEG_PROT32,  0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0008ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDesc TSS_DSEG_PROT, 0x00005000,0x0000006F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc SU_SEG_PROT32, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
@@ -626,7 +664,7 @@ ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
 	dd 0
 	dw TSS_GSEG_PROT16|3
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x14F              ; 16-bit limit
+	dw 0x167              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -726,9 +764,43 @@ initIDT:
 	; Interrupt 29h: task switch to 386, callable from user mode.
 	mov    esi, TSS_PROT
 	mov    edi, 0
+	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntTaskGateReal
+
+	; Interrupt 2Ah: validate ring 2 from 386 TSS.
+	mov    esi, C_SEG_PROT32_R2
+	%if ROM128
+	mov    edi, kernelInterrupt_R2_386
+	%else
+	mov    edi, kernelInterrupt ;Unused, placeholder
+	%endif
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal
+
+	; Interrupt 2Bh: validate ring 2 from 286 TSS.
+	mov    esi, C_SEG_PROT32_R2
+	%if ROM128
+	mov    edi, kernelInterrupt_R2_286
+	%else
+	mov    edi, kernelInterrupt ;Unused, placeholder
+	%endif
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal
+
+	; Interrupt 2Ch: validate and clear TS bit.
+	mov    esi, C_SEG_PROT16CS
+	%if ROM128
+	mov    edi, kernelInterrupt_validateAndClearTS
+	%else
+	mov    edi, kernelInterrupt ;Unused, placeholder
+	%endif
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal
 
 
 	jmp initPaging
@@ -1198,7 +1270,6 @@ userV86ExitFuncRet:
 
 	%if ROM128
 	;Switch to segment E0000 in flat mode for more advanced tests.
-	pushfd
 	push cs
 	call nexthighbios
 	nexthighbios:

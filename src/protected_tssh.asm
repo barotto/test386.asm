@@ -16,7 +16,7 @@ errorTSS16:
 TSS286entrypoint:
 	cmp esp,0xFFFF1122         ;SP loaded correctly?
 	jnz errorTSS16
-	mov sp,ESP_R3_PROT     ;Fixup SP
+	mov esp,ESP_R3_PROT     ;Fixup SP
 	cmp eax,0xFFFF1234         ;EAX loaded correctly?
 	jnz errorTSS16
 	cmp ecx,0xFFFF5678
@@ -58,18 +58,24 @@ TSS286entrypoint:
 	sldt ax
 	cmp ax,LDT_SEG_PROT286    ;LDT OK?
 	jnz errorTSS16_1
+	int 0x2B ;Validate 286 interrupts to Ring 2
+	kernelModeInterruptR2Return286:
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	iret                    ;Return to the calling task
 	jmp TSS1_returned
 errorTSS16_1: ;Error occurred?
 	jmp error
 ;We return here after check #1.
 TSS1_returned:
+	and esp,0xFFFF ;Safe ESP usage
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	;Now, we switch sides back, validating basic JMP-based task switches.
 	jmp far [cs:ptrTSSprot32Gate]
 
 	;Start of the 16-bit side of the 32-bit to 16-bit TSS tests.
 	;TSS test 1: CALL busy bit set in both tasks, NT cleared to set, back-link filled by the CALL.
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT,1
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
@@ -79,6 +85,7 @@ TSS1_returned:
 	validateTSSNT286 0,0,1 ;Set currently in register only.
 	iretd ;Return to caller.
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT,1
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
@@ -90,6 +97,7 @@ TSS1_returned:
 	;Now testing JMP from 32-bit task to 16-bit task, NT in 286 task kept as-is. 16-bit task keeps it cleared.
 	;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT in 286 task kept as-is, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
@@ -100,6 +108,7 @@ TSS1_returned:
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
 	;TSS test 3.2 Same as before, but NT in 386 is cleared.
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
@@ -116,6 +125,7 @@ TSS1_returned:
 	;Step 1: validate 16-bit TSS outgoing/incoming B-bit, NT bit, Back-link during CALL.
 	;First, setup initial task state.
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	setTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
 	setTSSbacklink286 TSSU_DSEG_PROT16,0xDEAD
 	setNTflag286 0,0,0
@@ -130,6 +140,7 @@ TSS1_returned:
 	;Now, setup the second test for call, this time with NT set.
 	;First, validate IRET did it's job correctly. 
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,TSS_PROT16
@@ -143,6 +154,7 @@ TSS1_returned:
 	call far [cs:ptrTSSprot32Gate] ;TSS test 2: CALL busy bit set in both tasks, NT set to set, back-link filled by the CALL. Outgoing NT kept as-is (currently 0).
 	;Now, validate IRET did it's job correctly. 
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,TSS_PROT16
@@ -158,6 +170,7 @@ TSS1_returned:
 	setNTflag286 TSSU_DSEG_PROT32,1,0 ;This is going to be loaded.
 	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.1: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD
@@ -170,6 +183,7 @@ TSS1_returned:
 	setNTflag286 TSSU_DSEG_PROT32,1,1 ;This is going to be loaded.
 	jmp far [cs:ptrTSSprot32Gate] ;TSS test 3.2: JMP busy bit set in 16-bit task, busy bit cleared in 32-bit task, NT unaffected, back-link not filled by the JMP. Outgoing NT kept as-is (currently 0).
 	and esp,0xFFFF ;Safe ESP usage!
+	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	validateTSSbusy286 TSS_PROT16,1
 	validateTSSbusy286 TSS_PROT,0
 	validateTSSbacklink286 TSSU_DSEG_PROT32,0xDEAD

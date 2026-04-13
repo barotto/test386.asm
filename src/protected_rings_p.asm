@@ -1,17 +1,4 @@
 ;
-; Tests the Current Privilege Level value
-;
-; %1 the value (0-3) to compare to; jumps to error if not equal.
-;
-%macro testCPL 1
-	mov  ax, cs
-	and  ax, 3
-	cmp  ax, %1
-	jne  error
-%endmacro
-
-
-;
 ; Switches from Ring 0 to Ring 3
 ;
 ; After calling this procedure consider all the registers and flags as trashed.

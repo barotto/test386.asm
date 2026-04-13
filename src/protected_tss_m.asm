@@ -66,3 +66,7 @@
 	o32 call far [cs:ptrTSSprot32setNT+0xE0000]
 %endmacro
 
+%macro validateTSandClear 1
+	mov eax,%1
+	int 0x2C ;Validate and clear TS bit.
+%endmacro

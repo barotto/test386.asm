@@ -91,7 +91,7 @@ initTSS32:
 	;Ring 0 SS:ESP is loaded by the ring switching function
 	mov    eax,0xFFFFFFFF
 	mov    [es:ebp+0x20],eax ;Initial EIP, should be overwritten by the task switch.
-	mov    word [es:ebp+0x18], S_SEG_PROT32_R2 ;R2 Stack
+	mov    word [es:ebp+0x18], S_SEG_PROT32_R2|2 ;R2 Stack
 	mov    dword [es:ebp+0x14], ESP_R2_PROT
 	pop    ds
 	pop    ebp
@@ -166,7 +166,7 @@ initTSS16:
 	mov    word [es:ebp+2], ss
 	mov    [es:ebp+4], word ESP_R0_PROT
 	mov    word [es:ebp+0xA], ESP_R2_PROT          ;R2 Stack
-	mov    word [es:ebp+0xC], S_SEG_PROT32_R2      
+	mov    word [es:ebp+0xC], S_SEG_PROT32_R2|2      
 	; User mode pointers
 	mov    ax, CU_SEG_PROT16CS|3                   ;Code segment
 	mov    [es:ebp+0x24], ax

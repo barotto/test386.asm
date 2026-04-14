@@ -380,6 +380,7 @@ TSStest1finished:
 	noerror:
 	;Virtual 8086 mode now, if task switching did it's job.
 	validateTSandClear 1 ;Validate TS bit is set properly.
+	int 0x2D ;Are we actually in Virtual 8086 mode (from PL0, as we can't read VM directly)?
 	push cs
 	pop ax
 	cmp ax,0xE000 ;Valid CS?
@@ -637,8 +638,8 @@ initGDT:
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
 	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000014F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
@@ -707,7 +708,7 @@ ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
 	dd 0
 	dw TSS_GSEG_PROT16|3
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x167              ; 16-bit limit
+	dw 0x16F              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -845,6 +846,12 @@ initIDT:
 	inc    eax
 	call   initIntGateReal
 
+	; Interrupt 2D: validate V86 mode
+	mov    esi, C_SEG_PROT32
+	mov    edi, kernelInterrupt_validateIsV86mode
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal
 
 	jmp initPaging
 
@@ -1278,6 +1285,7 @@ V86IOSucceedFinish:
 	; Validate simply exiting Virtual 8086 mode, using the interrupt
 	call  switchToRing3V86_3
 	bits 16
+	int 0x2D ;Validate we're actually in V86 mode.
 	jmp   userV86IretRealModeFunc
 	jmp   error
 	bits 32

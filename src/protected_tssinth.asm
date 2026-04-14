@@ -116,4 +116,3 @@ kernelInterrupt_validateAndClearTS:
 	pop ebx
 	pop eax
 	iret                       ; Simply return to user mode
-

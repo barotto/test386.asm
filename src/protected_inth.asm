@@ -230,3 +230,12 @@ V86ModeExitInterrupt:
 	add    esp, 0x24                  ; Clean up stack from the V86 mode.
 	push   eax                        ; Push the return point
 	ret
+
+;
+; Kernel mode interrupt handler, callable from user mode. Validates if the Virtual 8086 mode is used.
+;
+kernelInterrupt_validateIsV86mode:
+	testCPL_E 0,error           ; Elevates to CPL 0
+	test dword [esp+8],0x20000 ;V86 bit set?
+	jz error ;V86 bit not properly set?
+	iret

@@ -78,6 +78,7 @@
 ;  05000-05FFF TSS
 ;  10000-1FFFF stack
 ;  20000-9FFFF tests
+;  30000-3FFFF 286 task stack
 ;
 
 TEST_BASE  equ 0x20000
@@ -144,8 +145,6 @@ BITS 32
 	; 386 TSS user mode code
 	;
 %include "protected_tsshelpers.asm"
-
-
 
 test386TSSstart:
 	; Verify we start clean
@@ -370,6 +369,50 @@ TSStest1finished:
 	;Now, we have switched sides to finish the tests.
 	;We're the parent task again.
 
+	;Start the V86 mode tests now. This task will be converted by the 16-bit task.
+	setNTflag386 0,1,0 ;Clear the NT flag to test.
+	jmp far [cs:ptrTSSprot16Gate+0xF0000] ;Return to the 16-bit task to convert us.
+	BITS 16
+	jmp noerror
+	errorV86:
+	cli ;Simply attempt to HLT
+	hlt
+	noerror:
+	;Virtual 8086 mode now, if task switching did it's job.
+	validateTSandClear 1 ;Validate TS bit is set properly.
+	push cs
+	pop ax
+	cmp ax,0xE000 ;Valid CS?
+	jne errorV86
+	push ss
+	pop ax
+	cmp ax,S_SEG_REAL ;Valid SS?
+	jne errorV86
+	push ds
+	pop ax
+	cmp ax,V86_DS ;Valid DS?
+	jne errorV86
+	push es
+	pop ax
+	cmp ax,V86_ES ;Valid ES?
+	jne errorV86
+	push fs
+	pop ax
+	cmp ax,V86_FS ;Valid FS?
+	jne errorV86
+	push gs
+	pop ax
+	cmp ax,V86_GS ;Valid GS?
+	jne errorV86
+	pushfd
+	pop eax
+	test eax,0x20000 ;VM bit is required to be cleared with IOPL=3?
+	jnz errorV86
+
+	int 0x28 ;Switch back to the 16-bit task to terminate V86 mode.
+
+	;Finish up, we're back in flat user mode again. Return to the system BIOS.
+	BITS 32
 	validateTSandClear 1 ;TS is expected to be set by the task switch.
 	setNTflag386 0,1,0 ;Clear NT flag to finish.
 
@@ -576,13 +619,13 @@ initGDT:
 	defGDTDescImplementation TSS_GSEG_PROT32, TSS_PROT,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSS_GSEG_PROT16, TSS_PROT16,0x00000000,ACC_TYPE_GATE_TSS|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation CU_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT|EXT_PAGE
-	defGDTDescImplementation SU_SEG_PROT32DS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32ES, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32FS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT32GS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT16SS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
-	defGDTDescImplementation SU_SEG_PROT16DS, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
-	defGDTDescImplementation SU_SEG_PROT16ES, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32DS, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32ES, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32FS, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32GS, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16SS, 0x00030000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_16BIT
+	defGDTDescImplementation SU_SEG_PROT16DS, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT16ES, 0x00020000,0x0006ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDescImplementation CU_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDescImplementation TSSU_DSEG_PROT32, 0x00005000,0x00000067,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDescImplementation TSSU_DSEG_PROT16, 0x00005200,0x0000002C,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
@@ -600,9 +643,9 @@ initGDT:
 	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc S_SEG_PROT32,  0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDesc S_SEG_PROT32,  0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc SU_SEG_PROT32, 0x00020000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0

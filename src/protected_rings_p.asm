@@ -167,10 +167,10 @@ switchToRing3V86_0:
 	mov    eax, ss
 	mov    [ebx+8], eax
 	cli                             ; disable ints during switching
-	push   dword 0xF000             ; V86 mode GS default to ROM
-	push   dword 0xF000             ; V86 mode FS default to ROM
-	push   dword 0xF000             ; V86 mode DS default to ROM
-	push   dword 0xF000             ; V86 mode ES default to ROM
+	push   dword V86_GS             ; V86 mode GS default to ROM
+	push   dword V86_FS             ; V86 mode FS default to ROM
+	push   dword V86_DS             ; V86 mode DS default to ROM
+	push   dword V86_ES             ; V86 mode ES default to ROM
 	push   dword 0x1000             ; push user stack with RPL=3
 	push   dword ESP_R3_PROT        ; push user mode esp
 	pushfd                          ; push eflags
@@ -216,10 +216,10 @@ switchToRing3V86_3:
 	mov    eax, ss
 	mov    [ebx+8], eax
 	cli                             ; disable ints during switching
-	push   dword 0xF000             ; V86 mode GS default to ROM
-	push   dword 0xF000             ; V86 mode FS default to ROM
-	push   dword 0xF000             ; V86 mode DS default to ROM
-	push   dword 0xF000             ; V86 mode ES default to ROM
+	push   dword V86_GS             ; V86 mode GS default to ROM
+	push   dword V86_FS             ; V86 mode FS default to ROM
+	push   dword V86_DS             ; V86 mode DS default to ROM
+	push   dword V86_ES             ; V86 mode ES default to ROM
 	push   dword 0x1000             ; push user stack with RPL=3
 	push   dword ESP_R3_PROT        ; push user mode esp
 	pushfd                          ; push eflags

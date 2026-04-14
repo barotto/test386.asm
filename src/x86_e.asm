@@ -81,3 +81,8 @@ EX_GP equ 13
 EX_PF equ 14
 EX_MF equ 15
 
+;Keep RPL at 0 to detect incorrect protected mode loading. Simple 64K alignment for ease of use.
+V86_DS equ 0x2010
+V86_ES equ 0x3040
+V86_FS equ 0x5060
+V86_GS equ 0x7080

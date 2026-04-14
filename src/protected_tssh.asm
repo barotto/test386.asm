@@ -194,3 +194,36 @@ TSS1_returned:
 
 	;Finally, return to the 386 task to finish up these TSS tests and continue running other tests.
 	jmp far [cs:ptrTSSprot32Gate] ;Return to the 32-bit task.
+
+	;We've returned here to start the 386 TSS V86 mode tests.
+	and esp,0xFFFF ;Safe ESP usage!
+	lds ebx,[cs:ptrTSSprot_R2] ;Get the 32-bit TSS
+	;Now, convert the 32-bit task to V86 mode.
+	mov word [ds:ebx+0x26],0x2 ;Set the VM flag
+	or word [ds:ebx+0x24],0x3000 ;Set the IOPL to 3 to allow interrupts for validation
+	mov word [ds:ebx+0x48],V86_ES ;ES
+	mov word [ds:ebx+0x50],S_SEG_REAL ;SS
+	mov word [ds:ebx+0x54],V86_DS ;DS
+	mov word [ds:ebx+0x58],V86_FS ;FS
+	mov word [ds:ebx+0x5C],V86_GS ;GS
+	mov word [ds:ebx+0x22],0 ;Truncate EIP to 16 bits
+	mov word [ds:ebx+0x4C],0xE000 ;Code segment
+	mov word [ds:ebx+0x3A],0 ;Truncate ESP to 16 bits
+	
+	jmp far [cs:ptrTSSprot32Gate] ;Start V86 mode!
+
+	;We've returned from V86 mode task. Convert it back to a normal flat user mode task.
+	and esp,0xFFFF ;Safe ESP usage!
+	lds ebx,[cs:ptrTSSprot_R2] ;Get the 32-bit TSS
+	mov word [ds:ebx+0x26],0x0 ;Clear the VM flag
+	and word [ds:ebx+0x24],0xCFFF ;Set the IOPL to 0 again to restore flat user mode
+	mov word [ds:ebx+0x48],SU_SEG_PROT32ES|3 ;ES
+	mov word [ds:ebx+0x50],DU_SEG_PROT32FLAT|3 ;SS
+	mov word [ds:ebx+0x54],SU_SEG_PROT32DS|3 ;DS
+	mov word [ds:ebx+0x58],SU_SEG_PROT32FS|3 ;FS
+	mov word [ds:ebx+0x5C],SU_SEG_PROT32GS|3 ;GS
+	mov word [ds:ebx+0x22],0xE ;Expand EIP to 32 bits flat
+	mov word [ds:ebx+0x4C],CU_SEG_PROT32FLAT|3 ;Code segment
+	mov word [ds:ebx+0x3A],0x1 ;Expand ESP to 32 bits flat
+	iret ;End V86 mode (we were called through an interrupt), returning to flat user mode!
+	;Now, the tests have been completed.

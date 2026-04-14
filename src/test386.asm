@@ -708,7 +708,7 @@ ptrTSSprot16Gate: ; pointer to the 16-bit task state segment gate
 	dd 0
 	dw TSS_GSEG_PROT16|3
 addrProtIDT: ; address of pmode IDT to be used with lidt
-	dw 0x16F              ; 16-bit limit
+	dw 0x177              ; 16-bit limit
 	dd IDT_SEG_REAL << 4 ; 32-bit base address
 addrGDT: ; address of GDT to be used with lgdt
 	dw GDT_SEG_LIMIT
@@ -852,6 +852,18 @@ initIDT:
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
+
+	; Interrupt 2E: validate V86 mode
+	mov    esi, C_SEG_PROT16CS
+	%if ROM128
+	mov    edi, kernelInterrupt_validateV86mode16bit
+	%else
+	mov    edi, kernelInterrupt ;Unused, placeholder
+	%endif
+	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
+	mov    dx,  ACC_DPL_3
+	inc    eax
+	call   initIntGateReal286
 
 	jmp initPaging
 
@@ -1304,6 +1316,17 @@ errorInTSS32Load:
 	jmp error               ;Error out!	
 
 userV86ExitFuncRet:
+	;Now we're going to test 16-bit interrupts in Virtual 8086 mode.
+	%if ROM128
+	call  switchToRing3V86_3
+	BITS 16
+	int 0x2E ;Verify 16-bit interrupts in Virtual 8086 mode
+	userV86_16bitinterruptRET:
+	push dword userV86ExitFuncRet_16bitinterrupts ; Where to continue
+	jmp    switchToRing0V86
+userV86ExitFuncRet_16bitinterrupts:
+	%endif
+	BITS 32
 	pushfd
 	pop eax
 	and eax,0xCDFF ;Clear IOPL and interrupt flag again, as it cannot be changed in user mode

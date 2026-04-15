@@ -1078,10 +1078,10 @@ protTests:
 
 
 ;-------------------------------------------------------------------------------
-	POST A
+	POST 20
 ;-------------------------------------------------------------------------------
 ;
-;   Test user mode (ring 3) switching and Virtual-8086 mode
+;   Test user mode (ring 3) switching
 ;
 	call   clearTSS
 	mov    ax, D_SEG_PROT32
@@ -1239,9 +1239,12 @@ kernelModeInterruptKernelStackReturn:
 	kernelModeInterruptKernelStackReturnPoint:
 	; Back in normal 32-bit protected mode with 16-bit segment limits again
 
-	;
-	; Validate Virtual-8086 mode.
-	;
+;-------------------------------------------------------------------------------
+	POST 21
+;-------------------------------------------------------------------------------
+;
+;   Test Virtual-8086 mode
+;
 
 	; Check invalid virtual 8086 mode interrupts
 	; interrupt without IOPL 3 faults with #GP(0)
@@ -1332,7 +1335,14 @@ userV86ExitFuncRet_16bitinterrupts:
 	and eax,0xCDFF ;Clear IOPL and interrupt flag again, as it cannot be changed in user mode
 	push eax
 	popfd
-	; Validate the TSS task switching functionality
+
+;-------------------------------------------------------------------------------
+	POST 22
+;-------------------------------------------------------------------------------
+;
+;   Test the TSS task switching functionality
+;
+
 	;First, enter a valid 32-bit protected flat mode for testing
 	;Prepare 32-bit TSS ROM fields
 	call initTSS32

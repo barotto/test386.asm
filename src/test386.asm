@@ -31,7 +31,8 @@
 ;   CPU and was never tested on real hardware.
 ;
 ;   It must be installed at physical address 0xf0000 and aliased at physical
-;   address 0xffff0000.  The jump at resetVector should align with the CPU reset
+;   address 0xffff0000 (64KB version) or at 0xe0000 and 0xfffe0000 (128KB
+;   version).  The jump at resetVector should align with the CPU reset
 ;   address 0xfffffff0, which will transfer control to f000:0045.  From that
 ;   point on, all memory accesses should remain within the first 1MB.
 ;
@@ -54,7 +55,7 @@
 ;
 
 %define COPYRIGHT 'test386.asm (C) 2012-2015 Jeff Parsons, (C) 2017-2026 Marco Bortolin '
-%define RELEASE   '??/??/21'
+%define RELEASE   '??/??/26'
 
 	cpu 386
 	section .text

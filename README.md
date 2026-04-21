@@ -21,8 +21,12 @@ For the full list of tested opcodes see **`intel-opcodes.ods`**.
 Those opcodes that are tested have the relevant diagnostic code in the "test in
 real mode" and/or "test in prot. mode" columns.  
 
+Note that many of the opcodes that aren't explicitly tested are nonetheless
+used throughout the ROM and you can expect crashes or infinite loops in case
+they don't work properly.
+
 Please refer to the [How to use](#how-to-use) section for the list of
-performed tests. Note that task switching is currently not explicitly tested.
+performed tests.
 
 Although the program can run on any x86 32-bit compatible CPU, its testing
 routines are limited to the functionality of the Intel 80386 processor family.
@@ -58,6 +62,10 @@ First of all install the [NASM assembler](https://www.nasm.us/).
 Then open `src/configuration.asm` and configure the EQUs with suitable
 values for your system.
 
+The default ROM size is **64KB** but some of the tests are assembled only when
+the **128KB** ROM version is enabled by setting the `ROM128` EQU to 1 (see below
+for the list of tests available in the expanded version). 
+
 A diagnostic code will be output to the configured POST port. Computation
 results in the form of ASCII messages will also be output to LPT, COM, and/or
 custom OUT ports, whichever is enabled and configured.
@@ -77,13 +85,17 @@ nasm -i./src/ -f bin src/test386.asm -l test386.lst -o test386.bin
 Any multiple `(testBCD:19) unterminated string` warnings can be ignored.
 
 The final product is a binary file named **`test386.bin`** of exactly
-65,536 bytes.
+65,536 bytes (64KB version) or 131,072 bytes (128KB version).
 
 ## How to install
 
 The binary assembled file must be installed at physical address 0xf0000 and
-aliased at physical address 0xffff0000.  The jump at resetVector should align
-with the CPU reset address 0xfffffff0, which will transfer control to f000:0045.
+aliased at physical address 0xffff0000 (64KB version) or at 0xe0000 and
+0xfffe0000 (128KB version).
+
+The jump at resetVector should align with the CPU reset address 0xfffffff0,
+which will transfer control to f000:0045.
+
 All memory accesses will remain within the first 1MB.
 
 ## How to use
@@ -106,7 +118,8 @@ Once you determine the EIP value at which a problem arised, look it up in
 `test386.lst`, on the second column; you'll have a clearer picture of
 what the program was trying to do.
 
-This is the list of tests with their diagnostic code:
+This is the list of tests with their diagnostic code, in the order they are
+executed:
 
 | POST | Description                                                        |
 | ---- | ------------------------------------------------------------------ |
@@ -119,7 +132,9 @@ This is the list of tests with their diagnostic code:
 | 0x06 | Load full pointer in real mode                                     |
 | 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
 | 0x09 | Stack functionality *                                              |
-| 0x0A | Test user mode (ring 3) switching and Virtual-8086 mode            |
+| 0x20 | Test user mode (ring 3) switching                                  |
+| 0x21 | Test Virtual-8086 mode                                             |
+| 0x22 | Test the TSS task switching functionality **                       |
 | 0x0B | Moving segment registers                                           |
 | 0x0C | Zero and sign-extension                                            |
 | 0x0D | 16-bit addressing modes (LEA)                                      |
@@ -139,12 +154,14 @@ This is the list of tests with their diagnostic code:
 | 0x1B | High Level Procedure Exit (LEAVE)                                  |
 | 0x1C | Verify a Segment for Reading or Writing (VERR/VERW)                |
 | 0xE0 | Undefined behaviours and bugs (CPU family dependent) *             |
-| 0xEE | Series of unverified tests for arithmetical and logical opcodes ** |
+| 0xEE | Series of unverified tests for arithmetical and logical opcodes ***|
 | 0xFF | Testing completed                                                  |
 
 \* These tests are affected by undefined behaviour. See below.
 
-\** Test `0xEE` always completes successfully. It will print its computational
+\** These tests require the 128KB ROM.
+
+\*** Test `0xEE` always completes successfully. It will print its computational
 ASCII results to the configured output ports.
 
 Once you reach POST `0xFF` you need to check the results of POST 0xEE with the

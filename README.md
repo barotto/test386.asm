@@ -125,14 +125,15 @@ executed:
 | ---- | ------------------------------------------------------------------ |
 | 0x00 | Real mode initialisation                                           |
 | 0x01 | Conditional jumps and loops                                        |
-| 0x02 | Quick tests of unsigned 32-bit multiplication and division         |
-| 0x03 | Move segment registers in real mode                                |
-| 0x04 | Store, move, scan, and compare string data in real mode            |
-| 0x05 | Calls in real mode                                                 |
-| 0x06 | Load full pointer in real mode                                     |
-| 0x07 | Load and store GDTR and IDTR in real mode **                       |
-| 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
-| 0x09 | Stack functionality *                                              |
+| 0x02 | Flag instructions in real mode                                     |
+| 0x03 | Quick tests of unsigned 32-bit multiplication and division         |
+| 0x04 | Move segment registers in real mode                                |
+| 0x05 | Store, move, scan, and compare string data in real mode            |
+| 0x06 | Calls in real mode                                                 |
+| 0x07 | Load full pointer in real mode                                     |
+| 0x08 | Load and store GDTR and IDTR in real mode **                       |
+| 0x09 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
+| 0x0A | Stack functionality *                                              |
 | 0x20 | Test user mode (ring 3) switching                                  |
 | 0x21 | Test Virtual-8086 mode                                             |
 | 0x22 | Test the TSS task switching functionality **                       |

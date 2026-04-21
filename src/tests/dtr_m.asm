@@ -78,9 +78,9 @@
 	testDTRpattern %1,%2,%3,0xCCDDEEFF,0x1122,%%error
 	testDTRpattern %1,%2,%3,0xFFFFFFFF,0xEEEE,%%error
 	;Cleanup: Restore real mode tables.
-	mov [0],0
-	mov [4],0x3FF
+	mov word [0],0x3FF
+	mov dword [2],0
 	o16 lidt [0]
-	mov [4],0xFFFF
+	mov word [0],0xFFFF
 	o16 lgdt [0]
 %endmacro

@@ -242,6 +242,21 @@ cpuTest:
 
 	advTestSegReal
 
+%if ROM128
+;-------------------------------------------------------------------------------
+	POST 7
+;-------------------------------------------------------------------------------
+;
+;   Load/save GDTR/IDTR in real mode
+;
+	; Jump to the entry point of the test.
+	push word 0xE000
+	push word POST7entrypoint
+	retf
+	POST7returnpoint:
+%endif
+
+
 
 ; ==============================================================================
 ;	Protected mode tests

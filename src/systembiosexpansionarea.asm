@@ -322,6 +322,18 @@ TSStest1finished:
 	nextlowbios:
 	mov dword [esp],test386TSSend+0xF0000 ;Return to the F0000 segment in flat protected mode
 	retfd ;Actually return
+
+%include "tests/dtr_m.asm"
+;Real mode code for this test
+BITS 16
+POST7entrypoint:
+	testDTR 0,lidt,sidt
+	testDTR 0,lgdt,sgdt
+	testDTR 1,lidt,sidt
+	testDTR 1,lgdt,sgdt
+	push word 0xF000
+	push word POST7returnpoint
+	retf
 	
 ;End of high BIOS
 	;Pad to 64KB

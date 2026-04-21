@@ -130,6 +130,7 @@ executed:
 | 0x04 | Store, move, scan, and compare string data in real mode            |
 | 0x05 | Calls in real mode                                                 |
 | 0x06 | Load full pointer in real mode                                     |
+| 0x07 | Load and store GDTR and IDTR in real mode **                       |
 | 0x08 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
 | 0x09 | Stack functionality *                                              |
 | 0x20 | Test user mode (ring 3) switching                                  |

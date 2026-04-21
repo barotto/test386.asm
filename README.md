@@ -132,29 +132,31 @@ executed:
 | 0x06 | Calls in real mode                                                 |
 | 0x07 | Load full pointer in real mode                                     |
 | 0x08 | Load and store GDTR and IDTR in real mode **                       |
-| 0x09 | GDT, LDT, PDT, and PT setup, enter protected mode                  |
-| 0x0A | Stack functionality *                                              |
+| 0x09 | XLAT in real mode **                                               |
+| 0x0A | Interrupts in real mode **                                         |
+| 0x0B | GDT, LDT, PDT, and PT setup, enter protected mode                  |
+| 0x0C | Stack functionality *                                              |
 | 0x20 | Test user mode (ring 3) switching                                  |
 | 0x21 | Test Virtual-8086 mode                                             |
 | 0x22 | Test the TSS task switching functionality **                       |
-| 0x0B | Moving segment registers                                           |
-| 0x0C | Zero and sign-extension                                            |
-| 0x0D | 16-bit addressing modes (LEA)                                      |
-| 0x0E | 32-bit addressing modes (LEA) *                                    |
-| 0x0F | Access memory using various addressing modes                       |
-| 0x10 | Store, move, scan, and compare string data in protected mode       |
-| 0x11 | Page faults and PTE bits                                           |
-| 0x12 | Other memory access faults                                         |
-| 0x13 | Bit Scan operations                                                |
-| 0x14 | Bit Test operations                                                |
-| 0x15 | Byte set on condition (SETcc)                                      |
-| 0x16 | Calls in protected mode                                            |
-| 0x17 | Adjust RPL Field of Selector (ARPL)                                |
-| 0x18 | Check Array Index Against Bounds (BOUND)                           |
-| 0x19 | Exchange Register/Memory with Register (XCHG)                      |
-| 0x1A | Make Stack Frame for Procedure Parameters (ENTER)                  |
-| 0x1B | High Level Procedure Exit (LEAVE)                                  |
-| 0x1C | Verify a Segment for Reading or Writing (VERR/VERW)                |
+| 0x0D | Moving segment registers                                           |
+| 0x0E | Zero and sign-extension                                            |
+| 0x0F | 16-bit addressing modes (LEA)                                      |
+| 0x10 | 32-bit addressing modes (LEA) *                                    |
+| 0x11 | Access memory using various addressing modes                       |
+| 0x12 | Store, move, scan, and compare string data in protected mode       |
+| 0x13 | Page faults and PTE bits                                           |
+| 0x14 | Other memory access faults                                         |
+| 0x15 | Bit Scan operations                                                |
+| 0x16 | Bit Test operations                                                |
+| 0x17 | Byte set on condition (SETcc)                                      |
+| 0x18 | Calls in protected mode                                            |
+| 0x19 | Adjust RPL Field of Selector (ARPL)                                |
+| 0x1A | Check Array Index Against Bounds (BOUND)                           |
+| 0x1B | Exchange Register/Memory with Register (XCHG)                      |
+| 0x1C | Make Stack Frame for Procedure Parameters (ENTER)                  |
+| 0x1D | High Level Procedure Exit (LEAVE)                                  |
+| 0x1E | Verify a Segment for Reading or Writing (VERR/VERW)                |
 | 0xE0 | Undefined behaviours and bugs (CPU family dependent) *             |
 | 0xEE | Series of unverified tests for arithmetical and logical opcodes ***|
 | 0xFF | Testing completed                                                  |

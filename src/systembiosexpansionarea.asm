@@ -326,13 +326,74 @@ TSStest1finished:
 %include "tests/dtr_m.asm"
 ;Real mode code for this test
 BITS 16
-POST7entrypoint:
+POST8entrypoint:
 	testDTR 0,lidt,sidt
 	testDTR 0,lgdt,sgdt
 	testDTR 1,lidt,sidt
 	testDTR 1,lgdt,sgdt
+	;Return to the lower BIOS.
 	push word 0xF000
-	push word POST7returnpoint
+	push word POST8returnpoint
+	retf
+XLATrealmodeError:
+	push word 0xF000
+	push word error
+	retf
+POST9entrypoint:
+	;Test XLAT
+	mov cx,0x100 ;Length of the lookup table.
+	mov al,0x0 ;First entry
+	mov bx,0 ;Initialize data pointer.
+fillXLATLookupTable:
+	neg al ;Store negated entries.
+	mov [bx],al ;Create the lookup table entry.
+	inc bx ;Next entry.
+	neg al ;Restore negated entry.
+	inc al
+	loop fillXLATLookupTable
+	mov cx,0x100 ;Length of the lookup table.
+	mov bx,0 ;Initialize data pointer to the start of the table.
+checkXLAT:
+	mov ax,0x100 ;Calculate the entry we're going to check
+	sub ax,cx ;Create the entry number to validate.
+	mov dl,al ;Copy the entry number, as we're getting overwritten by the instruction.
+	neg dl ;Convert the input to the expected result.
+	xlat ;Execute the tested instruction
+	cmp al,dl ;Is the result as expected?
+	jnz XLATrealmodeError
+	loop checkXLAT ;Check all input values.
+	;Return to the lower BIOS.
+	push word 0xF000
+	push word POST9returnpoint
+	retf
+POSTAentrypoint:
+	;Test real mode interrupts
+	;First, install the interrupt handler.
+	push ds
+	mov ax,0
+	mov ds,ax ;Point to the Interrupt Vector Table.
+	;Set all real mode interupt handlers to an error vector.
+	mov bx,0 ;Reset pointer
+	mov cx,0x100 ;All interrupt vectors.
+nextRealModeInterruptSetError:
+	;Set the interrupt to error
+	mov word [bx+2],0xF000
+	mov word [bx],error
+	add bx,4 ;Next pointer
+	loop nextRealModeInterruptSetError
+	;Set just our test interrupt vector.
+	mov ax,cs
+	mov [0x82],ax
+	mov ax,realmodeInterrupt
+	mov [0x80],ax
+	pop ds
+	;Now, call the real mode interrupt
+	mov eax,esp ;Stack pointer for the interrupt to check.
+	int 0x20
+	realmodeInterruptRET:
+	;Return to the main lower BIOS.
+	push word 0xF000
+	push word POSTAreturnpoint
 	retf
 	
 ;End of high BIOS

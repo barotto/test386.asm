@@ -184,3 +184,34 @@ kernelInterrupt_validateV86mode16bit:
 	or dword [esp+0x08],0x20000 ;Set VM bit to properly return.
 	mov eax,[esp+0x2C] ;Load original EAX register to restore it.
 	iret
+;
+; Kernel mode interrupt handler, callable from user mode. Validates if the Virtual 8086 mode is used.
+;
+BITS 16
+realmodeError:
+	push word 0xF000
+	push word error
+	retf
+realmodeInterrupt:
+	push  ebx
+	push  ecx
+	mov   ecx, eax              ; Get ESP for the interrupt program (stored into eax)
+	sub   ecx, 0x6+0x8              ; Where we should end up on the kernel stack, taking into account what we just pushed
+	cmp   sp, cx             ; Did the stack decrease correctly?
+	jne   realmodeError
+	pop   ecx
+	mov   bx, cs
+	cmp   bx, 0xE000     ; Did we arrive at proper kernel code?
+	jne   realmodeError
+	;Basic stack pointer verified. Now check if the data on the stack is correct, while building a new stack to return to real mode.
+	;Ignore flags
+	and esp,0xFFFF ;Real mode safety.
+	mov bx, word [esp+(0x4+0x02)] ;CS
+	cmp bx,0xE000                  ;Correct?
+	jne error                      ;Error if incorrect.
+	mov bx, word [esp+0x4] ;IP
+	cmp bx,realmodeInterruptRET ;IP correct?
+	jne error ;Incorrect IP address.
+	pop   ebx
+	iret
+BITS 32

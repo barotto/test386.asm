@@ -10,9 +10,50 @@ ptrTSSerrorR0_2: ; pointer to the error condition, from ring 0 or ring 2
 	dd error
 	dw CU_SEG_PROT32|3
 
-
 errorCPLn:
 	jmp far [cs:ptrTSSerrorR0_2] ;JMP to the error condition.
+
+;
+; Kernel mode interrupt handler
+;
+kernelInterrupt: 
+	testCPL 0                  ; Elevates to CPL 0
+	push  ebx
+	push  ecx
+	push  ds
+	lds   ebx, [cs:ptrTSSprot_R2] ; Get the TSS
+	mov   ecx, [ebx+4]         ; Get TSS ESP0
+	sub   ecx, 0x14+0xC        ; Where we should end up on the kernel stack, taking into account what we just pushed
+	cmp   esp, ecx             ; Did the stack decrease correctly?
+	jne   errorCPLn
+	mov   cx, ss
+	cmp   cx, word [ebx+8]     ; Did the stack pointer load correctly?
+	jne   errorCPLn
+	pop   ds
+	pop   ecx
+	mov   bx, cs
+	cmp   bx, C_SEG_PROT16CS     ; Did we end up in kernel mode correctly?
+	jne   errorCPLn
+	pop   ebx
+	cmp   dword [esp+0x00], kernelModeInterruptReturn
+	jne   errorCPLn                ; Invalid return address
+	cmp   dword [esp+0x04], CU_SEG_PROT32|3
+	jne   errorCPLn                ; Invalid return code segment
+	; Ignore most eflags
+	test  dword [esp+0x08], PS_IF ;EFLAGS input
+	jz    errorCPLn
+	cmp   dword [esp+0x0C], ESP_R3_PROT
+	jne   errorCPLn                ; Invalid return ESP
+	cmp   dword [esp+0x10], SU_SEG_PROT32|3
+	jne   errorCPLn                ; Invalid user stack segment
+	push  eax
+	pushfd
+	pop eax
+	test eax, PS_IF ;Incorrect flags.
+	jnz   errorCPLn
+	pop   eax
+	iret                       ; Simply return to user mode
+
 ;
 ; Kernel mode interrupt handler (ring 2) for 32-bit TSS
 ;
@@ -195,23 +236,29 @@ realmodeError:
 realmodeInterrupt:
 	push  ebx
 	push  ecx
-	mov   ecx, eax              ; Get ESP for the interrupt program (stored into eax)
-	sub   ecx, 0x6+0x8              ; Where we should end up on the kernel stack, taking into account what we just pushed
-	cmp   sp, cx             ; Did the stack decrease correctly?
+	mov   ecx, eax                   ; Get ESP for the interrupt program (stored into eax)
+	sub   ecx, 0x6+0x8               ; Where we should end up on the kernel stack, taking into account what we just pushed
+	cmp   sp, cx                     ; Did the stack decrease correctly?
 	jne   realmodeError
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, 0xE000     ; Did we arrive at proper kernel code?
+	cmp   bx, 0xE000                 ; Did we arrive at proper kernel code?
 	jne   realmodeError
 	;Basic stack pointer verified. Now check if the data on the stack is correct, while building a new stack to return to real mode.
-	;Ignore flags
-	and esp,0xFFFF ;Real mode safety.
-	mov bx, word [esp+(0x4+0x02)] ;CS
-	cmp bx,0xE000                  ;Correct?
-	jne error                      ;Error if incorrect.
-	mov bx, word [esp+0x4] ;IP
-	cmp bx,realmodeInterruptRET ;IP correct?
-	jne error ;Incorrect IP address.
+	;Ignore most flags
+	test word [esp+(0x4+0x04)],PS_IF ;EFLAGS input
+	jz    realmodeError
+	and   esp,0xFFFF ;Real mode safety.
+	mov   bx, word [esp+(0x4+0x02)]  ;CS
+	cmp   bx,0xE000                  ;Correct?
+	jne   error                      ;Error if incorrect.
+	mov   bx, word [esp+0x4] ;IP
+	cmp   bx,realmodeInterruptRET    ;IP correct?
+	jne   realmodeError              ;Incorrect IP address.
+	pushfd
+	pop   eax
+	test  eax,PS_IF                  ;Incorrect flags.
+	jnz   realmodeError 
 	pop   ebx
 	iret
 BITS 32

@@ -26,6 +26,7 @@
 	defGDTDescPrototype C_SEG_PROT32_R2
 	defGDTDescPrototype S_SEG_PROT32_R2
 	defGDTDescPrototype C_SEG_PROT16CS
+	defGDTDescPrototype SU_SEG_PROT32
 
 section .system_bios_extensions_area start=0x00000
 ;Start of high BIOS
@@ -375,12 +376,14 @@ POSTAentrypoint:
 	;Set all real mode interupt handlers to an error vector.
 	mov bx,0 ;Reset pointer
 	mov cx,0x100 ;All interrupt vectors.
+	jmp skipinterruptsclearing
 nextRealModeInterruptSetError:
 	;Set the interrupt to error
 	mov word [bx+2],0xF000
 	mov word [bx],error
 	add bx,4 ;Next pointer
 	loop nextRealModeInterruptSetError
+	skipinterruptsclearing:
 	;Set just our test interrupt vector.
 	mov ax,cs
 	mov [0x82],ax
@@ -388,9 +391,14 @@ nextRealModeInterruptSetError:
 	mov [0x80],ax
 	pop ds
 	;Now, call the real mode interrupt
+	pushfd ;Save interrupts
+	pushfd ;Modify flags
+	or word [esp],PS_IF ;Enable interrupts and flags bits to test
+	popfd
 	mov eax,esp ;Stack pointer for the interrupt to check.
 	int 0x20
 	realmodeInterruptRET:
+	popfd ;Restore interrupts
 	;Return to the main lower BIOS.
 	push word 0xF000
 	push word POSTAreturnpoint

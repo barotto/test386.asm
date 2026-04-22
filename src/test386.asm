@@ -357,6 +357,7 @@ initGDT:
 	defGDTDescImplementation C_SEG_PROT32_R2, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_2,EXT_32BIT
 	defGDTDescImplementation S_SEG_PROT32_R2,  0x00010000,0x0000ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDescImplementation C_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32, 0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
 	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
 	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
@@ -369,7 +370,6 @@ initGDT:
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc S_SEG_PROT32,  0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
 	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
@@ -471,8 +471,13 @@ initIDT:
 	; Install some interrupt handlers for user mode tests
 
 	; Interrupt 20h: non-conforming kernel interrupt, callable from user mode
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT16CS
+	%if ROM128
 	mov    edi, kernelInterrupt
+	%else
+	;Not enough room to test. Enter an invalid address.
+	mov    edi, 0xFFFFFFFF	
+	%endif
 	mov    dx,  ACC_DPL_3
 	mov    eax, 0x20
 	call   initIntGateReal
@@ -541,7 +546,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_R2_386
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -552,7 +557,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_R2_286
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -563,7 +568,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_validateAndClearTS
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -581,7 +586,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_validateV86mode16bit
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
 	mov    dx,  ACC_DPL_3
@@ -855,10 +860,14 @@ protTests:
 	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
 
 	; We should have the intial user mode stack setup right now for the below checks to validate.
+	call   switchToRing0      ; back to kernel mode (ring 0) again
+	call   switchToRing3      ; back to user mode (ring 3) again. Thus setting the Interrupt flag for our test.
 
 	; Interrupt from user mode to kernel mode using a 32-bit interrupt gate
+	%if ROM128
 	int   0x20
 kernelModeInterruptReturn:
+	%endif
 	; Interrupt from user mode to kernel using a 16-bit interrupt gate
 	int   0x27
 	

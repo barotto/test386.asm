@@ -325,22 +325,31 @@ TSStest1finished:
 	retfd ;Actually return
 
 %include "tests/dtr_m.asm"
-;Real mode code for this test
+;Real mode code for these tests
 BITS 16
-POST8entrypoint:
-	testDTR 0,lidt,sidt
-	testDTR 0,lgdt,sgdt
-	testDTR 1,lidt,sidt
-	testDTR 1,lgdt,sgdt
-	;Return to the lower BIOS.
-	push word 0xF000
-	push word POST8returnpoint
-	retf
 XLATrealmodeError:
 	push word 0xF000
 	push word error
 	retf
-POST9entrypoint:
+POST8_9_Aentrypoint:
+;-------------------------------------------------------------------------------
+	POST 8
+;-------------------------------------------------------------------------------
+;
+;   Load/save GDTR/IDTR in real mode
+;
+	testDTR 0,lidt,sidt
+	testDTR 0,lgdt,sgdt
+	testDTR 1,lidt,sidt
+	testDTR 1,lgdt,sgdt
+
+
+;-------------------------------------------------------------------------------
+	POST 9
+;-------------------------------------------------------------------------------
+;
+;   XLAT in real mode
+;
 	;Test XLAT
 	mov cx,0x100 ;Length of the lookup table.
 	mov al,0x0 ;First entry
@@ -363,11 +372,14 @@ checkXLAT:
 	cmp al,dl ;Is the result as expected?
 	jnz XLATrealmodeError
 	loop checkXLAT ;Check all input values.
-	;Return to the lower BIOS.
-	push word 0xF000
-	push word POST9returnpoint
-	retf
-POSTAentrypoint:
+
+;-------------------------------------------------------------------------------
+	POST A
+;-------------------------------------------------------------------------------
+;
+;   Interrupts in real mode
+;
+
 	;Test real mode interrupts
 	;First, install the interrupt handler.
 	push ds

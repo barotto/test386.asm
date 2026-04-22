@@ -254,38 +254,9 @@ cpuTest:
 	advTestSegReal
 
 %if ROM128
-;-------------------------------------------------------------------------------
-	POST 8
-;-------------------------------------------------------------------------------
-;
-;   Load/save GDTR/IDTR in real mode
-;
 	; Jump to the entry point of the test.
 	push word 0xE000
-	push word POST8entrypoint
-	retf
-	POST8returnpoint:
-
-	; Jump to the entry point of the test.
-;-------------------------------------------------------------------------------
-	POST 9
-;-------------------------------------------------------------------------------
-;
-;   XLAT in real mode
-;
-	push word 0xE000
-	push word POST9entrypoint
-	retf
-	POST9returnpoint:
-
-;-------------------------------------------------------------------------------
-	POST A
-;-------------------------------------------------------------------------------
-;
-;   Interrupts in real mode
-;
-	push word 0xE000
-	push word POSTAentrypoint
+	push word POST8_9_Aentrypoint
 	retf
 	POSTAreturnpoint:
 %endif

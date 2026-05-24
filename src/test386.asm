@@ -865,6 +865,12 @@ userRetfErrorFunction:
 	push   error
 userRetfErrorLocation:
 	retf
+userRetfImmErrorFunction:
+	; From user mode to kernel mode error address, with immediate, which isn't allowed.
+	push   C_SEG_PROT32
+	push   error
+userRetfImmErrorLocation:
+	retf 1
 userV86ExitFuncLocation:
 	bits 16
 	push   userV86ExitFuncRet ; Where to continue
@@ -917,6 +923,7 @@ ring0_2TestEndLocation:
 	testUserFault EX_GP, C_SEG_PROT32, jmp C_SEG_PROT32|3:0   ; Basic jump from user mode to kernel mode
 	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0  ; Basic call from user mode to kernel mode
 	testUserFaultEx EX_GP, C_SEG_PROT32, userRetfErrorLocation, jmp userRetfErrorFunction  ; Far return from user mode to kernel mode
+	testUserFaultEx EX_GP, C_SEG_PROT32, userRetfImmErrorLocation, jmp userRetfImmErrorFunction  ; Far return from user mode to kernel mode
 
 	; Test kernel mode only interrupt
 	mov  eax, esp  ; Save the stack pointer for us to check, as the interrupt doesn't have a comparison.

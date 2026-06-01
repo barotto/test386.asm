@@ -4,6 +4,10 @@ initIntGateProt:
 	initIntGate
 	ret
 
+initIntGateProtFar:
+	call initIntGate
+	retf
+
 initIntTaskGateProt:
 	initIntTaskGate
 	ret
@@ -45,6 +49,10 @@ initCallGate:
 	mov    word [fs:ebx+6], di ; DESTINATION OFFSET 31-16
 	ret
 
+initCallGateFar:
+	call initCallGate
+	retf
+
 ;
 ; Defines a Call Gate in GDT
 ;
@@ -76,3 +84,7 @@ initCallGate286:
 	mov    word [fs:ebx+4], dx ; ACC byte | WORD COUNT 4-0
 	mov    word [fs:ebx+6], 0xFFFF ; DESTINATION OFFSET 31-16 (isn't used. Load invalid linear address value to validate it)
 	ret
+
+initCallGate286Far:
+	call initCallGate286
+	retf

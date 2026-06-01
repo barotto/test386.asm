@@ -153,6 +153,16 @@ cpuTest:
 	testLoopZ
 	testLoopNZ
 
+;-------------------------------------------------------------------------------
+	POST 1D
+;-------------------------------------------------------------------------------
+;
+;   Flag instructions
+;
+%include "tests/flags_m.asm"
+	testCarryFlagInstructions
+	testDirectionFlagInstructions
+	testInterruptFlagInstructions
 
 ;-------------------------------------------------------------------------------
 	POST 2
@@ -242,6 +252,15 @@ cpuTest:
 
 	advTestSegReal
 
+%if ROM128
+	; Jump to the entry point of the test.
+	push word 0xE000
+	push word POST8_9_Aentrypoint
+	retf
+	POSTAreturnpoint:
+%endif
+
+
 
 ; ==============================================================================
 ;	Protected mode tests
@@ -308,22 +327,25 @@ initGDT:
 	defGDTDescImplementation C_SEG_PROT32_R2, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_2,EXT_32BIT
 	defGDTDescImplementation S_SEG_PROT32_R2,  0x00010000,0x0000ffff,ACC_DPL_2|ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
 	defGDTDescImplementation C_SEG_PROT16CS, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation SU_SEG_PROT32, 0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation C_SEG_PROT32low,  0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation CC_SEG_PROT32low, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
+	defGDTDescImplementation CU_SEG_PROT32low, 0x000e0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
+	defGDTDescImplementation C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation S_SEG_PROT32,  0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defGDTDescImplementation C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
+	defGDTDescImplementation D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
+	defGDTDescImplementation GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation IDT_SEG_PROT,  0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT
+	defGDTDescImplementation IDTU_SEG_PROT, 0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
+	defGDTDescImplementation CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
 	defGDTDesc C_SEG_PROT16,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT
-	defGDTDesc C_SEG_PROT32,  0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
-	defGDTDesc C_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc CC_SEG_PROT32, 0x000f0000,0x0000ffff,ACC_TYPE_CODE_R|ACC_TYPE_CONFORMING|ACC_PRESENT|EXT_32BIT
-	defGDTDesc IDT_SEG_PROT,  0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc IDTU_SEG_PROT, 0x00000400,0x0000016F,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc GDT_DSEG_PROT, 0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc GDTU_DSEG_PROT,0x00000600,0x0000031f,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defGDTDesc LDT_DSEG_PROT, 0x00000A00,0x000005ff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defGDTDesc PG_SEG_PROT,   0x00001000,0x00003fff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc S_SEG_PROT32,  0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defGDTDesc D_SEG_PROT32FLAT,  0x00000000,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT|EXT_PAGE
-	defGDTDesc SU_SEG_PROT32, 0x00010000,0x0007ffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3,EXT_32BIT
 	defGDTDesc FLAT_SEG_PROT, 0x00000000,0xffffffff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defGDTDesc RING0_GATE ; placeholder for a call gate used to switch to ring 0
-	defGDTDesc RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
+	defGDTDescImplementation RING0_GATE ; placeholder for a call gate used to switch to ring 0
+	defGDTDescImplementation RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
 
 	jmp initIDT
 
@@ -422,50 +444,83 @@ initIDT:
 	; Install some interrupt handlers for user mode tests
 
 	; Interrupt 20h: non-conforming kernel interrupt, callable from user mode
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT16CS
+	%if ROM128
 	mov    edi, kernelInterrupt
+	%else
+	;Not enough room to test. Enter an invalid address.
+	mov    edi, 0xFFFFFFFF	
+	%endif
 	mov    dx,  ACC_DPL_3
 	mov    eax, 0x20
 	call   initIntGateReal
 	; Interrupt 21h: conforming kernel interrupt, callable from user mode
-	mov    esi, CC_SEG_PROT32
+	mov    esi, CC_SEG_PROT32low
+	%if ROM128
 	mov    edi, kernelConformingInterrupt
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	inc    eax
 	call   initIntGateReal
 	; Interrupt 22h: user mode only interrupt
-	mov    esi, CU_SEG_PROT32
+	mov    esi, CU_SEG_PROT32low
+	%if ROM128
 	mov    edi, userModeInterrupt
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	inc    eax
 	call   initIntGateReal
 	; Interrupt 23h: kernel mode only interrupt
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT32low
+	%if ROM128
 	mov    edi, kernelOnlyInterrupt
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	mov    dx,  ACC_DPL_0
 	inc    eax
 	call   initIntGateReal
 	; Interrupt 24h: kernel mode only conforming interrupt
-	mov    esi, CC_SEG_PROT32
+	mov    esi, CC_SEG_PROT32low
+	%if ROM128
 	mov    edi, kernelOnlyConformingInterrupt
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	mov    dx,  ACC_DPL_0
 	inc    eax
 	call   initIntGateReal
 	; Interrupt 25h: kernel mode interrupt, callable from user mode. Switches out of V86 mode
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT32low
+	%if ROM128
 	mov    edi, V86ModeExitInterrupt
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
 	; Interrupt 26h: non-conforming kernel interrupt, flat memory, callable from user mode. Restores kernel stack to 32-bit
 	mov    esi, C_SEG_PROT32FLAT
+	%if ROM128
 	mov    edi, kernelInterruptRestoreKernelStack
-	or     edi,0xE00F0000 ;Make sure that the offset is located on a valid 32-bit mapped address by mapping the high 16 bits.
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
+	or     edi,0xE00E0000 ;Make sure that the offset is located on a valid 32-bit mapped address by mapping the high 16 bits.
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
 
 	; Interrupt 27h: non-conforming 286 kernel interrupt, callable from user mode.
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT32low
+	%if ROM128
 	mov    edi, kernelInterrupt286
+	%else
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
+	%endif
 	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -492,7 +547,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_R2_386
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -503,7 +558,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_R2_286
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
@@ -514,15 +569,17 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_validateAndClearTS
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
 
 	; Interrupt 2D: validate V86 mode
-	mov    esi, C_SEG_PROT32
+	mov    esi, C_SEG_PROT32low
+	%if ROM128
 	mov    edi, kernelInterrupt_validateIsV86mode
+	%endif
 	mov    dx,  ACC_DPL_3
 	inc    eax
 	call   initIntGateReal
@@ -532,7 +589,7 @@ initIDT:
 	%if ROM128
 	mov    edi, kernelInterrupt_validateV86mode16bit
 	%else
-	mov    edi, kernelInterrupt ;Unused, placeholder
+	mov    edi, 0xFFFFFFFF ;Unused, placeholder
 	%endif
 	or     edi,0xFFFF0000 ;Make sure that the offset is located on a invalid 32-bit mapped address by mapping the high 16 bits, which are not to be used.
 	mov    dx,  ACC_DPL_3
@@ -632,9 +689,9 @@ toProt32:
 %include "protected_p.asm"
 
 initLDT:
+	defLDTDescImplementation D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
+	defLDTDescImplementation DU_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defLDTDesc D_SEG_PROT16,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
-	defLDTDesc D_SEG_PROT32,   TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT,EXT_32BIT
-	defLDTDesc DU_SEG_PROT,    TEST_BASE, 0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT|ACC_DPL_3
 	defLDTDesc D1_SEG_PROT,    TEST_BASE1,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc D2_SEG_PROT,    TEST_BASE2,0x000fffff,ACC_TYPE_DATA_W|ACC_PRESENT
 	defLDTDesc DC_SEG_PROT32,  TEST_BASE1,0x000fffff,ACC_TYPE_CODE_R|ACC_PRESENT,EXT_32BIT
@@ -751,264 +808,14 @@ protTests:
 	advTestSegProt
 
 
-;-------------------------------------------------------------------------------
-	POST 20
-;-------------------------------------------------------------------------------
-;
-;   Test user mode (ring 3) switching
-;
-	call   clearTSS
-	mov    ax, D_SEG_PROT32
-	mov    ds, ax
-	mov    es, ax
-	mov    fs, ax
-	mov    gs, ax
-	pushfd
-
-	; Test I/O port access permissions
-	or     word [esp], 0x3000 ; Make I/O ports available on user mode
-	popfd                     ; Make I/O ports availble now
-	call   switchToRing3      ; Switch to user mode (ring 3)
-	in     al, 0x64           ; Read some I/O port freely
-	call   switchToRing0      ; Switch back to kernel mode (ring 0)
-	; CS must be C_SEG_PROT32|0 (CPL=0)
-	mov    ax, cs
-	cmp    ax, C_SEG_PROT32
-	jne    error
-	pushfd
-	and    word [esp], 0xFFF  ; Block ports on user mode again
-	popfd
-	call   switchToRing3      ; back to user mode (ring 3) again
-	; CS must be CU_SEG_PROT32|3 (CPL=3)
-	mov    ax, cs
-	cmp    ax, CU_SEG_PROT32|3
-	jne    error
-	; data segments must be NULL
-	mov    ax, ds
-	cmp    ax, 0
-	jne    error
-	mov    ax, es
-	cmp    ax, 0
-	jne    error
-	mov    ax, fs
-	cmp    ax, 0
-	jne    error
-	mov    ax, gs
-	cmp    ax, 0
-	jne    error
-
-	; test privileged instructions in user mode (ring 3)
-	protModeFaultTest EX_GP, 0, cli
-	protModeFaultTest EX_GP, 0, hlt
-	protModeFaultTest EX_GP, 0, in al,0x64
-
-	; test invalid interrupt call
-	protModeFaultTest EX_GP, 0x118|0x2, int 0x23
-
-	; We should have the intial user mode stack setup right now for the below checks to validate.
-
-	; Interrupt from user mode to kernel mode using a 32-bit interrupt gate
-	int   0x20
-kernelModeInterruptReturn:
-	; Interrupt from user mode to kernel using a 16-bit interrupt gate
-	int   0x27
-	
-kernelModeInterruptReturn286:
-	; Interrupt from user mode to kernel conforming
-	int   0x21
-kernelConformingInterruptReturn:
-	; Interrupt from user mode to user mode
-	int   0x22
-userInterruptReturn:
-	call  CU_SEG_PROT32|3:userFarFunc ; User-mode far call test
-	jmp   CU_SEG_PROT32|3:userJmpFunc ; User-mode far jump test
-
-userFarFunc:
-	retf  ; Simply return to the caller on the same privilege level
-
-	;
-	; Interrupt handlers (installed during POST 8)
-	;
-%include "protected_inth.asm"
-
-userRetfErrorFunction:
-	; From user mode to kernel mode error address, which isn't allowed.
-	push   C_SEG_PROT32
-	push   error
-userRetfErrorLocation:
-	retf
-userV86ExitFuncLocation:
-	bits 16
-	push   userV86ExitFuncRet ; Where to continue
-	jmp    switchToRing0V86
-	bits 32
-userV86IretInterruptRet:
-	bits 16
-	push   dword userV86IretExitFuncLocationRet
-	jmp    switchToRing0V86
-	bits 32
-userV86IretRealModeFunc:
-	bits 16
-	; Perform some pushf(d)/popf(d) with IOPL 3 test
-	pushf  ; This doubles as a pushf IOPL 3 test
-	popf   ; This doubles as a popf IOPL 3 test
-	pushfd ; This doubles as a pushfd IOPL3 test
-	popfd  ; This doubles as a popfd IOPL3 test
-	pushf  ; Real pushf we need for parameters now.
-	push   cs
-	push   word userV86IretInterruptRet
-	; Also, STI/CLI are allowed in this case, perform the test here.
-	sti
-	cli
-	iret
-	bits 32
-userV86IretErrorFuncLocation:
-	bits 16
-	push   cs
-	push   error
-userV86IretErrorFuncLocationInstruction:
-	iret
-	jmp    error
-userV86IOInstruction0:
-	in     al, 0x64
-	jmp    error
-	bits 32
-
-userJmpFunc:
-	call   switchToRing0 ; switch back to kernel mode (ring 0)
-	; CS must be C_SEG_PROT32|0 (CPL=0)
-	mov    ax, cs
-	cmp    ax, C_SEG_PROT32
-	jne    error
-
-	; Test call gates now
-	jmp    testCallGateWithParameters ; Test call gate with parameters
-ring0_2TestEndLocation:
-
-	; Perform some user mode exception tests
-	testUserFault EX_GP, C_SEG_PROT32, jmp C_SEG_PROT32|3:0   ; Basic jump from user mode to kernel mode
-	testUserFault EX_GP, C_SEG_PROT32, call C_SEG_PROT32|3:0  ; Basic call from user mode to kernel mode
-	testUserFaultEx EX_GP, C_SEG_PROT32, userRetfErrorLocation, jmp userRetfErrorFunction  ; Far return from user mode to kernel mode
-
-	; Test kernel mode only interrupt
-	mov  eax, esp  ; Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
-	int  0x23
-kernelModeOnlyInterruptReturn:
-
-	; Interrupt from kernel mode to user mode is forbidden, so test for that.
-	protModeFaultTest EX_GP, CU_SEG_PROT32, int 0x22
-
-	; Interrupt from kernel mode to kernel mode (conforming)
-	mov  eax, esp  ; Save the stack pointer for us to check, as the interrupt doesn't have a comparison.
-	int  0x24
-kernelOnlyConformingInterruptReturn:
-
-	; Test user to kernel stack switch using different address spaces
-	; Interrupt from user mode to kernel mode (flat address space)
-	call  switchToRing3FLATkernel ;Switch to ring 3 with flat kernel stack prepared
-	int   0x26
-kernelModeInterruptKernelStackReturn:
-	push kernelModeInterruptKernelStackReturnPoint
-	call  switchToRing0
-	kernelModeInterruptKernelStackReturnPoint:
-	; Back in normal 32-bit protected mode with 16-bit segment limits again
-
-;-------------------------------------------------------------------------------
-	POST 21
-;-------------------------------------------------------------------------------
-;
-;   Test Virtual-8086 mode
-;
-
-	; Check invalid virtual 8086 mode interrupts
-	; interrupt without IOPL 3 faults with #GP(0)
-	testUserV86_0_Fault EX_GP, 0, int 0x22
-	; CLI/STI without IOPL 3 faults with #GP(0)
-	testUserV86_0_Fault EX_GP, 0, cli
-	testUserV86_0_Fault EX_GP, 0, sti
-	; pushf(d) isn't allowed with IOPL 0
-	testUserV86_0_Fault EX_GP, 0, pushf
-	testUserV86_0_Fault EX_GP, 0, pushfd
-	; popf(d) isn't allowed with IOPL 0
-	testUserV86_0_Fault EX_GP, 0, popf
-	testUserV86_0_Fault EX_GP, 0, popfd
-	; port i/o isn't allowed with IOPL 0 and TSS I/O map set or out of range
-	testUserV86_0_FaultEx EX_GP, 0, userV86IOInstruction0, call userV86IOInstruction0
-
-	; Manipulate TSS to allow port I/O for a bit.
-	push  es
-	push  ebp
-	les   ebp, [cs:ptrTSSprot]     ; Load our TSS
-	mov   word [es:ebp+0x66], 0    ; Make it available temporarily
-	mov   word [es:ebp+0xC], 0     ; Make the port available
-	pop   ebp
-	pop   es
-	call  switchToRing3V86_3       ; Switch to v86 mode to test
-	bits 16
-	in    al, 0x64                 ; Some valid I/O port to use that is harmless.
-	push  dword V86IOSucceedFinish ; Return to kernel mode
-	jmp   switchToRing0V86
-	bits 32
-V86IOSucceedFinish:
-	push  es
-	push  ebp
-	les   ebp, [cs:ptrTSSprot]     ; Load our TSS
-	mov   word [es:ebp+0x66], 0x68 ; Make the port unavailable again
-	pop   ebp
-	pop   es
-
-	; If we reach here, the return to kernel mode was successful.
-
-	; iret without IOPL 3 faults with #GP(0)
-	testUserV86_0_FaultEx EX_GP, 0, userV86IretErrorFuncLocationInstruction, call userV86IretErrorFuncLocation
-	; interrupt with IOPL 3 to non-V86 privilege level 0 faults with #GP(usermodesegment)
-	testUserV86_3_Fault EX_GP, CU_SEG_PROT32, int 0x22
-	; interrupt with IOPL 3 to non-V86 monitor privilege level 0 faults with #GP(kernel conforming segment)
-	testUserV86_3_Fault EX_GP, CC_SEG_PROT32, int 0x21
-	; HLT is privileged and raises #GP(0) no matter what IOPL is used
-	testUserV86_3_Fault EX_GP, 0, hlt
-	testUserV86_0_Fault EX_GP, 0, hlt
-
-	; iret with IOPL 3 proceeds as in real mode
-
-	; Validate simply exiting Virtual 8086 mode, using the interrupt
-	call  switchToRing3V86_3
-	bits 16
-	int 0x2D ;Validate we're actually in V86 mode.
-	jmp   userV86IretRealModeFunc
-	jmp   error
-	bits 32
-userV86IretExitFuncLocationRet:
-
-	; Validate simply exiting Virtual 8086 mode, using the interrupt
-	call  switchToRing3V86_3
-	bits 16
-	jmp   userV86ExitFuncLocation
-	jmp   error
-	bits 32
-errorInTSS32Load:
-	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
-	mov ss,ax
-	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer
-	jmp error               ;Error out!	
-
-userV86ExitFuncRet:
-	;Now we're going to test 16-bit interrupts in Virtual 8086 mode.
+	;Run POST 20 from the lower ROM, if enabled.
 	%if ROM128
-	call  switchToRing3V86_3
-	BITS 16
-	int 0x2E ;Verify 16-bit interrupts in Virtual 8086 mode
-	userV86_16bitinterruptRET:
-	push dword userV86ExitFuncRet_16bitinterrupts ; Where to continue
-	jmp    switchToRing0V86
-userV86ExitFuncRet_16bitinterrupts:
+	POST 20
+	push C_SEG_PROT32low
+	push test386POST20start
+	retf ;Jump to the entry point of the test.
+	test386POST21end:
 	%endif
-	BITS 32
-	pushfd
-	pop eax
-	and eax,0xCDFF ;Clear IOPL and interrupt flag again, as it cannot be changed in user mode
-	push eax
-	popfd
 
 ;-------------------------------------------------------------------------------
 	POST 22

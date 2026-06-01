@@ -72,6 +72,10 @@ clearTSS:
 	pop ebp
 	ret
 
+;Far call version of clearTSS
+clearTSSfar:
+	call clearTSS
+	retf
 
 ; Prepare 32-bit TSS for task switching
 

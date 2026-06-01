@@ -137,6 +137,37 @@
 %endmacro
 
 ;
+;   Defines a LDT descriptor, given a name (%1), base (%2), limit (%3), type (%4), and ext (%5)
+;
+%assign LDTSelDesc 4
+%macro defLDTDescPrototype 1
+	%assign %1 LDTSelDesc
+	%assign LDTSelDesc LDTSelDesc+8
+	;The LDT is prototyped.
+	%define LDTprototyped
+%endmacro
+
+;Second, the implementation
+%macro defLDTDescImplementation 1-5 0,0,0,0
+	%ifndef LDTprototyped
+	%assign %1 LDTSelDesc
+	%assign nested 0
+	%else
+	%assign nested 1
+	%endif
+	lds  ebx, [cs:ptrLDTprot]  ; this macro is used in prot mode to set up prot mode env.
+	mov  eax, %1
+	mov  esi, %2
+	mov  edi, %3
+	mov  dx,  %4|%5
+	initDescriptor
+	%if nested==0
+	%assign LDTSelDesc LDTSelDesc+8
+	%endif
+%endmacro
+
+
+;
 ;   Updates a LDT descriptor, given a name (%1), base (%2), limit (%3), type (%4), and ext (%5)
 ;
 %macro updLDTDesc 1-5 0,0,0,0
@@ -209,6 +240,10 @@
 	lss    esp, [cs:ptrSSprot]
 %endmacro
 
+%macro loadProtModeStackLow 0
+	lss    esp, [cs:ptrSSprot_R0]
+%endmacro
+
 
 ;
 ; Set a int gate on the IDT in protected mode
@@ -258,6 +293,54 @@
 %endmacro
 
 ;
+; Set a int gate on the IDT in protected mode
+;
+; %1: vector
+; %2: offset
+; %3: DPL, use ACC_DPL_* equs (optional)
+;
+; the stack must be initialized
+;
+%macro setProtModeIntGateLow 2-3 -1
+	pushad
+	pushf
+	mov  ax, ds  ; save ds
+	push ax
+	mov  eax, %1
+	mov  edi, %2
+	%if %3 != -1
+	mov  dx, %3
+	%else
+	mov  dx, cs
+	and  dx, 7
+	shl  dx, 13
+	%endif
+	cmp  dx, ACC_DPL_0
+	jne %%dpl3
+%%dpl0:
+	mov  esi, C_SEG_PROT32low
+	jmp %%cont
+%%dpl3:
+	mov  esi, CU_SEG_PROT32low
+%%cont:
+	mov  cx, cs
+	test cx, 7
+	jnz %%ring3
+%%ring0:
+	lds  ebx, [cs:ptrIDTprot_R0]
+	call far C_SEG_PROT32:initIntGateProtFar
+	jmp %%call
+%%ring3:
+	lds  ebx, [cs:ptrIDTUprot_R3]
+	call far CU_SEG_PROT32|3:initIntGateProtFar
+%%call:
+	pop  ax
+	mov  ds, ax  ; restore ds
+	popf
+	popad
+%endmacro
+
+;
 ; Tests a fault
 ;
 ; %1: vector
@@ -274,6 +357,16 @@
 %%continue:
 	protModeExcCheck %1, %2, %%test
 	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
+%endmacro
+
+%macro protModeFaultTestLow 3+
+	setProtModeIntGateLow %1, %%continue
+%%test:
+	%3
+	jmp    error
+%%continue:
+	protModeExcCheckLow %1, %2, %%test
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
 %endmacro
 
 ; %1: vector
@@ -311,16 +404,43 @@
 ;
 ; The fault handler is executed in ring 0. The caller must reset the data segments.
 ;
-%macro protModeFaultTestExV86 5+
-	setProtModeIntGate %1, %%continue, ACC_DPL_0
+%macro protModeFaultTestExLow 5+
+	setProtModeIntGateLow %1, %%continue, ACC_DPL_0
 %%test:
 	%5
 	jmp    error
 %%continue:
 	%if %3 = 0
-		%assign expectedCS C_SEG_PROT32
+		%assign expectedCS C_SEG_PROT32low
 	%else
-		%assign expectedCS 0xF000
+		%assign expectedCS CU_SEG_PROT32low|3
+	%endif
+	%if %4 = -1
+		protModeExcCheckLow %1, %2, %%test, expectedCS
+	%else
+		protModeExcCheckLow %1, %2, %4, expectedCS
+	%endif
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
+%endmacro
+
+; %1: vector
+; %2: expected error code
+; %3: the provilege level the test code will run in
+; %4: the expected value of pushed EIP (specify if %5 is a call, otherwise use -1)
+; %5: fault causing code (can be a call to procedure)
+;
+; The fault handler is executed in ring 0. The caller must reset the data segments.
+;
+%macro protModeFaultTestExV86 5+
+	setProtModeIntGateLow %1, %%continue, ACC_DPL_0
+%%test:
+	%5
+	jmp    error
+%%continue:
+	%if %3 = 0
+		%assign expectedCS C_SEG_PROT32low
+	%else
+		%assign expectedCS 0xE000
 	%endif
 	%if %4 = -1
 		protModeExcCheckV86 %1, %2, %%test, expectedCS
@@ -328,7 +448,7 @@
 		protModeExcCheckV86 %1, %2, %4, expectedCS
 	%endif
 	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
-	setProtModeIntGate %1, DefaultExcHandler, ACC_DPL_0
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
 %endmacro
 
 ; Tests an user-mode exception
@@ -351,6 +471,22 @@ jmp %%startinglabel
 	testCPL 0
 %endmacro
 
+%macro testUserFaultLow 3+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3low
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%3
+	jmp   error
+%%startinglabel:
+	loadProtModeStackLow
+	protModeFaultTestExLow %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	testCPL 0
+%endmacro
+
 ; Tests an user-mode exception (Virtual 8086 mode) under IOPL 0
 ;%1: exception number
 ;%2: fault error code
@@ -365,7 +501,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	testCPL 0
 %endmacro
@@ -384,7 +520,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	testCPL 0
 %endmacro
@@ -414,6 +550,26 @@ jmp %%startinglabel
 	testCPL 0
 %endmacro
 
+%macro testUserFaultExLow 4+
+jmp %%startinglabel
+%%usercodelabel:
+	call  switchToRing3low
+	mov   ax, DU_SEG_PROT|3
+	mov   ss, ax
+	mov   esp, 0x1004
+%%instructionlabel:
+	%4
+	jmp   error
+%%startinglabel:
+	loadProtModeStackLow
+	%if %3 = -1
+	protModeFaultTestExLow %1, %2, 3, %%instructionlabel, call %%usercodelabel
+	%else
+	protModeFaultTestExLow %1, %2, 3, %3, call %%usercodelabel
+	%endif
+	testCPL 0
+%endmacro
+
 ; Tests an user-mode exception with custom fault point (Virtual 8086 mode) under IOPL 0
 ;%1: exception number
 ;%2: fault error code
@@ -429,7 +585,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	%if %3 = -1
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	%else
@@ -453,7 +609,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	%if %3 = -1
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	%else
@@ -491,6 +647,35 @@ jmp %%startinglabel
 		jmp %%continue
 		%%ring3:
 		cmp    [ss:esp+exc_errcode+4], dword CU_SEG_PROT32|3
+		jne    error
+		%%continue:
+	%endif
+	cmp    [ss:esp+exc_errcode], dword %3
+	jne    error
+	add    esp, 12+exc_errcode
+%endmacro
+
+%macro protModeExcCheckLow 3-4 -1
+	%if %1 == 8 || (%1 > 10 && %1 <= 14)
+	%assign exc_errcode 4
+	cmp    [ss:esp], dword %2
+	jne    error
+	%else
+	%assign exc_errcode 0
+	%endif
+	%if %4 != -1
+		cmp    [ss:esp+exc_errcode+4], dword %4
+		jne    error
+	%else
+		mov    bx, cs
+		test   bx, 7
+		jnz %%ring3
+		%%ring0:
+		cmp    [ss:esp+exc_errcode+4], dword C_SEG_PROT32low
+		jne    error
+		jmp %%continue
+		%%ring3:
+		cmp    [ss:esp+exc_errcode+4], dword CU_SEG_PROT32low|3
 		jne    error
 		%%continue:
 	%endif
@@ -542,11 +727,11 @@ jmp %%startinglabel
 		test   bx, 7
 		jnz %%ring3
 		%%ring0:
-		cmp    [ss:esp+exc_errcode+4], dword 0xF000
+		cmp    [ss:esp+exc_errcode+4], dword 0xE000
 		jne    error
 		jmp %%continue
 		%%ring3:
-		cmp    [ss:esp+exc_errcode+4], dword 0xF000
+		cmp    [ss:esp+exc_errcode+4], dword 0xE000
 		jne    error
 		%%continue:
 	%endif

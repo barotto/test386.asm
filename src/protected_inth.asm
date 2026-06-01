@@ -17,12 +17,12 @@ kernelInterrupt286:
 	pop   ds
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, C_SEG_PROT32     ; Did we end up in kernel mode correctly?
+	cmp   bx, C_SEG_PROT32low     ; Did we end up in kernel mode correctly?
 	jne   error
 	pop   ebx
 	cmp   word [esp+0x00], kernelModeInterruptReturn286
 	jne   error                ; Invalid return address
-	cmp   word [esp+0x02], CU_SEG_PROT32|3
+	cmp   word [esp+0x02], CU_SEG_PROT32low|3
 	jne   error                ; Invalid return code segment
 	; Ignore eflags
 	cmp   word [esp+0x06], ESP_R3_PROT
@@ -57,7 +57,7 @@ kernelInterruptRestoreKernelStack:
 	pop   ebx
 	cmp   dword [esp+0x00], kernelModeInterruptKernelStackReturn
 	jne   error                ; Invalid return address
-	cmp   dword [esp+0x04], CU_SEG_PROT32|3
+	cmp   dword [esp+0x04], CU_SEG_PROT32low|3
 	jne   error                ; Invalid return code segment
 	; Ignore eflags
 	cmp   dword [esp+0x0C], ESP_R3_PROT
@@ -88,13 +88,13 @@ kernelOnlyInterrupt:
 	jne   error
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, C_SEG_PROT32     ; Did we arrive at proper kernel code?
+	cmp   bx, C_SEG_PROT32low     ; Did we arrive at proper kernel code?
 	jne   error
 	pop   ds
 	pop   ebx
 	cmp   dword [esp+0x00], kernelModeOnlyInterruptReturn
 	jne   error                ; Invalid return address
-	cmp   dword [esp+0x04],C_SEG_PROT32
+	cmp   dword [esp+0x04],C_SEG_PROT32low
 	jne   error                ; Invalid return code segment
 	; Ignore eflags
 	iret                       ; Simply return to kernel mode
@@ -117,12 +117,12 @@ kernelConformingInterrupt:
 	jne   error
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, CC_SEG_PROT32|3 ; Did we arrive at proper conforming code?
+	cmp   bx, CC_SEG_PROT32low|3 ; Did we arrive at proper conforming code?
 	jne   error
 	pop   ebx
 	cmp   dword [esp+0x00], kernelConformingInterruptReturn
 	jne   error               ; Invalid return address
-	cmp   dword [esp+0x04], CU_SEG_PROT32|3
+	cmp   dword [esp+0x04], CU_SEG_PROT32low|3
 	jne   error               ; Invalid return code segment
 	; Ignore eflags
 	iret                      ; Simply return to user mode, stays at CPL 3
@@ -149,13 +149,13 @@ kernelOnlyConformingInterrupt:
 	jne   error
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, CC_SEG_PROT32    ; Did we arrive at proper conforming kernel code?
+	cmp   bx, CC_SEG_PROT32low    ; Did we arrive at proper conforming kernel code?
 	jne   error
 	pop   ds
 	pop   ebx
 	cmp   dword [esp+0x00], kernelOnlyConformingInterruptReturn
 	jne   error                ; Invalid return address
-	cmp   dword [esp+0x04],C_SEG_PROT32
+	cmp   dword [esp+0x04],C_SEG_PROT32low
 	jne   error                ; Invalid return code segment
 	; Ignore eflags
 	iret                       ; Simply return to kernel mode
@@ -178,12 +178,12 @@ userModeInterrupt:
 	jne   error
 	pop   ecx
 	mov   bx, cs
-	cmp   bx, CU_SEG_PROT32|3   ; Did we arrive at proper user mode code?
+	cmp   bx, CU_SEG_PROT32low|3   ; Did we arrive at proper user mode code?
 	jne   error
 	pop   ebx
 	cmp   dword [esp+0x00], userInterruptReturn
 	jne   error                 ; Invalid return address
-	cmp   dword [esp+0x04],CU_SEG_PROT32|3
+	cmp   dword [esp+0x04],CU_SEG_PROT32low|3
 	jne   error                 ; Invalid return code segment
 	; Ignore eflags
 	iret                        ; Simply return to caller, stays as user mode.
@@ -206,3 +206,6 @@ kernelInterrupt_validateIsV86mode:
 	test dword [esp+8],0x20000 ;V86 bit set?
 	jz error ;V86 bit not properly set?
 	iret
+
+DefaultExcHandlerLow:
+	jmp C_SEG_PROT32:DefaultExcHandler

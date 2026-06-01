@@ -33,6 +33,13 @@
 	defGDTDescPrototype C_SEG_PROT32
 	defGDTDescPrototype S_SEG_PROT32
 	defGDTDescPrototype C_SEG_PROT32FLAT
+	defGDTDescPrototype D_SEG_PROT32FLAT
+	defGDTDescPrototype GDTU_DSEG_PROT
+	defGDTDescPrototype IDT_SEG_PROT
+	defGDTDescPrototype IDTU_SEG_PROT
+	defGDTDescPrototype CC_SEG_PROT32
+	defGDTDescPrototype RING0_GATE ; placeholder for a call gate used to switch to ring 0
+	defGDTDescPrototype RING0_GATE2 ; placeholder for a second call gate used to switch to ring 0
 ;LDT entries
 	defLDTDescPrototype D_SEG_PROT32
 	defLDTDescPrototype DU_SEG_PROT
@@ -49,6 +56,7 @@ section .system_bios_extensions_area start=0x00000
 	;
 %include "protected_tssh.asm"
 BITS 32
+%include "protected_rings_tssp.asm"
 	;
 	; Interrupt handlers (installed during POST 8)
 	;
@@ -429,6 +437,7 @@ nextRealModeInterruptSetError:
 	retf
 
 test386POST20start:	
+BITS 32
 ;-------------------------------------------------------------------------------
 	POST 20
 ;-------------------------------------------------------------------------------
@@ -452,7 +461,7 @@ test386POST20start:
 	; CS must be C_SEG_PROT32low|0 (CPL=0)
 	mov    ax, cs
 	cmp    ax, C_SEG_PROT32low
-	jne    error
+	jne    errorTSS
 	pushfd
 	and    word [esp], 0xFFF  ; Block ports on user mode again
 	popfd
@@ -460,20 +469,20 @@ test386POST20start:
 	; CS must be CU_SEG_PROT32low|3 (CPL=3)
 	mov    ax, cs
 	cmp    ax, CU_SEG_PROT32low|3
-	jne    error
+	jne    errorTSS
 	; data segments must be NULL
 	mov    ax, ds
 	cmp    ax, 0
-	jne    error
+	jne    errorTSS
 	mov    ax, es
 	cmp    ax, 0
-	jne    error
+	jne    errorTSS
 	mov    ax, fs
 	cmp    ax, 0
-	jne    error
+	jne    errorTSS
 	mov    ax, gs
 	cmp    ax, 0
-	jne    error
+	jne    errorTSS
 
 	; test privileged instructions in user mode (ring 3)
 	protModeFaultTestLow EX_GP, 0, cli
@@ -511,13 +520,13 @@ userFarFunc:
 userRetfErrorFunction:
 	; From user mode to kernel mode error address, which isn't allowed.
 	push   C_SEG_PROT32low
-	push   error
+	push   errorTSS
 userRetfErrorLocation:
 	retf
 userRetfImmErrorFunction:
 	; From user mode to kernel mode error address, with immediate, which isn't allowed.
 	push   C_SEG_PROT32low
-	push   error
+	push   errorTSS
 userRetfImmErrorLocation:
 	retf 1
 userV86ExitFuncLocation:
@@ -548,13 +557,13 @@ userV86IretRealModeFunc:
 userV86IretErrorFuncLocation:
 	bits 16
 	push   cs
-	push   error
+	push   errorTSS
 userV86IretErrorFuncLocationInstruction:
 	iret
-	jmp    error
+	jmp    errorTSS
 userV86IOInstruction0:
 	in     al, 0x64
-	jmp    error
+	jmp    errorTSS
 	bits 32
 
 userJmpFunc:
@@ -562,7 +571,7 @@ userJmpFunc:
 	; CS must be C_SEG_PROT32low|0 (CPL=0)
 	mov    ax, cs
 	cmp    ax, C_SEG_PROT32low
-	jne    error
+	jne    errorTSS
 
 	; Test call gates now
 	jmp    testCallGateWithParameters ; Test call gate with parameters
@@ -589,7 +598,7 @@ kernelOnlyConformingInterruptReturn:
 
 	; Test user to kernel stack switch using different address spaces
 	; Interrupt from user mode to kernel mode (flat address space)
-	call  switchToRing3FLATkernel ;Switch to ring 3 with flat kernel stack prepared
+	call  switchToRing3FLATkernelLow ;Switch to ring 3 with flat kernel stack prepared
 	int   0x26
 kernelModeInterruptKernelStackReturn:
 	push kernelModeInterruptKernelStackReturnPoint
@@ -660,7 +669,7 @@ V86IOSucceedFinish:
 	bits 16
 	int 0x2D ;Validate we're actually in V86 mode.
 	jmp   userV86IretRealModeFunc
-	jmp   error
+	jmp   errorTSS
 	bits 32
 userV86IretExitFuncLocationRet:
 
@@ -668,13 +677,13 @@ userV86IretExitFuncLocationRet:
 	call  switchToRing3V86_3
 	bits 16
 	jmp   userV86ExitFuncLocation
-	jmp   error
+	jmp   errorTSS
 	bits 32
 errorInTSS32Load:
 	mov ax,DU_SEG_PROT32FLAT|3  ;SS safe value
 	mov ss,ax
 	mov esp,ESP_R3_PROTFLAT ;Restore our stack pointer
-	jmp error               ;Error out!	
+	jmp errorTSS               ;Error out!	
 
 userV86ExitFuncRet:
 	;Now we're going to test 16-bit interrupts in Virtual 8086 mode.
@@ -698,6 +707,7 @@ userV86ExitFuncRet_16bitinterrupts:
 	push C_SEG_PROT32
 	push test386POST21end
 	retf
+BITS 16
 
 ;End of high BIOS
 	;Pad to 64KB

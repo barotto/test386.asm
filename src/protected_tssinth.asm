@@ -3,13 +3,27 @@ BITS 32
 ptrTSSprot_R2: ; pointer to the task state segment
 	dd 0
 	dw TSSU_DSEG_PROT32|3
+ptrTSSprot_R0: ; pointer to the task state segment
+	dd 0
+	dw TSS_DSEG_PROT
 ptrTSSprot16_R2: ; pointer to the 16-bit task state segment
 	dd 0
 	dw TSSU_DSEG_PROT16|3
 ptrTSSerrorR0_2: ; pointer to the error condition, from ring 0 or ring 2
 	dd error
 	dw CU_SEG_PROT32|3
-
+ptrGDTUprot_R2: ; pointer to the GDT for pmode (user mode data segment)
+	dd 0
+	dw GDTU_DSEG_PROT|3	
+ptrIDTprot_R0: ; pointer to the IDT for pmode
+	dd 0             ; 32-bit offset
+	dw IDT_SEG_PROT  ; 16-bit segment selector
+ptrIDTUprot_R3: ; pointer to the IDT for pmode
+	dd 0             ; 32-bit offset
+	dw IDTU_SEG_PROT  ; 16-bit segment selector
+ptrSSprot_R0: ; pointer to the stack for pmode
+	dd ESP_R0_PROT
+	dw S_SEG_PROT32
 errorCPLn:
 	jmp far [cs:ptrTSSerrorR0_2] ;JMP to the error condition.
 
@@ -37,7 +51,7 @@ kernelInterrupt:
 	pop   ebx
 	cmp   dword [esp+0x00], kernelModeInterruptReturn
 	jne   errorCPLn                ; Invalid return address
-	cmp   dword [esp+0x04], CU_SEG_PROT32|3
+	cmp   dword [esp+0x04], CU_SEG_PROT32low|3
 	jne   errorCPLn                ; Invalid return code segment
 	; Ignore most eflags
 	test  dword [esp+0x08], PS_IF ;EFLAGS input
@@ -173,15 +187,15 @@ kernelInterrupt_validateV86mode16bit:
 	mov   ecx, dword [bx+4]             ; Get ESP for the kernel mode program (stored into eax)
 	sub   ecx, 0xC+0x12         ; Where we should end up on the kernel stack, taking into account what we just pushed
 	cmp   esp, ecx             ; Did the stack decrease correctly?
-	jne   error
+	jne   errorCPLn
 	mov   cx, ss
 	mov   bx, word [bx+8]      ; Expected: kernel mode stack
 	cmp   cx, bx               ; Did the stack pointer load correctly?
-	jne   error
+	jne   errorCPLn
 	pop   ecx
 	mov   bx, cs
 	cmp   bx, C_SEG_PROT16CS     ; Did we arrive at proper kernel code?
-	jne   error
+	jne   errorCPLn
 	pop   ds
 	pop   ebx
 	;Basic stack pointer verified. Now check if the data on the stack is correct, while building a new stack to return to user mode.
@@ -190,37 +204,37 @@ kernelInterrupt_validateV86mode16bit:
 	and eax,0xFFFF ;Mask off upper 16 bits.
 	mov ax, word [esp+(0x04+0x10)] ;GS
 	cmp ax,V86_GS                  ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination GS
 	mov ax, word [esp+(0x08+0x0E)] ;FS
 	cmp ax,V86_FS                  ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination FS
 	mov ax, word [esp+(0x0C+0x0C)] ;DS
 	cmp ax,V86_DS                  ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination DS
 	mov ax, word [esp+(0x10+0x0A)] ;ES
 	cmp ax,V86_ES                  ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination ES
 	mov ax, word [esp+(0x14+0x08)] ;SS
 	cmp ax,0x1000                  ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination SS
 	mov ax, word [esp+(0x18+0x06)] ;SP
 	cmp ax,ESP_R3_PROT             ;Correct?
-	jne error                      ;Error if incorrect.
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination ESP
 	mov ax, word [esp+(0x1C+0x04)] ;FLAGS
 	push eax ;Save destination EFLAGS
 	mov ax, word [esp+(0x20+0x02)] ;CS
-	cmp ax,0xF000                  ;Correct?
-	jne error                      ;Error if incorrect.
+	cmp ax,0xE000                  ;Correct?
+	jne errorCPLn                  ;Error if incorrect.
 	push eax ;Save destination CS
 	mov ax, word [esp+(0x24+0x00)] ;IP
 	cmp ax,userV86_16bitinterruptRET ;IP correct?
-	jne error ;Incorrect IP address.
+	jne errorCPLn ;Incorrect IP address.
 	push eax ;Save destination EIP
 	or dword [esp+0x08],0x20000 ;Set VM bit to properly return.
 	mov eax,[esp+0x2C] ;Load original EAX register to restore it.

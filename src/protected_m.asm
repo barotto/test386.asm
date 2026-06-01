@@ -240,6 +240,10 @@
 	lss    esp, [cs:ptrSSprot]
 %endmacro
 
+%macro loadProtModeStackLow 0
+	lss    esp, [cs:ptrSSprot_R0]
+%endmacro
+
 
 ;
 ; Set a int gate on the IDT in protected mode
@@ -323,12 +327,13 @@
 	test cx, 7
 	jnz %%ring3
 %%ring0:
-	lds  ebx, [cs:ptrIDTprot]
+	lds  ebx, [cs:ptrIDTprot_R0]
+	call far C_SEG_PROT32:initIntGateProtFar
 	jmp %%call
 %%ring3:
-	lds  ebx, [cs:ptrIDTUprot]
+	lds  ebx, [cs:ptrIDTUprot_R3]
+	call far CU_SEG_PROT32|3:initIntGateProtFar
 %%call:
-	call initIntGateProt
 	pop  ax
 	mov  ds, ax  ; restore ds
 	popf
@@ -355,13 +360,13 @@
 %endmacro
 
 %macro protModeFaultTestLow 3+
-	setProtModeIntGate %1, %%continue
+	setProtModeIntGateLow %1, %%continue
 %%test:
 	%3
 	jmp    error
 %%continue:
 	protModeExcCheckLow %1, %2, %%test
-	setProtModeIntGate %1, DefaultExcHandlerLow, ACC_DPL_0
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
 %endmacro
 
 ; %1: vector
@@ -400,7 +405,7 @@
 ; The fault handler is executed in ring 0. The caller must reset the data segments.
 ;
 %macro protModeFaultTestExLow 5+
-	setProtModeIntGate %1, %%continue, ACC_DPL_0
+	setProtModeIntGateLow %1, %%continue, ACC_DPL_0
 %%test:
 	%5
 	jmp    error
@@ -415,7 +420,7 @@
 	%else
 		protModeExcCheckLow %1, %2, %4, expectedCS
 	%endif
-	setProtModeIntGate %1, DefaultExcHandlerLow, ACC_DPL_0
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
 %endmacro
 
 ; %1: vector
@@ -427,7 +432,7 @@
 ; The fault handler is executed in ring 0. The caller must reset the data segments.
 ;
 %macro protModeFaultTestExV86 5+
-	setProtModeIntGate %1, %%continue, ACC_DPL_0
+	setProtModeIntGateLow %1, %%continue, ACC_DPL_0
 %%test:
 	%5
 	jmp    error
@@ -443,7 +448,7 @@
 		protModeExcCheckV86 %1, %2, %4, expectedCS
 	%endif
 	call switchedToRing0V86_cleanup ;Cleanup the user-mode stack and restore segment registers for kernel mode
-	setProtModeIntGate %1, DefaultExcHandlerLow, ACC_DPL_0
+	setProtModeIntGateLow %1, DefaultExcHandlerLow, ACC_DPL_0
 %endmacro
 
 ; Tests an user-mode exception
@@ -477,7 +482,7 @@ jmp %%startinglabel
 	%3
 	jmp   error
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	protModeFaultTestExLow %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	testCPL 0
 %endmacro
@@ -496,7 +501,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	testCPL 0
 %endmacro
@@ -515,7 +520,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	testCPL 0
 %endmacro
@@ -556,7 +561,7 @@ jmp %%startinglabel
 	%4
 	jmp   error
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	%if %3 = -1
 	protModeFaultTestExLow %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	%else
@@ -580,7 +585,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	%if %3 = -1
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	%else
@@ -604,7 +609,7 @@ jmp %%startinglabel
 	jmp   error
 	bits 32
 %%startinglabel:
-	loadProtModeStack
+	loadProtModeStackLow
 	%if %3 = -1
 	protModeFaultTestExV86 %1, %2, 3, %%instructionlabel, call %%usercodelabel
 	%else

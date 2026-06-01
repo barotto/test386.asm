@@ -6,7 +6,7 @@ kernelInterrupt286:
 	push  ebx
 	push  ecx
 	push  ds
-	lds   ebx, [cs:ptrTSSprot] ; Get the TSS
+	lds   ebx, [cs:ptrTSSprot_R0] ; Get the TSS
 	mov   ecx, [ebx+4]         ; Get TSS ESP0
 	sub   ecx, 0x0A+0xC        ; Where we should end up on the kernel stack, taking into account what we just pushed
 	cmp   esp, ecx             ; Did the stack decrease correctly?
@@ -77,7 +77,7 @@ kernelOnlyInterrupt:
 	push  ebx
 	push  ds
 	push  ecx
-	lds   ebx, [cs:ptrTSSprot] ; Get the TSS
+	lds   ebx, [cs:ptrTSSprot_R0] ; Get the TSS
 	mov   ecx, eax             ; Get ESP for the kernel mode program (stored into eax)
 	sub   ecx, 0xC+0xC         ; Where we should end up on the kernel stack, taking into account what we just pushed
 	cmp   esp, ecx             ; Did the stack decrease correctly?
@@ -138,7 +138,7 @@ kernelOnlyConformingInterrupt:
 	push  ebx
 	push  ds
 	push  ecx
-	lds   ebx, [cs:ptrTSSprot] ; Get the TSS
+	lds   ebx, [cs:ptrTSSprot_R0] ; Get the TSS
 	mov   ecx, eax             ; Get ESP for the kernel mode program (stored into eax)
 	sub   ecx, 0xC+0xC         ; Where we should end up on the kernel stack, taking into account what we just pushed
 	cmp   esp, ecx             ; Did the stack decrease correctly?
